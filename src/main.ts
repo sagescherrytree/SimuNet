@@ -1,24 +1,11 @@
-import './style.css'
+// TODO: initialise WebGPU.
+import './style.css';
+import { initWebGPU } from './renderer/renderer';
+import { createEditor } from './rete/rete_engine';
 
 (async () => {
-    if (navigator.gpu === undefined) {
-        const h = document.querySelector('#title') as HTMLElement;
-        h.innerText = 'WebGPU is not supported in this browser.';
-        return;
-    }
-    const adapter = await navigator.gpu.requestAdapter({
-        powerPreference: 'high-performance',
-    });
-    if (adapter === null) {
-        const h = document.querySelector('#title') as HTMLElement;
-        h.innerText = 'No adapter is available for WebGPU.';
-        return;
-    }
+    const reteContainer = document.getElementById('rete-container')!;
 
-    const device = await adapter.requestDevice({
-        requiredLimits: {
-            maxComputeWorkgroupStorageSize: adapter.limits.maxComputeWorkgroupStorageSize,
-            maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize
-        },
-    });
+    await initWebGPU();
+    await createEditor(reteContainer);
 })();
