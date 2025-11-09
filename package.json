@@ -9,6 +9,7 @@
   },
   "devDependencies": {
     "@tweakpane/core": "^1.1.7",
+    "@vitejs/plugin-react": "^5.1.0",
     "@webgpu/types": "^0.1.31",
     "tweakpane-plugin-file-import": "^0.2.0",
     "typescript": "^5.0.4",
@@ -19,6 +20,8 @@
     "@loaders.gl/core": "^4.2.2",
     "@loaders.gl/ply": "^4.2.2",
     "@petamoriken/float16": "^3.8.7",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "rete": "^2.0.6",
     "rete-area-plugin": "^2.1.5",
     "rete-connection-plugin": "^2.0.5",

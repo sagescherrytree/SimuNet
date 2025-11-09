@@ -19,9 +19,23 @@ export async function createEditor(container: HTMLElement) {
     render.addPreset(ReactPresets.classic.setup() as any)
     connection.addPreset(ConnectionPresets.classic.setup() as any)
 
-    // 5. Center everything in view
-    AreaExtensions.zoomAt(area, editor.getNodes())
+    // Test add node.
+    const nodeA = new ClassicPreset.Node('Primitive')
+    const nodeB = new ClassicPreset.Node('Output')
 
+    const output = new ClassicPreset.Output(socket('Geometry'), 'Geometry')
+    const input = new ClassicPreset.Input(socket('Geometry'), 'Geometry')
+
+    nodeA.addOutput('out', output)
+    nodeB.addInput('in', input)
+
+    await editor.addNode(nodeA)
+    await editor.addNode(nodeB)
+
+    await editor.addConnection(new ClassicPreset.Connection(nodeA, 'out', nodeB, 'in'))
+
+    // Center everything in view.
+    AreaExtensions.zoomAt(area as any, editor.getNodes())
     return { editor, area }
 }
 

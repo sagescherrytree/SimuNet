@@ -10,7 +10,7 @@ export var aspectRatio: number;
 export const fovYDegrees = 45;
 
 export async function initWebGPU() {
-    canvas = document.getElementById("mainCanvas") as HTMLCanvasElement;
+    canvas = document.getElementById("gpu-canvas") as HTMLCanvasElement;
 
     const devicePixelRatio = window.devicePixelRatio;
     canvas.width = canvas.clientWidth * devicePixelRatio;

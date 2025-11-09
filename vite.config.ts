@@ -1,5 +1,6 @@
 import rawPlugin from 'vite-raw-plugin';
 import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
 export default defineConfig({
     build: {
@@ -10,5 +11,6 @@ export default defineConfig({
         rawPlugin({
             fileRegex: /\.wgsl$/,
         }),
+        react()
     ],
 })
