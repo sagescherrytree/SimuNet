@@ -1,45 +1,60 @@
-import { NodeEditor, ClassicPreset, GetSchemes } from 'rete'
-import { AreaPlugin, AreaExtensions } from 'rete-area-plugin'
-import { ConnectionPlugin, Presets as ConnectionPresets } from 'rete-connection-plugin'
-import { ReactPlugin, Presets as ReactPresets } from 'rete-react-plugin'
+import { createRoot } from "react-dom/client";
+import { NodeEditor, GetSchemes, ClassicPreset } from "rete";
+import { AreaPlugin, AreaExtensions } from "rete-area-plugin";
+import {
+  ConnectionPlugin,
+  Presets as ConnectionPresets,
+} from "rete-connection-plugin";
+import { ReactPlugin, Presets, ReactArea2D } from "rete-react-plugin";
 
-type Scheme = GetSchemes<ClassicPreset.Node, ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>>
+type Schemes = GetSchemes<
+  ClassicPreset.Node,
+  ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>
+>;
+type AreaExtra = ReactArea2D<Schemes>;
 
 export async function createEditor(container: HTMLElement) {
-    const editor = new NodeEditor<Scheme>()
+  const socket = new ClassicPreset.Socket("socket");
 
-    const area = new AreaPlugin<Scheme, HTMLElement>(container)
-    const connection = new ConnectionPlugin<Scheme>()
-    const render = new ReactPlugin<Scheme, HTMLElement>()
+  const editor = new NodeEditor<Schemes>();
+  const area = new AreaPlugin<Schemes, AreaExtra>(container);
+  const connection = new ConnectionPlugin<Schemes, AreaExtra>();
+  const render = new ReactPlugin<Schemes, AreaExtra>({ createRoot });
 
-    editor.use(area)
-    editor.use(connection as any)
-    editor.use(render as any)
+  AreaExtensions.selectableNodes(area, AreaExtensions.selector(), {
+    accumulating: AreaExtensions.accumulateOnCtrl(),
+  });
 
-    render.addPreset(ReactPresets.classic.setup() as any)
-    connection.addPreset(ConnectionPresets.classic.setup() as any)
+  render.addPreset(Presets.classic.setup());
 
-    // Test add node.
-    const nodeA = new ClassicPreset.Node('Primitive')
-    const nodeB = new ClassicPreset.Node('Output')
+  connection.addPreset(ConnectionPresets.classic.setup());
 
-    const output = new ClassicPreset.Output(socket('Geometry'), 'Geometry')
-    const input = new ClassicPreset.Input(socket('Geometry'), 'Geometry')
+  editor.use(area);
+  area.use(connection);
+  area.use(render);
 
-    nodeA.addOutput('out', output)
-    nodeB.addInput('in', input)
+  AreaExtensions.simpleNodesOrder(area);
 
-    await editor.addNode(nodeA)
-    await editor.addNode(nodeB)
+  const a = new ClassicPreset.Node("A");
+  a.addControl("a", new ClassicPreset.InputControl("text", { initial: "a" }));
+  a.addOutput("a", new ClassicPreset.Output(socket));
+  await editor.addNode(a);
 
-    await editor.addConnection(new ClassicPreset.Connection(nodeA, 'out', nodeB, 'in'))
+  const b = new ClassicPreset.Node("B");
+  b.addControl("b", new ClassicPreset.InputControl("text", { initial: "b" }));
+  b.addInput("b", new ClassicPreset.Input(socket));
+  await editor.addNode(b);
 
-    // Center everything in view.
-    AreaExtensions.zoomAt(area as any, editor.getNodes())
-    return { editor, area }
-}
+  await editor.addConnection(new ClassicPreset.Connection(a, "a", b, "b"));
 
-// Helper socket creator
-function socket(name: string) {
-    return new ClassicPreset.Socket(name)
+  await area.translate(a.id, { x: 0, y: 0 });
+  await area.translate(b.id, { x: 270, y: 0 });
+
+  setTimeout(() => {
+    // wait until nodes rendered because they dont have predefined width and height
+    AreaExtensions.zoomAt(area, editor.getNodes());
+  }, 10);
+  return {
+    destroy: () => area.destroy(),
+  };
 }
