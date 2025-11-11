@@ -1,5 +1,6 @@
 // TODO: Add code to support bindgroups from nodes.
 import { NodeA, getGeometries } from "../node_gui/nodes/NodeA";
+import { Camera } from "../stage/camera";
 
 export var canvas: HTMLCanvasElement;
 export var canvasFormat: GPUTextureFormat;
@@ -81,6 +82,8 @@ nodeTest = new NodeA();
 await nodeTest.execute();
 
 export class Renderer {
+    protected camera: Camera;
+
     pipeline: GPURenderPipeline;
     modelBuffer: GPUBuffer;
     vertexBuffer: GPUBuffer;
@@ -89,23 +92,25 @@ export class Renderer {
     depthTexture: GPUTexture;
     depthView: GPUTextureView;
     bindGroupLayout: GPUBindGroupLayout;
+    
+    draw: ()=>void;
 
     constructor() {
         const shaderModule = device.createShaderModule({
             code: `
 struct Camera {
-  viewProj : mat4x4<f32>;
+  viewProj : mat4x4<f32>
 };
 struct Model {
-  model : mat4x4<f32>;
+  model : mat4x4<f32>
 };
 
 @binding(0) @group(0) var<uniform> camera : Camera;
 @binding(1) @group(0) var<uniform> model : Model;
 
 struct VertexOut {
-  @builtin(position) position : vec4<f32>;
-  @location(0) vColor : vec3<f32>;
+  @builtin(position) position : vec4<f32>,
+  @location(0) vColor : vec3<f32>
 };
 
 @vertex
@@ -123,6 +128,7 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
 `
         });
 
+       
         this.bindGroupLayout = device.createBindGroupLayout({
             label: "renderer bind group layout",
             entries: [{ // camera
@@ -168,18 +174,22 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
         this.vertexBuffer = device.createBuffer({
             size: vertexData.byteLength,
             usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-            mappedAtCreation: true
+            // mappedAtCreation: true
         });
-        new Float32Array(this.vertexBuffer.getMappedRange()).set(vertexData);
-        this.vertexBuffer.unmap();
+        // new Float32Array(this.vertexBuffer.getMappedRange()).set(vertexData);
+        // this.vertexBuffer.unmap();
+        
+        device.queue.writeBuffer(this.vertexBuffer,0, geometries[0].vertices);
 
         this.indexBuffer = device.createBuffer({
             size: indexData.byteLength,
             usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-            mappedAtCreation: true
+            // mappedAtCreation: true
         });
-        new Uint32Array(this.indexBuffer.getMappedRange()).set(indexData);
-        this.indexBuffer.unmap();
+        // new Uint32Array(this.indexBuffer.getMappedRange()).set(indexData);
+        // this.indexBuffer.unmap();
+        device.queue.writeBuffer(this.indexBuffer,0, geometries[0].indices);
+
 
         this.indexCount = indexData.length;
 
@@ -194,37 +204,86 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
         console.log("Index buffer:", this.indexBuffer);
         console.log("Index count:", this.indexCount);
 
-    }
 
-    draw() {
-        const encoder = device.createCommandEncoder();
 
-        const colorView = context.getCurrentTexture().createView();
-
-        // Create renderpass
-        const renderPass = encoder.beginRenderPass({
-            label: "main pass",
-            colorAttachments: [{
-                view: colorView,
-                loadOp: "clear",
-                storeOp: "store",
-                clearValue: { r: 0.2, g: 0.2, b: 0.25, a: 1.0 }
-            }],
-            depthStencilAttachment: {
-                view: this.depthView!,
-                depthLoadOp: "clear",
-                depthStoreOp: "store",
-                depthClearValue: 1.0
-            }
+        let modelMatUniformBuffer = device.createBuffer({
+            label: "model mat uniform",
+            size: 16 * 4,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
-        renderPass.setPipeline(this.pipeline);
-        renderPass.setVertexBuffer(0, this.vertexBuffer);
-        renderPass.setIndexBuffer(this.indexBuffer, "uint32");
-        renderPass.drawIndexed(this.indexCount, 1, 0, 0, 0);
+        device.queue.writeBuffer(modelMatUniformBuffer, 0, new Float32Array(
+            [1, 0, 0, 0,
+             0, 1, 0, 0,
+             0, 0, 1, 0,
+             0, 0, 0, 1])
+        );
 
-        renderPass.end();
+        let camera = new Camera();
+        // TODO does camera control work as-is?
 
-        device.queue.submit([encoder.finish()]);
+        let rendererBindGroup = device.createBindGroup({
+            label: "renderer bind group",
+            layout: this.bindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: {
+                        buffer: camera.uniformsBuffer
+                    }
+                },
+                {
+                    binding: 1,
+                    resource: { buffer: modelMatUniformBuffer }
+                }            
+            ]
+        });
+
+
+
+        this.draw = function() {
+            const encoder = device.createCommandEncoder();
+    
+            const colorView = context.getCurrentTexture().createView();
+         
+            // Create renderpass
+            const renderPass = encoder.beginRenderPass({
+                label: "main pass",
+                colorAttachments: [{
+                    view: colorView,
+                    loadOp: "clear",
+                    storeOp: "store",
+                    clearValue: { r: 0.2, g: 0.2, b: 0.25, a: 1.0 }
+                }],
+                depthStencilAttachment: {
+                    view: this.depthView!,
+                    depthLoadOp: "clear",
+                    depthStoreOp: "store",
+                    depthClearValue: 1.0
+                }
+            });
+
+  
+            if (geometries.length > 0) {
+                // TODO shouldn't update this every draw
+                // console.log(geometries);
+                device.queue.writeBuffer(this.vertexBuffer,0, geometries[0].vertices);
+                device.queue.writeBuffer(this.indexBuffer,0, geometries[0].indices);
+
+                // device.queue.writeBuffer(this.vertexBuffer,geometries[0].vertices.length * 4, geometries[0].indices);
+            }
+            renderPass.setPipeline(this.pipeline);
+            renderPass.setBindGroup(0, rendererBindGroup)
+            renderPass.setVertexBuffer(0, this.vertexBuffer);
+            renderPass.setIndexBuffer(this.indexBuffer, "uint32");
+            renderPass.drawIndexed(this.indexCount, 1, 0, 0, 0);
+    
+            renderPass.end();
+    
+            // console.log(camera.cameraPos);
+            device.queue.submit([encoder.finish()]);
+        }
+
     }
+
 }
