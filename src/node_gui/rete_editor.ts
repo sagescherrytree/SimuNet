@@ -16,7 +16,7 @@ import {
   Presets as ContextMenuPresets,
 } from "rete-context-menu-plugin";
 
-import { Schemes, AreaExtra, NodeTypes } from "./types";
+import { Schemes, AreaExtra, NodeTypes, NodeA, NodeB } from "./types";
 import { Connection } from "./connections/Connection";
 
 function getContextMenuItems() {
@@ -49,12 +49,23 @@ export async function createEditor(container: HTMLElement) {
 
   arrange.addPreset(ArrangePresets.classic.setup());
 
+
   editor.use(area);
   area.use(connection);
   area.use(render);
   area.use(arrange);
 
   AreaExtensions.simpleNodesOrder(area);
+
+  editor.addPipe(context => {
+    if (context.type === "nodecreate") {
+      let createdNode = context.data;
+      if (createdNode instanceof NodeA) {
+        (createdNode as NodeA).execute();
+      }
+    }
+    return context;
+  });
 
   await arrange.layout();
   AreaExtensions.zoomAt(area, editor.getNodes());
