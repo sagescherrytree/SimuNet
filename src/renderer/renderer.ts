@@ -1,4 +1,5 @@
 // TODO: Add code to support bindgroups from nodes.
+import { NodeA, getGeometries } from "../node_gui/nodes/NodeA";
 
 export var canvas: HTMLCanvasElement;
 export var canvasFormat: GPUTextureFormat;
@@ -8,6 +9,10 @@ export var canvasTextureView: GPUTextureView;
 
 export var aspectRatio: number;
 export const fovYDegrees = 45;
+
+export var modelBindGroupLayout: GPUBindGroupLayout;
+
+export var nodeTest: NodeA;
 
 export async function initWebGPU() {
     canvas = document.getElementById("gpu-canvas") as HTMLCanvasElement;
@@ -42,4 +47,184 @@ export async function initWebGPU() {
     });
 
     console.log("WebGPU init successsful");
+
+    modelBindGroupLayout = device.createBindGroupLayout({
+        label: "model bind group layout",
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.VERTEX,
+                buffer: { type: "uniform" }
+            }
+        ]
+    });
+}
+
+export const vertexBufferLayout: GPUVertexBufferLayout = {
+    arrayStride: 32,
+    attributes: [
+        { // pos
+            format: "float32x3",
+            offset: 0,
+            shaderLocation: 0
+        },
+        { // indices
+            format: "uint32",
+            offset: 12,
+            shaderLocation: 1
+        }
+    ]
+};
+
+// Temporary node.
+nodeTest = new NodeA();
+await nodeTest.execute();
+
+export class Renderer {
+    pipeline: GPURenderPipeline;
+    modelBuffer: GPUBuffer;
+    vertexBuffer: GPUBuffer;
+    indexBuffer: GPUBuffer;
+    indexCount: number;
+    depthTexture: GPUTexture;
+    depthView: GPUTextureView;
+    bindGroupLayout: GPUBindGroupLayout;
+
+    constructor() {
+        const shaderModule = device.createShaderModule({
+            code: `
+struct Camera {
+  viewProj : mat4x4<f32>;
+};
+struct Model {
+  model : mat4x4<f32>;
+};
+
+@binding(0) @group(0) var<uniform> camera : Camera;
+@binding(1) @group(0) var<uniform> model : Model;
+
+struct VertexOut {
+  @builtin(position) position : vec4<f32>;
+  @location(0) vColor : vec3<f32>;
+};
+
+@vertex
+fn vs_main(@location(0) position : vec3<f32>) -> VertexOut {
+  var out : VertexOut;
+  out.position = camera.viewProj * (model.model * vec4<f32>(position, 1.0));
+  out.vColor = (position + vec3<f32>(1.0,1.0,1.0)) * 0.5;
+  return out;
+}
+
+@fragment
+fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
+  return vec4<f32>(in.vColor, 1.0);
+}
+`
+        });
+
+        this.bindGroupLayout = device.createBindGroupLayout({
+            label: "renderer bind group layout",
+            entries: [{ // camera
+                binding: 0,
+                visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                buffer: { type: "uniform" }
+            },
+            { // model
+                binding: 1,
+                visibility: GPUShaderStage.VERTEX,
+                buffer: { type: "uniform" }
+            }]
+        });
+
+        this.pipeline = device.createRenderPipeline({
+            layout: device.createPipelineLayout({ bindGroupLayouts: [this.bindGroupLayout] }),
+            vertex: {
+                module: shaderModule,
+                entryPoint: "vs_main",
+                buffers: [{
+                    arrayStride: 12,
+                    attributes: [{ shaderLocation: 0, offset: 0, format: "float32x3" }]
+                }]
+            },
+            fragment: {
+                module: shaderModule,
+                entryPoint: "fs_main",
+                targets: [{ format: canvasFormat }]
+            },
+            primitive: { topology: "triangle-list", cullMode: "back" },
+            depthStencil: {
+                format: "depth24plus",
+                depthWriteEnabled: true,
+                depthCompare: "less"
+            }
+        });
+
+        const geometries = getGeometries();
+
+        const vertexData = new Float32Array(geometries[0].vertices);
+        const indexData = new Uint32Array(geometries[0].indices);
+
+        this.vertexBuffer = device.createBuffer({
+            size: vertexData.byteLength,
+            usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+            mappedAtCreation: true
+        });
+        new Float32Array(this.vertexBuffer.getMappedRange()).set(vertexData);
+        this.vertexBuffer.unmap();
+
+        this.indexBuffer = device.createBuffer({
+            size: indexData.byteLength,
+            usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+            mappedAtCreation: true
+        });
+        new Uint32Array(this.indexBuffer.getMappedRange()).set(indexData);
+        this.indexBuffer.unmap();
+
+        this.indexCount = indexData.length;
+
+        this.depthTexture = device.createTexture({
+            size: [canvas.width, canvas.height],
+            format: "depth24plus",
+            usage: GPUTextureUsage.RENDER_ATTACHMENT
+        });
+        this.depthView = this.depthTexture.createView();
+
+        console.log("Vertex buffer:", this.vertexBuffer);
+        console.log("Index buffer:", this.indexBuffer);
+        console.log("Index count:", this.indexCount);
+
+    }
+
+    draw() {
+        const encoder = device.createCommandEncoder();
+
+        const colorView = context.getCurrentTexture().createView();
+
+        // Create renderpass
+        const renderPass = encoder.beginRenderPass({
+            label: "main pass",
+            colorAttachments: [{
+                view: colorView,
+                loadOp: "clear",
+                storeOp: "store",
+                clearValue: { r: 0.2, g: 0.2, b: 0.25, a: 1.0 }
+            }],
+            depthStencilAttachment: {
+                view: this.depthView!,
+                depthLoadOp: "clear",
+                depthStoreOp: "store",
+                depthClearValue: 1.0
+            }
+        });
+
+        renderPass.setPipeline(this.pipeline);
+        renderPass.setVertexBuffer(0, this.vertexBuffer);
+        renderPass.setIndexBuffer(this.indexBuffer, "uint32");
+        renderPass.drawIndexed(this.indexCount, 1, 0, 0, 0);
+
+        renderPass.end();
+
+        device.queue.submit([encoder.finish()]);
+    }
 }

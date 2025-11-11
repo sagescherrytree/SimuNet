@@ -16,4 +16,4 @@ export const NodeTypes = {
   NodeB: () => new NodeB(),
 };
 
-export { Node };
+export { Node, NodeA, NodeB };

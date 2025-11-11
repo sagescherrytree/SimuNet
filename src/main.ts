@@ -1,6 +1,6 @@
 // TODO: initialise WebGPU.
 import "./style.css";
-import { initWebGPU } from "./renderer/renderer";
+import { initWebGPU, Renderer } from "./renderer/renderer";
 import { createEditor } from "./node_gui/rete_editor";
 
 (async () => {
@@ -8,4 +8,13 @@ import { createEditor } from "./node_gui/rete_editor";
 
   await initWebGPU();
   await createEditor(reteContainer);
+
+  const renderer = new Renderer();
+
+  // simple animation loop
+  function frame() {
+    renderer.draw();
+    requestAnimationFrame(frame);
+  }
+  frame();
 })();
