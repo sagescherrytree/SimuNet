@@ -18,6 +18,8 @@ import {
 
 import { Schemes, AreaExtra, NodeTypes } from "./types";
 import { Connection } from "./connections/Connection";
+// import { getDOMSocketPosition } from "rete-render-utils";
+
 
 function getContextMenuItems() {
   const items = [...Object.entries(NodeTypes)];
@@ -44,14 +46,31 @@ export async function createEditor(container: HTMLElement) {
 
   render.addPreset(Presets.contextMenu.setup());
   render.addPreset(Presets.classic.setup());
+  // TODO does vertical setup need CSS to do manually? I'm certain there must be some way to do on TS side
+  // render.addPreset(Presets.classic.setup({
+  //   socketPositionWatcher: getDOMSocketPosition({
+  //     offset({x,y}, nodeId, side, key) {
+  //       return {
+  //         x: x,
+  //         y: y + 100 * (side === "input" ? -1 : 1)
+  //       }
+  //     }
+  //   })
+  // }));
 
+  // connection.
   connection.addPreset(ConnectionPresets.classic.setup());
 
+  
   arrange.addPreset(ArrangePresets.classic.setup());
-
+  // arrange.layout({options: {direction: "DOWN"}});
+  
+  
   editor.use(area);
   area.use(connection);
   area.use(render);
+
+
   area.use(arrange);
 
   AreaExtensions.simpleNodesOrder(area);
