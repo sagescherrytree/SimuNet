@@ -22,7 +22,9 @@ export class NodeA extends Node {
     this.addControl("a", new ClassicPreset.InputControl("text", {}));
     this.addOutput("a", new ClassicPreset.Output(socket));
 
-    this.sizeControl = new ClassicPreset.InputControl("number", { initial: 1.0 });
+    this.sizeControl = new ClassicPreset.InputControl("number", {
+      initial: 1.0,
+    });
 
     this.addControl("size", this.sizeControl);
     this.addOutput("geometry", new ClassicPreset.Output(socket, "Geometry"));
@@ -34,14 +36,30 @@ export class NodeA extends Node {
     const s = size / 2;
 
     const vertices = new Float32Array([
-      -s, -s, -s,  // 0
-      s, -s, -s,  // 1
-      s, s, -s,  // 2
-      -s, s, -s,  // 3
-      -s, -s, s,  // 4
-      s, -s, s,  // 5
-      s, s, s,  // 6
-      -s, s, s,  // 7
+      -s,
+      -s,
+      -s, // 0
+      s,
+      -s,
+      -s, // 1
+      s,
+      s,
+      -s, // 2
+      -s,
+      s,
+      -s, // 3
+      -s,
+      -s,
+      s, // 4
+      s,
+      -s,
+      s, // 5
+      s,
+      s,
+      s, // 6
+      -s,
+      s,
+      s, // 7
     ]);
 
     const indices = new Uint32Array([
@@ -56,7 +74,7 @@ export class NodeA extends Node {
       // right
       1, 5, 6, 1, 6, 2,
       // left
-      0, 3, 7, 0, 7, 4
+      0, 3, 7, 0, 7, 4,
     ]);
 
     return { vertices, indices };
@@ -71,7 +89,7 @@ export class NodeA extends Node {
 
     addGeometry({
       vertices: new Float32Array(this.geometry.vertices),
-      indices: new Uint32Array(this.geometry.indices)
+      indices: new Uint32Array(this.geometry.indices),
     });
 
     return { geometry: this.geometry };

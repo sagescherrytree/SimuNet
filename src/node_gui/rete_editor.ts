@@ -20,7 +20,6 @@ import { Schemes, AreaExtra, NodeTypes, NodeA, NodeB } from "./types";
 import { Connection } from "./connections/Connection";
 // import { getDOMSocketPosition } from "rete-render-utils";
 
-
 function getContextMenuItems() {
   const items = [...Object.entries(NodeTypes)];
 
@@ -61,21 +60,18 @@ export async function createEditor(container: HTMLElement) {
   // connection.
   connection.addPreset(ConnectionPresets.classic.setup());
 
-  
   arrange.addPreset(ArrangePresets.classic.setup());
   // arrange.layout({options: {direction: "DOWN"}});
-  
-  
+
   editor.use(area);
   area.use(connection);
   area.use(render);
-
 
   area.use(arrange);
 
   AreaExtensions.simpleNodesOrder(area);
 
-  editor.addPipe(context => {
+  editor.addPipe((context) => {
     if (context.type === "nodecreate") {
       let createdNode = context.data;
       if (createdNode instanceof NodeA) {
