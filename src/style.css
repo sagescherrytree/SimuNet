@@ -15,13 +15,13 @@ body {
 }
 
 #rete-container {
-  width: 40%;
+  width: 60%;
   height: 100%;
   background-color: rgba(255, 0, 0, 0.2);
 }
 
 #gpu-canvas {
-  width: 60%;
+  width: 40%;
   height: 100%;
   background-color: rgba(0, 0, 255, 0.2);
 }
