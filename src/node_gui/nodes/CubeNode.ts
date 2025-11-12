@@ -1,10 +1,10 @@
 import { ClassicPreset } from "rete";
 import { Node } from "./Node";
 import { socket } from "../types";
-import { GeometryData, addGeometry } from "../../geometry/geometry";
+import { GeometryData, addGeometry, removeGeometry } from "../../geometry/geometry";
 
 export class CubeNode extends Node {
-  height = 140;
+  height = 180;
   width = 200;
 
   geometry: GeometryData;
@@ -13,15 +13,21 @@ export class CubeNode extends Node {
   constructor() {
     super("CubeNode");
 
-    this.addControl("a", new ClassicPreset.InputControl("text", {}));
+    // this.addControl("a", new ClassicPreset.InputControl("text", {}));
     this.addOutput("a", new ClassicPreset.Output(socket));
 
     this.sizeControl = new ClassicPreset.InputControl("number", {
       initial: 1.0,
+      change: (value) => {
+        removeGeometry(this.id);
+        this.execute();
+      }
     });
+
 
     this.addControl("size", this.sizeControl);
     this.addOutput("geometry", new ClassicPreset.Output(socket, "Geometry"));
+
 
     this.geometry = this.createCubeGeometry(1.0);
   }
@@ -71,7 +77,11 @@ export class CubeNode extends Node {
       0, 3, 7, 0, 7, 4,
     ]);
 
-    return { vertices, indices };
+    return { vertices, indices, id: this.id };
+  }
+
+  removeGeometry() {
+    removeGeometry(this.id);
   }
 
   async execute() {
@@ -84,6 +94,7 @@ export class CubeNode extends Node {
     addGeometry({
       vertices: new Float32Array(this.geometry.vertices),
       indices: new Uint32Array(this.geometry.indices),
+      id: this.id
     });
 
     return { geometry: this.geometry };

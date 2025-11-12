@@ -77,6 +77,11 @@ export async function createEditor(container: HTMLElement) {
       if (createdNode instanceof CubeNode) {
         await createdNode.execute();
       }
+    } else if (context.type === "noderemove") {
+      const node = context.data;
+      if (node instanceof CubeNode) {
+        node.removeGeometry();
+      }
     }
     return context;
   });

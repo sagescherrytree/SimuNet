@@ -1,6 +1,6 @@
 // TODO: Add code to support bindgroups from nodes.
 import { CubeNode } from "../node_gui/nodes/CubeNode";
-import { GeometryData, onNewGeometry, getGeometries } from "../geometry/geometry";
+import { GeometryData, onNewGeometry, getGeometries, onGeometryRemoved } from "../geometry/geometry";
 import { Camera } from "../stage/camera";
 
 export var canvas: HTMLCanvasElement;
@@ -176,59 +176,49 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
             },
         });
 
-        onNewGeometry((geom: GeometryData) => {
+        const updateGeometry = () => {
+            // Handle geometries from primitives.
+            const geometries = getGeometries();
+            let totalVertices: number[] = [];
+            let totalIndices: number[] = [];
+            let vertexOffset = 0;
+
+            for (const geom of geometries) {
+                totalVertices.push(...geom.vertices); // flatten
+                totalIndices.push(...geom.indices.map(i => i + vertexOffset));
+                vertexOffset += geom.vertices.length / 3; // assuming 3 components per vertex
+            }
+
+            console.log("Geometries available:", geometries.length);
+
+            const vertexData = new Float32Array(totalVertices);
+            const indexData = new Uint32Array(totalIndices);
+
             // Create or update buffers
             this.vertexBuffer = device.createBuffer({
-                size: geom.vertices.byteLength,
-                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
+                size: Math.max(vertexData.byteLength, 1024),
+                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
             });
-            device.queue.writeBuffer(this.vertexBuffer, 0, geom.vertices.buffer);
+
+            device.queue.writeBuffer(this.vertexBuffer, 0, vertexData.buffer);
 
             this.indexBuffer = device.createBuffer({
-                size: geom.indices.byteLength,
-                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST
+                size: Math.max(indexData.byteLength, 1024),
+                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
             });
-            device.queue.writeBuffer(this.indexBuffer, 0, geom.indices.buffer);
+            device.queue.writeBuffer(this.indexBuffer, 0, indexData.buffer);
 
-            this.indexCount = geom.indices.length;
-        });
+            this.indexCount = indexData.length;
 
-        // Handle geometries from primitives.
-        const geometries = getGeometries();
-        let totalVertices: number[] = [];
-        let totalIndices: number[] = [];
-        let vertexOffset = 0;
+            console.log("First few vertices:", Array.from(vertexData.slice(0, 9)));
+            console.log("First few indices:", Array.from(indexData.slice(0, 12)));
+        };
 
-        for (const geom of geometries) {
-            totalVertices.push(...geom.vertices); // flatten
-            totalIndices.push(...geom.indices.map(i => i + vertexOffset));
-            vertexOffset += geom.vertices.length / 3; // assuming 3 components per vertex
-        }
+        // Event for adding new geometry.
+        onNewGeometry((geom: GeometryData) => updateGeometry());
 
-        console.log("Geometries available:", geometries.length);
-        if (geometries.length === 0) {
-            console.error(
-                "No geometries available! Make sure nodeTest.execute() was called."
-            );
-        }
-
-        const vertexData = new Float32Array(totalVertices);
-        const indexData = new Uint32Array(totalIndices);
-
-        this.vertexBuffer = device.createBuffer({
-            size: Math.max(vertexData.byteLength, 1024),
-            usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-        });
-
-        device.queue.writeBuffer(this.vertexBuffer, 0, vertexData.buffer);
-
-        this.indexBuffer = device.createBuffer({
-            size: Math.max(indexData.byteLength, 1024),
-            usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-        });
-        device.queue.writeBuffer(this.indexBuffer, 0, indexData.buffer);
-
-        this.indexCount = indexData.length;
+        // Removal event listener.
+        onGeometryRemoved((id: string) => updateGeometry());
 
         this.depthTexture = device.createTexture({
             size: [canvas.width, canvas.height],
@@ -237,11 +227,12 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
         });
         this.depthView = this.depthTexture.createView();
 
+
+        this.indexCount = 0;
+
         console.log("Vertex buffer:", this.vertexBuffer);
         console.log("Index buffer:", this.indexBuffer);
         console.log("Index count:", this.indexCount);
-        console.log("First few vertices:", Array.from(vertexData.slice(0, 9)));
-        console.log("First few indices:", Array.from(indexData.slice(0, 12)));
 
         let modelMatUniformBuffer = device.createBuffer({
             label: "model mat uniform",
@@ -275,6 +266,7 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
                     binding: 1,
                     resource: { buffer: modelMatUniformBuffer },
                 },
+
             ],
         });
 
@@ -305,26 +297,14 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
                 },
             });
 
-            const geometries = getGeometries();
-            if (geometries.length > 0) {
-                // Update buffers
-                device.queue.writeBuffer(this.vertexBuffer, 0, vertexData.buffer);
-                device.queue.writeBuffer(this.indexBuffer, 0, indexData.buffer);
-
-                // CRITICAL FIX: Update index count to match current geometry
-                this.indexCount = geometries[0].indices.length;
-            } else {
-                console.warn("No geometries available in draw loop!");
-            }
-
             renderPass.setPipeline(this.pipeline);
             renderPass.setBindGroup(0, rendererBindGroup);
-            renderPass.setVertexBuffer(0, this.vertexBuffer);
-            renderPass.setIndexBuffer(this.indexBuffer, "uint32");
+            if (this.indexCount > 0) {
+                renderPass.setVertexBuffer(0, this.vertexBuffer);
+                renderPass.setIndexBuffer(this.indexBuffer, "uint32");
 
-            console.log("Drawing with indexCount:", this.indexCount);
-
-            renderPass.drawIndexed(this.indexCount, 1, 0, 0, 0);
+                renderPass.drawIndexed(this.indexCount, 1, 0, 0, 0);
+            }
 
             renderPass.end();
 
