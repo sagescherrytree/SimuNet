@@ -1,6 +1,6 @@
 // TODO: Add code to support bindgroups from nodes.
 import { CubeNode } from "../node_gui/nodes/CubeNode";
-import { GeometryData, getGeometries } from "../geometry/geometry";
+import { GeometryData, onNewGeometry, getGeometries } from "../geometry/geometry";
 import { Camera } from "../stage/camera";
 
 export var canvas: HTMLCanvasElement;
@@ -176,7 +176,34 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
             },
         });
 
+        onNewGeometry((geom: GeometryData) => {
+            // Create or update buffers
+            this.vertexBuffer = device.createBuffer({
+                size: geom.vertices.byteLength,
+                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
+            });
+            device.queue.writeBuffer(this.vertexBuffer, 0, geom.vertices.buffer);
+
+            this.indexBuffer = device.createBuffer({
+                size: geom.indices.byteLength,
+                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST
+            });
+            device.queue.writeBuffer(this.indexBuffer, 0, geom.indices.buffer);
+
+            this.indexCount = geom.indices.length;
+        });
+
+        // Handle geometries from primitives.
         const geometries = getGeometries();
+        let totalVertices: number[] = [];
+        let totalIndices: number[] = [];
+        let vertexOffset = 0;
+
+        for (const geom of geometries) {
+            totalVertices.push(...geom.vertices); // flatten
+            totalIndices.push(...geom.indices.map(i => i + vertexOffset));
+            vertexOffset += geom.vertices.length / 3; // assuming 3 components per vertex
+        }
 
         console.log("Geometries available:", geometries.length);
         if (geometries.length === 0) {
@@ -185,21 +212,21 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
             );
         }
 
-        const vertexData = new Float32Array(geometries[0].vertices);
-        const indexData = new Uint32Array(geometries[0].indices);
+        const vertexData = new Float32Array(totalVertices);
+        const indexData = new Uint32Array(totalIndices);
 
         this.vertexBuffer = device.createBuffer({
             size: Math.max(vertexData.byteLength, 1024),
             usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
         });
 
-        device.queue.writeBuffer(this.vertexBuffer, 0, geometries[0].vertices.buffer);
+        device.queue.writeBuffer(this.vertexBuffer, 0, vertexData.buffer);
 
         this.indexBuffer = device.createBuffer({
             size: Math.max(indexData.byteLength, 1024),
             usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
         });
-        device.queue.writeBuffer(this.indexBuffer, 0, geometries[0].indices.buffer);
+        device.queue.writeBuffer(this.indexBuffer, 0, indexData.buffer);
 
         this.indexCount = indexData.length;
 
@@ -281,8 +308,8 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
             const geometries = getGeometries();
             if (geometries.length > 0) {
                 // Update buffers
-                device.queue.writeBuffer(this.vertexBuffer, 0, geometries[0].vertices.buffer);
-                device.queue.writeBuffer(this.indexBuffer, 0, geometries[0].indices.buffer);
+                device.queue.writeBuffer(this.vertexBuffer, 0, vertexData.buffer);
+                device.queue.writeBuffer(this.indexBuffer, 0, indexData.buffer);
 
                 // CRITICAL FIX: Update index count to match current geometry
                 this.indexCount = geometries[0].indices.length;

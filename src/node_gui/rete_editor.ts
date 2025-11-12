@@ -71,11 +71,11 @@ export async function createEditor(container: HTMLElement) {
 
   AreaExtensions.simpleNodesOrder(area);
 
-  editor.addPipe((context) => {
+  editor.addPipe(async (context) => {
     if (context.type === "nodecreate") {
-      let createdNode = context.data;
+      const createdNode = context.data;
       if (createdNode instanceof CubeNode) {
-        (createdNode as CubeNode).execute();
+        await createdNode.execute();
       }
     }
     return context;
