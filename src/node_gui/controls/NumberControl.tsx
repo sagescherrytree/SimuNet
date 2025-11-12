@@ -5,15 +5,18 @@ import React, { useState, useEffect } from "react";
 export class NumberControl extends ClassicPreset.Control {
   value: number;
   onChange?: (value: number) => void;
+  stepSize: number;
 
   constructor(
     public label: string,
     initial: number,
-    onChange?: (value: number) => void
+    onChange?: (value: number) => void,
+    stepSize?: number
   ) {
     super();
     this.value = initial;
     this.onChange = onChange;
+    this.stepSize = stepSize ?? 0.1;
   }
 
   setValue(value: number) {
@@ -30,6 +33,7 @@ export function NumberControlComponent(props: { data: NumberControl }) {
     setLocalValue(value ?? 0);
   }, [value]);
 
+  const stepSize = props.data.stepSize;
   return (
     <div
       style={{
@@ -51,7 +55,7 @@ export function NumberControlComponent(props: { data: NumberControl }) {
       <input
         type="number"
         value={localValue}
-        step="0.1"
+        step={stepSize}
         onChange={(e) => {
           const newValue =
             e.target.value === "" ? 0 : parseFloat(e.target.value);

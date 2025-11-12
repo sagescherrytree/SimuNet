@@ -16,7 +16,7 @@ import {
   Presets as ContextMenuPresets,
 } from "rete-context-menu-plugin";
 
-import { Schemes, AreaExtra, NodeTypes, CubeNode } from "./types";
+import { Schemes, AreaExtra, NodeTypes, CubeNode, IcosphereNode } from "./types";
 
 import { Node } from "./types";
 
@@ -116,14 +116,15 @@ export async function createEditor(
   editor.addPipe(async (context) => {
     if (context.type === "nodecreate") {
       const createdNode = context.data;
-      if (createdNode instanceof CubeNode) {
+      if (createdNode instanceof CubeNode || createdNode instanceof IcosphereNode) {
         await createdNode.execute();
       }
     } else if (context.type === "noderemove") {
       const node = context.data;
-      if (node instanceof CubeNode) {
+      if (node instanceof CubeNode || node instanceof IcosphereNode) {
         node.removeGeometry();
       }
+      // TODO transform remove here
     } else if (context.type === "connectioncreated") {
       const connection = context.data;
       setTimeout(() => {
@@ -138,7 +139,8 @@ export async function createEditor(
         console.log("✅ Connection established between:", sourceNode.label, "→", targetNode.label);
 
         // Example of passing geometry
-        if (sourceNode.label === "CubeNode" && targetNode.label === "TransformNode") {
+        // TODO add icosphere
+        if ((sourceNode.label === "CubeNode" || sourceNode.label === "IcosphereNode") && targetNode.label === "TransformNode") {
           const geom = (sourceNode as any).geometry;
           if (geom) {
             console.log("Passing geometry to TransformNode", geom);

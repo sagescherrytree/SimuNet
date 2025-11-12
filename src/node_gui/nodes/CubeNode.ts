@@ -23,7 +23,9 @@ export class CubeNode extends Node {
     const onChange = () => {
       removeGeometry(this.id);
       this.execute();
+      // TODO should update with all the transforms in the chain
     };
+
 
     this.sizeControl = new NumberControl("Size", 1.0, onChange);
 
@@ -42,6 +44,7 @@ export class CubeNode extends Node {
     const s = size / 2;
     const pos = this.positionControl.value;
 
+
     const baseVertices = [
       [-s, -s, -s], // 0
       [s, -s, -s], // 1
@@ -52,6 +55,7 @@ export class CubeNode extends Node {
       [s, s, s], // 6
       [-s, s, s], // 7
     ];
+    
 
     const transformedVertices: number[] = [];
     for (const [x, y, z] of baseVertices) {
@@ -59,6 +63,7 @@ export class CubeNode extends Node {
     }
 
     const vertices = new Float32Array(transformedVertices);
+
 
     const indices = new Uint32Array([
       // front
