@@ -10,15 +10,18 @@ export interface Vec3 {
 export class Vec3Control extends ClassicPreset.Control {
   value: Vec3;
   onChange?: (value: Vec3) => void;
+  stepSize: number;
 
   constructor(
     public label: string,
     initial: Vec3,
-    onChange?: (value: Vec3) => void
+    onChange?: (value: Vec3) => void,
+    stepSize?: number
   ) {
     super();
     this.value = initial;
     this.onChange = onChange;
+    this.stepSize = stepSize ?? 0.1;
   }
 
   setValue(value: Vec3) {
@@ -89,7 +92,7 @@ export function Vec3ControlComponent(props: { data: Vec3Control }) {
             </label>
             <input
               type="number"
-              step="0.1"
+              step={props.data.stepSize}
               value={localValue[axis] ?? 0}
               onChange={(e) => handleChange(axis, e.target.value)}
               style={{

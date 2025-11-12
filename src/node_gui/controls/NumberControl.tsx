@@ -6,17 +6,24 @@ export class NumberControl extends ClassicPreset.Control {
   value: number;
   onChange?: (value: number) => void;
   stepSize: number;
+  min?: number;
+  max?: number;
 
   constructor(
     public label: string,
     initial: number,
     onChange?: (value: number) => void,
-    stepSize?: number
+    stepSize?: number,
+    min?: number,
+    max?: number
   ) {
     super();
     this.value = initial;
     this.onChange = onChange;
     this.stepSize = stepSize ?? 0.1;
+
+    this.min = min ?? null;
+    this.max = max ?? null;
   }
 
   setValue(value: number) {
@@ -56,6 +63,8 @@ export function NumberControlComponent(props: { data: NumberControl }) {
         type="number"
         value={localValue}
         step={stepSize}
+        min={props.data.min}
+        max={props.data.max}
         onChange={(e) => {
           const newValue =
             e.target.value === "" ? 0 : parseFloat(e.target.value);

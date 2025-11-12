@@ -64,7 +64,12 @@ export class TransformNode extends Node {
       { x: 0, y: 0, z: 0 },
       onChange
     );
-    this.rotation = new Vec3Control("Rotation", { x: 0, y: 0, z: 0 }, onChange);
+    this.rotation = new Vec3Control(
+      "Rotation",
+      { x: 0, y: 0, z: 0 },
+      onChange,
+      5
+    );
     this.scale = new Vec3Control("Scale", { x: 1, y: 1, z: 1 }, onChange); // default 1 for scale
 
     // Subscribe to new geometries from other nodes

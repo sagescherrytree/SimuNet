@@ -18,6 +18,8 @@ export class IcosphereNode extends Node {
   subdivisionsControl: NumberControl;
   positionControl: Vec3Control;
 
+  public onUpdate?: () => void;
+
   constructor() {
     super("IcosphereNode");
 
@@ -27,7 +29,14 @@ export class IcosphereNode extends Node {
     };
 
     this.sizeControl = new NumberControl("Size", 1.0, onChange);
-    this.subdivisionsControl = new NumberControl("Subdivisions", 2.0, onChange, 1.0);
+    this.subdivisionsControl = new NumberControl(
+      "Subdivisions",
+      2.0,
+      onChange,
+      1.0,
+      0,
+      5
+    );
 
     this.positionControl = new Vec3Control(
       "Position",
@@ -40,29 +49,35 @@ export class IcosphereNode extends Node {
     this.geometry = this.createIcosphereGeometry(1.0, 2.0);
   }
 
+  update() {
+    removeGeometry(this.id);
+    this.execute();
+
+    if (this.onUpdate) {
+      this.onUpdate();
+    }
+  }
+
   createIcosphereGeometry(size: number, subdivisions: number): GeometryData {
     const phi = (1 + Math.sqrt(5.0)) * 0.5;
     const s = size / 2;
     const pos = this.positionControl.value;
 
-
-
-
     const Z = 1.0;
     const X = 1.0 / phi;
     const baseVertices = [
-      [ -X, 0, Z ],
-      [  X, 0, Z ],
-      [ -X, 0,-Z ],
-      [  X, 0,-Z ],
-      [  0, Z, X ],
-      [  0, Z,-X ],
-      [  0,-Z, X ],
-      [  0,-Z,-X ],
-      [  Z, X, 0 ],
-      [ -Z, X, 0 ],
-      [  Z,-X, 0 ],
-      [ -Z,-X, 0 ]
+      [-X, 0, Z],
+      [X, 0, Z],
+      [-X, 0, -Z],
+      [X, 0, -Z],
+      [0, Z, X],
+      [0, Z, -X],
+      [0, -Z, X],
+      [0, -Z, -X],
+      [Z, X, 0],
+      [-Z, X, 0],
+      [Z, -X, 0],
+      [-Z, -X, 0],
     ];
     for (let i = 0; i < baseVertices.length; ++i) {
       let len = 0;
@@ -74,31 +89,13 @@ export class IcosphereNode extends Node {
         baseVertices[i][j] /= divisor;
       }
     }
-    
 
     let triIndices = [
-      0,  1,  4, 
-      0,  4,  9, 
-      9,  4,  5, 
-      4,  8,  5, 
-      4,  1,  8, 
-      8,  1,  10,
-      8,  10, 3, 
-      5,  8,  3, 
-      5,  3,  2, 
-      2,  3,  7, 
-      7,  3,  10,
-      7,  10, 6, 
-      7,  6,  11,
-      11, 6,  0,
-      0,  6 , 1, 
-      6,  10, 1, 
-      9,  11, 0, 
-      9,  2,  11,
-      9,  5,  2, 
-      7,  11, 2, 
+      0, 1, 4, 0, 4, 9, 9, 4, 5, 4, 8, 5, 4, 1, 8, 8, 1, 10, 8, 10, 3, 5, 8, 3,
+      5, 3, 2, 2, 3, 7, 7, 3, 10, 7, 10, 6, 7, 6, 11, 11, 6, 0, 0, 6, 1, 6, 10,
+      1, 9, 11, 0, 9, 2, 11, 9, 5, 2, 7, 11, 2,
     ];
-    
+
     const triSplitMap = new Map<string, number>();
     function midpoint(idx0: number, idx1: number): number {
       let key = [idx0, idx1].sort().join("_");
@@ -123,12 +120,12 @@ export class IcosphereNode extends Node {
       const newTriangles = [];
       for (let j = 0; j < triIndices.length; j += 3) {
         let v0 = triIndices[j];
-        let v1 = triIndices[j+1];
-        let v2 = triIndices[j+2];
+        let v1 = triIndices[j + 1];
+        let v2 = triIndices[j + 2];
 
-        let v01 = midpoint(v0,v1);
-        let v02 = midpoint(v0,v2);
-        let v12 = midpoint(v1,v2);
+        let v01 = midpoint(v0, v1);
+        let v02 = midpoint(v0, v2);
+        let v12 = midpoint(v1, v2);
 
         // TODO rotation direction
         newTriangles.push(v0, v01, v02);
@@ -138,18 +135,16 @@ export class IcosphereNode extends Node {
       }
       triIndices = newTriangles;
     }
-    
+
     const indices = new Uint32Array(triIndices);
 
-    
     const transformedVertices: number[] = [];
     for (const [x, y, z] of baseVertices) {
       transformedVertices.push(s * x + pos.x, s * y + pos.y, s * z + pos.z);
     }
     const vertices = new Float32Array(transformedVertices);
-    
-
-    return { vertices, indices, id: this.id };
+    // this.geometry = { vertices, indices, id: this.id, sourceId: this.id };
+    return { vertices, indices, id: this.id, sourceId: this.id };
   }
 
   removeGeometry() {
@@ -171,6 +166,10 @@ export class IcosphereNode extends Node {
     });
 
     return { geometry: this.geometry };
+  }
+
+  setUpdateCallback(callback: () => void) {
+    this.onUpdate = callback;
   }
 
   getEditableControls() {
