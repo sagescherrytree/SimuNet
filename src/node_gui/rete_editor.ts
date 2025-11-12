@@ -16,12 +16,14 @@ import {
   Presets as ContextMenuPresets,
 } from "rete-context-menu-plugin";
 
+
 import {
   Schemes,
   AreaExtra,
   NodeTypes,
   CubeNode,
   TransformNode,
+  IcosphereNode,
 } from "./types";
 
 import { Node } from "./types";
@@ -171,14 +173,15 @@ export async function createEditor(
   editor.addPipe(async (context) => {
     if (context.type === "nodecreate") {
       const createdNode = context.data;
-      if (createdNode instanceof CubeNode) {
+      if (createdNode instanceof CubeNode || createdNode instanceof IcosphereNode) {
         await createdNode.execute();
       }
     } else if (context.type === "noderemove") {
       const node = context.data;
-      if (node instanceof CubeNode) {
+      if (node instanceof CubeNode || node instanceof IcosphereNode) {
         node.removeGeometry();
       }
+      // TODO transform remove here
     } else if (context.type === "connectioncreated") {
       const connection = context.data;
 

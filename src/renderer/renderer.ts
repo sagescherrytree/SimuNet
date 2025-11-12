@@ -19,7 +19,7 @@ export const fovYDegrees = 45;
 
 export var modelBindGroupLayout: GPUBindGroupLayout;
 
-export var nodeTest: CubeNode;
+export var nodeTest: CubeNode; // TODO can remove?
 
 export async function initWebGPU() {
   canvas = document.getElementById("gpu-canvas") as HTMLCanvasElement;
