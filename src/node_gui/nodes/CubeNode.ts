@@ -1,15 +1,9 @@
 import { ClassicPreset } from "rete";
 import { Node } from "./Node";
 import { socket } from "../types";
+import { GeometryData, addGeometry } from "../../geometry/geometry";
 
-export interface GeometryData {
-  vertices: Float32Array;
-  indices: Uint32Array;
-}
-
-let geometries: GeometryData[] = [];
-
-export class NodeA extends Node {
+export class CubeNode extends Node {
   height = 140;
   width = 200;
 
@@ -17,7 +11,7 @@ export class NodeA extends Node {
   sizeControl: ClassicPreset.InputControl<"number">;
 
   constructor() {
-    super("NodeA");
+    super("CubeNode");
 
     this.addControl("a", new ClassicPreset.InputControl("text", {}));
     this.addOutput("a", new ClassicPreset.Output(socket));
@@ -94,16 +88,4 @@ export class NodeA extends Node {
 
     return { geometry: this.geometry };
   }
-}
-
-export function addGeometry(geom: GeometryData) {
-  geometries.push(geom);
-}
-
-export function getGeometries() {
-  return geometries;
-}
-
-export function clearGeometries() {
-  geometries = [];
 }

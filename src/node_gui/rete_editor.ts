@@ -16,7 +16,7 @@ import {
   Presets as ContextMenuPresets,
 } from "rete-context-menu-plugin";
 
-import { Schemes, AreaExtra, NodeTypes, NodeA, NodeB } from "./types";
+import { Schemes, AreaExtra, NodeTypes, CubeNode, NodeB } from "./types";
 import { Connection } from "./connections/Connection";
 // import { getDOMSocketPosition } from "rete-render-utils";
 
@@ -74,8 +74,8 @@ export async function createEditor(container: HTMLElement) {
   editor.addPipe((context) => {
     if (context.type === "nodecreate") {
       let createdNode = context.data;
-      if (createdNode instanceof NodeA) {
-        (createdNode as NodeA).execute();
+      if (createdNode instanceof CubeNode) {
+        (createdNode as CubeNode).execute();
       }
     }
     return context;
