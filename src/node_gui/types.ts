@@ -3,7 +3,7 @@ import { ClassicPreset, GetSchemes } from "rete";
 import { Connection } from "./connections/Connection";
 import { Node } from "./nodes/Node";
 import { CubeNode } from "./nodes/CubeNode";
-import { NodeB } from "./nodes/NodeB";
+import { TransformNode } from "./nodes/TransformNode";
 
 export type Schemes = GetSchemes<Node, Connection<Node, Node>>;
 
@@ -13,7 +13,7 @@ export const socket = new ClassicPreset.Socket("socket");
 
 export const NodeTypes = {
   CubeNode: () => new CubeNode(),
-  NodeB: () => new NodeB(),
+  NodeB: () => new TransformNode(),
 };
 
-export { Node, CubeNode, NodeB };
+export { Node, CubeNode, TransformNode };

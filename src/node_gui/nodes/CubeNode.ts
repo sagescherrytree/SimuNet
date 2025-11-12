@@ -13,8 +13,7 @@ export class CubeNode extends Node {
   constructor() {
     super("CubeNode");
 
-    // this.addControl("a", new ClassicPreset.InputControl("text", {}));
-    this.addOutput("a", new ClassicPreset.Output(socket));
+    // this.addControl("a", new ClassicPreset.InputControl("text", {}));\
 
     this.sizeControl = new ClassicPreset.InputControl("number", {
       initial: 1.0,
@@ -23,7 +22,6 @@ export class CubeNode extends Node {
         this.execute();
       }
     });
-
 
     this.addControl("size", this.sizeControl);
     this.addOutput("geometry", new ClassicPreset.Output(socket, "Geometry"));

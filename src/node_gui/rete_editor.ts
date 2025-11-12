@@ -16,7 +16,7 @@ import {
   Presets as ContextMenuPresets,
 } from "rete-context-menu-plugin";
 
-import { Schemes, AreaExtra, NodeTypes, CubeNode, NodeB } from "./types";
+import { Schemes, AreaExtra, NodeTypes, CubeNode, TransformNode } from "./types";
 import { Connection } from "./connections/Connection";
 // import { getDOMSocketPosition } from "rete-render-utils";
 
