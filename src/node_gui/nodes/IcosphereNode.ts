@@ -23,16 +23,13 @@ export class IcosphereNode extends Node {
   constructor() {
     super("IcosphereNode");
 
-    const onChange = () => {
-      removeGeometry(this.id);
-      this.execute();
-    };
 
-    this.sizeControl = new NumberControl("Size", 1.0, onChange);
+    this.update = this.update.bind(this);
+    this.sizeControl = new NumberControl("Size", 1.0, this.update);
     this.subdivisionsControl = new NumberControl(
       "Subdivisions",
       2.0,
-      onChange,
+      this.update,
       1.0,
       0,
       5
@@ -41,7 +38,7 @@ export class IcosphereNode extends Node {
     this.positionControl = new Vec3Control(
       "Position",
       { x: 0, y: 0, z: 0 },
-      onChange
+      this.update
     );
 
     this.addOutput("geometry", new ClassicPreset.Output(socket, "Geometry"));
