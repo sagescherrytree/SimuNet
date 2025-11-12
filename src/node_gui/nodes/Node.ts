@@ -8,4 +8,7 @@ export class Node extends ClassicPreset.Node {
   constructor(name: string) {
     super(name);
   }
+
+  removeNode(node?: Node) {}
+  execute() {}
 }

@@ -2,7 +2,13 @@
 import { ClassicPreset } from "rete";
 import { Node } from "./Node";
 import { socket } from "../types";
-import { GeometryData, updateGeometry, addGeometry } from "../../geometry/geometry";
+import {
+  GeometryData,
+  updateGeometry,
+  addGeometry,
+  removeTransform,
+  removeGeometry,
+} from "../../geometry/geometry";
 import { Vec3Control } from "../controls/Vec3Control";
 
 export class TransformNode extends Node {
@@ -19,10 +25,16 @@ export class TransformNode extends Node {
     super("TransformNode");
 
     // Input geometry from other nodes
-    this.addInput("input geometry", new ClassicPreset.Input(socket, "Input Geometry"));
+    this.addInput(
+      "input geometry",
+      new ClassicPreset.Input(socket, "Input Geometry")
+    );
 
     // Output geometry
-    this.addOutput("output geometry", new ClassicPreset.Output(socket, "Output Geometry"));
+    this.addOutput(
+      "output geometry",
+      new ClassicPreset.Output(socket, "Output Geometry")
+    );
 
     // Handler when controls change
     const onChange = () => {
@@ -31,7 +43,11 @@ export class TransformNode extends Node {
       }
     };
 
-    this.translation = new Vec3Control("Translation", { x: 0, y: 0, z: 0 }, onChange);
+    this.translation = new Vec3Control(
+      "Translation",
+      { x: 0, y: 0, z: 0 },
+      onChange
+    );
     this.rotation = new Vec3Control("Rotation", { x: 0, y: 0, z: 0 }, onChange);
     this.scale = new Vec3Control("Scale", { x: 1, y: 1, z: 1 }, onChange); // default 1 for scale
 
@@ -49,6 +65,16 @@ export class TransformNode extends Node {
 
   setInputGeometry(geometry: GeometryData) {
     this.inputGeometry = geometry;
+  }
+
+  removeNode(sourceNode: Node) {
+    console.log("Source Node:", sourceNode);
+    removeGeometry(sourceNode.id);
+    addGeometry({
+      vertices: new Float32Array((sourceNode as any).geometry.vertices),
+      indices: new Uint32Array((sourceNode as any).geometry.indices),
+      id: sourceNode.id,
+    });
   }
 
   async execute(context?: any) {
@@ -81,9 +107,12 @@ export class TransformNode extends Node {
     const ry = (r.y * Math.PI) / 180.0;
     const rz = (r.z * Math.PI) / 180.0;
 
-    const sx = Math.sin(rx), cx = Math.cos(rx);
-    const sy = Math.sin(ry), cy = Math.cos(ry);
-    const sz = Math.sin(rz), cz = Math.cos(rz);
+    const sx = Math.sin(rx),
+      cx = Math.cos(rx);
+    const sy = Math.sin(ry),
+      cy = Math.cos(ry);
+    const sz = Math.sin(rz),
+      cz = Math.cos(rz);
 
     for (let i = 0; i < vertices.length; i += 3) {
       let x = vertices[i];
@@ -111,7 +140,10 @@ export class TransformNode extends Node {
     try {
       updateGeometry(input.id, transformed);
     } catch (e) {
-      console.warn("updateGeometry failed, make sure to import it. Falling back if desired.", e);
+      console.warn(
+        "updateGeometry failed, make sure to import it. Falling back if desired.",
+        e
+      );
     }
 
     console.log("TransformNode applied transform:", input.id);

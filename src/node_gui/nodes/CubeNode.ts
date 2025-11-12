@@ -13,7 +13,7 @@ export class CubeNode extends Node {
   height = 100;
   width = 200;
 
-  geometry: GeometryData;
+  public geometry: GeometryData;
   sizeControl: NumberControl;
   positionControl: Vec3Control;
 
