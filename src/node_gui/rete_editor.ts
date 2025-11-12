@@ -16,7 +16,13 @@ import {
   Presets as ContextMenuPresets,
 } from "rete-context-menu-plugin";
 
-import { Schemes, AreaExtra, NodeTypes, CubeNode } from "./types";
+import {
+  Schemes,
+  AreaExtra,
+  NodeTypes,
+  CubeNode,
+  TransformNode,
+} from "./types";
 
 import { Node } from "./types";
 
@@ -135,17 +141,67 @@ export async function createEditor(
           return;
         }
 
-        console.log("✅ Connection established between:", sourceNode.label, "→", targetNode.label);
+        console.log(
+          "✅ Connection established between:",
+          sourceNode.label,
+          "→",
+          targetNode.label
+        );
 
-        // Example of passing geometry
-        if (sourceNode.label === "CubeNode" && targetNode.label === "TransformNode") {
-          const geom = (sourceNode as any).geometry;
-          if (geom) {
-            console.log("Passing geometry to TransformNode", geom);
-            (targetNode as any).setInputGeometry?.(geom);
+        let outputGeometry;
+        // Check if source has geometry property
+        if ("geometry" in sourceNode && sourceNode.geometry) {
+          outputGeometry = sourceNode.geometry;
+        }
+        // Otherwise try to execute and get output
+        else if (
+          "execute" in sourceNode &&
+          typeof sourceNode.execute === "function"
+        ) {
+          const result = (sourceNode as any).execute();
+          // Handle promise or direct return
+          if (result && typeof result === "object" && "then" in result) {
+            result
+              .then((res: any) => {
+                if (res?.geometry && "setInputGeometry" in targetNode) {
+                  (targetNode as any).setInputGeometry(res.geometry);
+                  console.log(
+                    "Passed geometry from",
+                    sourceNode.label,
+                    "to",
+                    targetNode.label
+                  );
+                }
+              })
+              .catch((err: any) => console.error("Execute error:", err));
+            return; // Exit early for async case
           }
+          outputGeometry = (result as any)?.geometry;
+        }
+
+        // Pass to target node (sync case)
+        if (outputGeometry && "setInputGeometry" in targetNode) {
+          (targetNode as any).setInputGeometry(outputGeometry);
+          console.log(
+            "Passed geometry from",
+            sourceNode.label,
+            "to",
+            targetNode.label
+          );
         }
       }, 0);
+    } else if (context.type === "connectionremove") {
+      const connection = context.data;
+      console.log("Connection removed:", connection);
+
+      const targetNode = editor.getNode(connection.target);
+      const sourceNode = editor.getNode(connection.source);
+
+      // Remove the transformed output when connection is broken
+      if (targetNode instanceof TransformNode) {
+        targetNode.removeNode(sourceNode);
+      }
+      console.log("Removed geometry for disconnected", targetNode.label);
     }
     return context;
   });

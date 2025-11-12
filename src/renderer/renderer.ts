@@ -1,6 +1,11 @@
 // TODO: Add code to support bindgroups from nodes.
 import { CubeNode } from "../node_gui/nodes/CubeNode";
-import { GeometryData, onNewGeometry, getGeometries, onGeometryRemoved } from "../geometry/geometry";
+import {
+  GeometryData,
+  onNewGeometry,
+  getGeometries,
+  onGeometryRemoved,
+} from "../geometry/geometry";
 import { Camera } from "../stage/camera";
 
 export var canvas: HTMLCanvasElement;
@@ -17,90 +22,90 @@ export var modelBindGroupLayout: GPUBindGroupLayout;
 export var nodeTest: CubeNode;
 
 export async function initWebGPU() {
-    canvas = document.getElementById("gpu-canvas") as HTMLCanvasElement;
+  canvas = document.getElementById("gpu-canvas") as HTMLCanvasElement;
 
-    const devicePixelRatio = window.devicePixelRatio;
-    canvas.width = canvas.clientWidth * devicePixelRatio;
-    canvas.height = canvas.clientHeight * devicePixelRatio;
+  const devicePixelRatio = window.devicePixelRatio;
+  canvas.width = canvas.clientWidth * devicePixelRatio;
+  canvas.height = canvas.clientHeight * devicePixelRatio;
 
-    aspectRatio = canvas.width / canvas.height;
+  aspectRatio = canvas.width / canvas.height;
 
-    if (!navigator.gpu) {
-        let errorMessageElement = document.createElement("h1");
-        errorMessageElement.textContent =
-            "This browser doesn't support WebGPU! Try using Google Chrome.";
-        errorMessageElement.style.paddingLeft = "0.4em";
-        document.body.innerHTML = "";
-        document.body.appendChild(errorMessageElement);
-        throw new Error("WebGPU not supported on this browser");
-    }
+  if (!navigator.gpu) {
+    let errorMessageElement = document.createElement("h1");
+    errorMessageElement.textContent =
+      "This browser doesn't support WebGPU! Try using Google Chrome.";
+    errorMessageElement.style.paddingLeft = "0.4em";
+    document.body.innerHTML = "";
+    document.body.appendChild(errorMessageElement);
+    throw new Error("WebGPU not supported on this browser");
+  }
 
-    const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter) {
-        throw new Error("no appropriate GPUAdapter found");
-    }
+  const adapter = await navigator.gpu.requestAdapter();
+  if (!adapter) {
+    throw new Error("no appropriate GPUAdapter found");
+  }
 
-    device = await adapter.requestDevice();
+  device = await adapter.requestDevice();
 
-    context = canvas.getContext("webgpu")!;
-    canvasFormat = navigator.gpu.getPreferredCanvasFormat();
-    context.configure({
-        device: device,
-        format: canvasFormat,
-    });
+  context = canvas.getContext("webgpu")!;
+  canvasFormat = navigator.gpu.getPreferredCanvasFormat();
+  context.configure({
+    device: device,
+    format: canvasFormat,
+  });
 
-    console.log("WebGPU init successsful");
+  console.log("WebGPU init successsful");
 
-    modelBindGroupLayout = device.createBindGroupLayout({
-        label: "model bind group layout",
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.VERTEX,
-                buffer: { type: "uniform" },
-            },
-        ],
-    });
+  modelBindGroupLayout = device.createBindGroupLayout({
+    label: "model bind group layout",
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: { type: "uniform" },
+      },
+    ],
+  });
 
-    // nodeTest = new CubeNode();
-    // await nodeTest.execute();
+  // nodeTest = new CubeNode();
+  // await nodeTest.execute();
 }
 
 export const vertexBufferLayout: GPUVertexBufferLayout = {
-    arrayStride: 32,
-    attributes: [
-        {
-            // pos
-            format: "float32x3",
-            offset: 0,
-            shaderLocation: 0,
-        },
-        {
-            // indices
-            format: "uint32",
-            offset: 12,
-            shaderLocation: 1,
-        },
-    ],
+  arrayStride: 32,
+  attributes: [
+    {
+      // pos
+      format: "float32x3",
+      offset: 0,
+      shaderLocation: 0,
+    },
+    {
+      // indices
+      format: "uint32",
+      offset: 12,
+      shaderLocation: 1,
+    },
+  ],
 };
 
 export class Renderer {
-    protected camera: Camera;
+  protected camera: Camera;
 
-    pipeline: GPURenderPipeline;
-    modelBuffer: GPUBuffer;
-    vertexBuffer: GPUBuffer;
-    indexBuffer: GPUBuffer;
-    indexCount: number;
-    depthTexture: GPUTexture;
-    depthView: GPUTextureView;
-    bindGroupLayout: GPUBindGroupLayout;
+  pipeline: GPURenderPipeline;
+  modelBuffer: GPUBuffer;
+  vertexBuffer: GPUBuffer;
+  indexBuffer: GPUBuffer;
+  indexCount: number;
+  depthTexture: GPUTexture;
+  depthView: GPUTextureView;
+  bindGroupLayout: GPUBindGroupLayout;
 
-    draw: () => void;
+  draw: () => void;
 
-    constructor() {
-        const shaderModule = device.createShaderModule({
-            code: `
+  constructor() {
+    const shaderModule = device.createShaderModule({
+      code: `
 struct Camera {
   viewProj : mat4x4<f32>
 };
@@ -129,185 +134,183 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
   return vec4<f32>(in.vColor, 1.0);
 }
 `,
-        });
+    });
 
-        this.bindGroupLayout = device.createBindGroupLayout({
-            label: "renderer bind group layout",
-            entries: [
-                {
-                    // camera
-                    binding: 0,
-                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                    buffer: { type: "uniform" },
-                },
-                {
-                    // model
-                    binding: 1,
-                    visibility: GPUShaderStage.VERTEX,
-                    buffer: { type: "uniform" },
-                },
-            ],
-        });
+    this.bindGroupLayout = device.createBindGroupLayout({
+      label: "renderer bind group layout",
+      entries: [
+        {
+          // camera
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: { type: "uniform" },
+        },
+        {
+          // model
+          binding: 1,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: "uniform" },
+        },
+      ],
+    });
 
-        this.pipeline = device.createRenderPipeline({
-            layout: device.createPipelineLayout({
-                bindGroupLayouts: [this.bindGroupLayout],
-            }),
-            vertex: {
-                module: shaderModule,
-                entryPoint: "vs_main",
-                buffers: [
-                    {
-                        arrayStride: 12,
-                        attributes: [{ shaderLocation: 0, offset: 0, format: "float32x3" }],
-                    },
-                ],
-            },
-            fragment: {
-                module: shaderModule,
-                entryPoint: "fs_main",
-                targets: [{ format: canvasFormat }],
-            },
-            primitive: { topology: "triangle-list", cullMode: "back" },
-            depthStencil: {
-                format: "depth24plus",
-                depthWriteEnabled: true,
-                depthCompare: "less",
-            },
-        });
+    this.pipeline = device.createRenderPipeline({
+      layout: device.createPipelineLayout({
+        bindGroupLayouts: [this.bindGroupLayout],
+      }),
+      vertex: {
+        module: shaderModule,
+        entryPoint: "vs_main",
+        buffers: [
+          {
+            arrayStride: 12,
+            attributes: [{ shaderLocation: 0, offset: 0, format: "float32x3" }],
+          },
+        ],
+      },
+      fragment: {
+        module: shaderModule,
+        entryPoint: "fs_main",
+        targets: [{ format: canvasFormat }],
+      },
+      primitive: { topology: "triangle-list", cullMode: "back" },
+      depthStencil: {
+        format: "depth24plus",
+        depthWriteEnabled: true,
+        depthCompare: "less",
+      },
+    });
 
-        const updateGeometry = () => {
-            // Handle geometries from primitives.
-            const geometries = getGeometries();
-            let totalVertices: number[] = [];
-            let totalIndices: number[] = [];
-            let vertexOffset = 0;
+    const updateGeometry = () => {
+      // Handle geometries from primitives.
+      const geometries = getGeometries();
+      let totalVertices: number[] = [];
+      let totalIndices: number[] = [];
+      let vertexOffset = 0;
 
-            for (const geom of geometries) {
-                totalVertices.push(...geom.vertices); // flatten
-                totalIndices.push(...geom.indices.map(i => i + vertexOffset));
-                vertexOffset += geom.vertices.length / 3; // assuming 3 components per vertex
-            }
+      for (const geom of geometries) {
+        totalVertices.push(...geom.vertices); // flatten
+        totalIndices.push(...geom.indices.map((i) => i + vertexOffset));
+        vertexOffset += geom.vertices.length / 3; // assuming 3 components per vertex
+      }
 
-            console.log("Geometries available:", geometries.length);
+      console.log("Geometries available:", geometries.length);
 
-            const vertexData = new Float32Array(totalVertices);
-            const indexData = new Uint32Array(totalIndices);
+      const vertexData = new Float32Array(totalVertices);
+      const indexData = new Uint32Array(totalIndices);
 
-            // Create or update buffers
-            this.vertexBuffer = device.createBuffer({
-                size: Math.max(vertexData.byteLength, 1024),
-                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-            });
+      // Create or update buffers
+      this.vertexBuffer = device.createBuffer({
+        size: Math.max(vertexData.byteLength, 1024),
+        usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+      });
 
-            device.queue.writeBuffer(this.vertexBuffer, 0, vertexData.buffer);
+      device.queue.writeBuffer(this.vertexBuffer, 0, vertexData.buffer);
 
-            this.indexBuffer = device.createBuffer({
-                size: Math.max(indexData.byteLength, 1024),
-                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(this.indexBuffer, 0, indexData.buffer);
+      this.indexBuffer = device.createBuffer({
+        size: Math.max(indexData.byteLength, 1024),
+        usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+      });
+      device.queue.writeBuffer(this.indexBuffer, 0, indexData.buffer);
 
-            this.indexCount = indexData.length;
+      this.indexCount = indexData.length;
 
-            console.log("First few vertices:", Array.from(vertexData.slice(0, 9)));
-            console.log("First few indices:", Array.from(indexData.slice(0, 12)));
-        };
+      console.log("First few vertices:", Array.from(vertexData.slice(0, 9)));
+      console.log("First few indices:", Array.from(indexData.slice(0, 12)));
+    };
 
-        // Event for adding new geometry.
-        onNewGeometry((geom: GeometryData) => updateGeometry());
+    // Event for adding new geometry.
+    onNewGeometry((geom: GeometryData) => updateGeometry());
 
-        // Removal event listener.
-        onGeometryRemoved((id: string) => updateGeometry());
+    // Removal event listener.
+    onGeometryRemoved((id: string) => updateGeometry());
 
-        this.depthTexture = device.createTexture({
-            size: [canvas.width, canvas.height],
-            format: "depth24plus",
-            usage: GPUTextureUsage.RENDER_ATTACHMENT,
-        });
-        this.depthView = this.depthTexture.createView();
+    this.depthTexture = device.createTexture({
+      size: [canvas.width, canvas.height],
+      format: "depth24plus",
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+    this.depthView = this.depthTexture.createView();
 
+    this.indexCount = 0;
 
-        this.indexCount = 0;
+    console.log("Vertex buffer:", this.vertexBuffer);
+    console.log("Index buffer:", this.indexBuffer);
+    console.log("Index count:", this.indexCount);
 
-        console.log("Vertex buffer:", this.vertexBuffer);
-        console.log("Index buffer:", this.indexBuffer);
-        console.log("Index count:", this.indexCount);
+    let modelMatUniformBuffer = device.createBuffer({
+      label: "model mat uniform",
+      size: 16 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
 
-        let modelMatUniformBuffer = device.createBuffer({
-            label: "model mat uniform",
-            size: 16 * 4,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        });
+    device.queue.writeBuffer(
+      modelMatUniformBuffer,
+      0,
+      new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
+    );
 
-        device.queue.writeBuffer(
-            modelMatUniformBuffer,
-            0,
-            new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
-        );
+    let camera = new Camera();
+    console.log("Camera uniform buffer:", camera.uniformsBuffer);
+    console.log("Camera initialized");
 
-        let camera = new Camera();
-        console.log("Camera uniform buffer:", camera.uniformsBuffer);
-        console.log("Camera initialized");
+    camera.onFrame(0);
 
-        camera.onFrame(0);
+    let rendererBindGroup = device.createBindGroup({
+      label: "renderer bind group",
+      layout: this.bindGroupLayout,
+      entries: [
+        {
+          binding: 0,
+          resource: {
+            buffer: camera.uniformsBuffer,
+          },
+        },
+        {
+          binding: 1,
+          resource: { buffer: modelMatUniformBuffer },
+        },
+      ],
+    });
 
-        let rendererBindGroup = device.createBindGroup({
-            label: "renderer bind group",
-            layout: this.bindGroupLayout,
-            entries: [
-                {
-                    binding: 0,
-                    resource: {
-                        buffer: camera.uniformsBuffer,
-                    },
-                },
-                {
-                    binding: 1,
-                    resource: { buffer: modelMatUniformBuffer },
-                },
+    this.draw = function () {
+      // Update camera matrices each frame
+      camera.onFrame(16);
 
-            ],
-        });
+      const encoder = device.createCommandEncoder();
 
-        this.draw = function () {
-            // Update camera matrices each frame
-            camera.onFrame(16);
+      const colorView = context.getCurrentTexture().createView();
 
-            const encoder = device.createCommandEncoder();
+      // Create renderpass
+      const renderPass = encoder.beginRenderPass({
+        label: "main pass",
+        colorAttachments: [
+          {
+            view: colorView,
+            loadOp: "clear",
+            storeOp: "store",
+            clearValue: { r: 0.2, g: 0.2, b: 0.25, a: 1.0 },
+          },
+        ],
+        depthStencilAttachment: {
+          view: this.depthView!,
+          depthLoadOp: "clear",
+          depthStoreOp: "store",
+          depthClearValue: 1.0,
+        },
+      });
 
-            const colorView = context.getCurrentTexture().createView();
+      renderPass.setPipeline(this.pipeline);
+      renderPass.setBindGroup(0, rendererBindGroup);
+      if (this.indexCount > 0) {
+        renderPass.setVertexBuffer(0, this.vertexBuffer);
+        renderPass.setIndexBuffer(this.indexBuffer, "uint32");
+        renderPass.drawIndexed(this.indexCount, 1, 0, 0, 0);
+      }
 
-            // Create renderpass
-            const renderPass = encoder.beginRenderPass({
-                label: "main pass",
-                colorAttachments: [
-                    {
-                        view: colorView,
-                        loadOp: "clear",
-                        storeOp: "store",
-                        clearValue: { r: 0.2, g: 0.2, b: 0.25, a: 1.0 },
-                    },
-                ],
-                depthStencilAttachment: {
-                    view: this.depthView!,
-                    depthLoadOp: "clear",
-                    depthStoreOp: "store",
-                    depthClearValue: 1.0,
-                },
-            });
+      renderPass.end();
 
-            renderPass.setPipeline(this.pipeline);
-            renderPass.setBindGroup(0, rendererBindGroup);
-            if (this.indexCount > 0) {
-                renderPass.setVertexBuffer(0, this.vertexBuffer);
-                renderPass.setIndexBuffer(this.indexBuffer, "uint32");
-                renderPass.drawIndexed(this.indexCount, 1, 0, 0, 0);
-            }
-
-            renderPass.end();
-
-            device.queue.submit([encoder.finish()]);
-        };
-    }
+      device.queue.submit([encoder.finish()]);
+    };
+  }
 }
