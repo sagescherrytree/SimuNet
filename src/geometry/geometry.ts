@@ -3,6 +3,7 @@ export interface GeometryData {
   vertices: Float32Array;
   indices: Uint32Array;
   id: string;
+  sourceId?: string;
 }
 
 let geometries: GeometryData[] = [];
@@ -15,6 +16,7 @@ const addSubscribers: GeometryCallback[] = [];
 const removeSubscribers: GeometryRemoveCallback[] = [];
 
 export function addGeometry(geom: GeometryData) {
+  removeGeometry(geom.id);
   geometries.push(geom);
   addSubscribers.forEach((cb) => cb(geom));
 }

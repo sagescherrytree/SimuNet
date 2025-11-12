@@ -4,9 +4,8 @@ import { Node } from "./Node";
 import { socket } from "../types";
 import {
   GeometryData,
-  updateGeometry,
   addGeometry,
-  removeTransform,
+  updateGeometry,
   removeGeometry,
 } from "../../geometry/geometry";
 import { Vec3Control } from "../controls/Vec3Control";
@@ -19,10 +18,17 @@ export class TransformNode extends Node {
   rotation: Vec3Control;
   scale: Vec3Control;
 
-  private inputGeometry?: GeometryData;
+  isRemoved: boolean;
+
+  geometry?: GeometryData;
+  public inputGeometry?: GeometryData;
+
+  public onUpdate?: () => void;
 
   constructor() {
     super("TransformNode");
+
+    this.isRemoved = false;
 
     // Input geometry from other nodes
     this.addInput(
@@ -36,10 +42,20 @@ export class TransformNode extends Node {
       new ClassicPreset.Output(socket, "Output Geometry")
     );
 
-    // Handler when controls change
-    const onChange = () => {
+    this.onUpdate = () => {
       if (this.inputGeometry) {
         this.applyTransform(this.inputGeometry);
+      }
+    };
+
+    // Handler when controls change
+    const onChange = () => {
+      if (this.onUpdate) {
+        this.onUpdate();
+      } else {
+        if (this.inputGeometry) {
+          this.applyTransform(this.inputGeometry);
+        }
       }
     };
 
@@ -69,12 +85,23 @@ export class TransformNode extends Node {
 
   removeNode(sourceNode: Node) {
     console.log("Source Node:", sourceNode);
-    removeGeometry(sourceNode.id);
-    addGeometry({
-      vertices: new Float32Array((sourceNode as any).geometry.vertices),
-      indices: new Uint32Array((sourceNode as any).geometry.indices),
-      id: sourceNode.id,
-    });
+    if (!("isRemoved" in sourceNode) || !sourceNode.isRemoved) {
+      this.isRemoved = true;
+      if (sourceNode instanceof TransformNode) {
+        removeGeometry(sourceNode.id);
+        if (sourceNode.inputGeometry) {
+          sourceNode.applyTransform(sourceNode.inputGeometry);
+        }
+      } else {
+        removeGeometry(sourceNode.id);
+        addGeometry({
+          vertices: new Float32Array((sourceNode as any).geometry.vertices),
+          indices: new Uint32Array((sourceNode as any).geometry.indices),
+          id: sourceNode.id,
+        });
+        // sourceNode.execute();
+      }
+    }
   }
 
   async execute(context?: any) {
@@ -88,13 +115,17 @@ export class TransformNode extends Node {
 
     const geom: GeometryData = input[0] as GeometryData;
 
-    this.applyTransform(geom);
+    const transformedGeometry = this.applyTransform(geom);
+
+    addGeometry(transformedGeometry);
 
     return { geometry: this.inputGeometry };
   }
 
-  private applyTransform(input: GeometryData) {
-    if (!input) return;
+  public applyTransform(input: GeometryData): GeometryData {
+    if (!input) {
+      return;
+    }
 
     const t = this.translation.value;
     const r = this.rotation.value;
@@ -138,7 +169,8 @@ export class TransformNode extends Node {
     }
 
     try {
-      updateGeometry(input.id, transformed);
+      updateGeometry(input.sourceId, transformed);
+      console.log("Updated Geometry");
     } catch (e) {
       console.warn(
         "updateGeometry failed, make sure to import it. Falling back if desired.",
@@ -147,6 +179,23 @@ export class TransformNode extends Node {
     }
 
     console.log("TransformNode applied transform:", input.id);
+
+    this.geometry = {
+      vertices: transformed,
+      indices: new Uint32Array(input.indices),
+      id: this.id,
+      sourceId: input.sourceId,
+    };
+    return this.geometry;
+  }
+
+  setUpdateCallback(callback: () => void) {
+    this.onUpdate = () => {
+      if (this.inputGeometry) {
+        this.applyTransform(this.inputGeometry);
+      }
+      callback();
+    };
   }
 
   getEditableControls() {

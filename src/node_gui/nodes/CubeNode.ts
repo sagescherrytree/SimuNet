@@ -8,6 +8,7 @@ import {
 } from "../../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3Control } from "../controls/Vec3Control";
+import { createEditor } from "../rete_editor";
 
 export class CubeNode extends Node {
   height = 100;
@@ -17,25 +18,33 @@ export class CubeNode extends Node {
   sizeControl: NumberControl;
   positionControl: Vec3Control;
 
+  public onUpdate?: () => void;
+
   constructor() {
     super("CubeNode");
 
-    const onChange = () => {
-      removeGeometry(this.id);
-      this.execute();
-    };
+    this.update = this.update.bind(this);
 
-    this.sizeControl = new NumberControl("Size", 1.0, onChange);
+    this.sizeControl = new NumberControl("Size", 1.0, this.update);
 
     this.positionControl = new Vec3Control(
       "Position",
       { x: 0, y: 0, z: 0 },
-      onChange
+      this.update
     );
 
     this.addOutput("geometry", new ClassicPreset.Output(socket, "Geometry"));
 
     this.geometry = this.createCubeGeometry(1.0);
+  }
+
+  update() {
+    removeGeometry(this.id);
+    this.execute();
+
+    if (this.onUpdate) {
+      this.onUpdate();
+    }
   }
 
   createCubeGeometry(size: number): GeometryData {
@@ -75,7 +84,7 @@ export class CubeNode extends Node {
       0, 7, 3, 0, 4, 7,
     ]);
 
-    return { vertices, indices, id: this.id };
+    return { vertices, indices, id: this.id, sourceId: this.id };
   }
 
   removeGeometry() {
@@ -96,6 +105,10 @@ export class CubeNode extends Node {
     });
 
     return { geometry: this.geometry };
+  }
+
+  setUpdateCallback(callback: () => void) {
+    this.onUpdate = callback;
   }
 
   getEditableControls() {

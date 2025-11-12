@@ -6,7 +6,7 @@ import {
   ConnectionPlugin,
   Presets as ConnectionPresets,
 } from "rete-connection-plugin";
-import { ReactPlugin, Presets, ReactArea2D } from "rete-react-plugin";
+import { ReactPlugin, Presets } from "rete-react-plugin";
 import {
   AutoArrangePlugin,
   Presets as ArrangePresets,
@@ -32,6 +32,8 @@ function getContextMenuItems() {
   return items;
 }
 
+export const connectionMap = new Map<string, Set<string>>();
+
 export async function createEditor(
   container: HTMLElement,
   onNodeSelected: (node: Node | null) => void
@@ -56,6 +58,53 @@ export async function createEditor(
   });
 
   let currentSelectedNode: Node | null = null;
+
+  function propagateUpdate(nodeId: string) {
+    // const targetIds = connectionMap.get(nodeId);
+    // if (!targetIds || targetIds.size == 0) return;
+
+    const connections = editor.getConnections();
+    const outgoingConnections = connections.filter(
+      (connection) => connection.source === nodeId
+    );
+    const targetIds = outgoingConnections.map(
+      (connection) => connection.target
+    );
+
+    if (!targetIds || targetIds.length == 0) return;
+
+    const sourceNode = editor.getNode(nodeId);
+    if (!sourceNode) return;
+
+    // Get output geometry from source
+    let outputGeometry;
+    if ("geometry" in sourceNode) {
+      outputGeometry = (sourceNode as any).geometry;
+    }
+
+    // Update all connected targets
+    for (const targetId of targetIds) {
+      const targetNode = editor.getNode(targetId);
+      if (!targetNode) continue;
+
+      if ("setInputGeometry" in targetNode && outputGeometry) {
+        (targetNode as any).setInputGeometry(outputGeometry);
+
+        console.log(
+          "Propagated update:",
+          sourceNode.label,
+          "→",
+          targetNode.label
+        );
+
+        // Recursively propagate to next nodes in chain
+        // propagateUpdate(targetId);
+        if ("onUpdate" in targetNode) {
+          (targetNode as any).onUpdate();
+        }
+      }
+    }
+  }
 
   area.addPipe((context) => {
     // Selecting a node
@@ -132,64 +181,49 @@ export async function createEditor(
       }
     } else if (context.type === "connectioncreated") {
       const connection = context.data;
-      setTimeout(() => {
-        const sourceNode = editor.getNode(connection.source);
-        const targetNode = editor.getNode(connection.target);
 
-        if (!sourceNode || !targetNode) {
-          console.warn("Could not find nodes for connection:", connection);
-          return;
-        }
+      if (!connectionMap.has(connection.source)) {
+        connectionMap.set(connection.source, new Set());
+      }
+      connectionMap.get(connection.source)!.add(connection.target);
 
-        console.log(
-          "✅ Connection established between:",
-          sourceNode.label,
-          "→",
-          targetNode.label
-        );
+      // setTimeout(() => {
+      const sourceNode = editor.getNode(connection.source);
+      const targetNode = editor.getNode(connection.target);
 
-        let outputGeometry;
-        // Check if source has geometry property
-        if ("geometry" in sourceNode && sourceNode.geometry) {
-          outputGeometry = sourceNode.geometry;
-        }
-        // Otherwise try to execute and get output
-        else if (
-          "execute" in sourceNode &&
-          typeof sourceNode.execute === "function"
-        ) {
-          const result = (sourceNode as any).execute();
-          // Handle promise or direct return
-          if (result && typeof result === "object" && "then" in result) {
-            result
-              .then((res: any) => {
-                if (res?.geometry && "setInputGeometry" in targetNode) {
-                  (targetNode as any).setInputGeometry(res.geometry);
-                  console.log(
-                    "Passed geometry from",
-                    sourceNode.label,
-                    "to",
-                    targetNode.label
-                  );
-                }
-              })
-              .catch((err: any) => console.error("Execute error:", err));
-            return; // Exit early for async case
-          }
-          outputGeometry = (result as any)?.geometry;
-        }
+      if (!sourceNode || !targetNode) {
+        console.warn("Could not find nodes for connection:", connection);
+        return;
+      }
 
-        // Pass to target node (sync case)
-        if (outputGeometry && "setInputGeometry" in targetNode) {
-          (targetNode as any).setInputGeometry(outputGeometry);
-          console.log(
-            "Passed geometry from",
-            sourceNode.label,
-            "to",
-            targetNode.label
-          );
+      console.log(
+        "Connection established between:",
+        sourceNode.label,
+        "→",
+        targetNode.label
+      );
+
+      if ("setUpdateCallback" in sourceNode) {
+        (sourceNode as any).setUpdateCallback(() => {
+          propagateUpdate(connection.source);
+        });
+      }
+
+      // Example of passing geometry
+      if (
+        // sourceNode.label === "CubeNode" &&
+        targetNode instanceof TransformNode
+      ) {
+        if (targetNode.inputGeometry) {
+          targetNode.applyTransform(targetNode.inputGeometry);
         }
-      }, 0);
+        const geom = (sourceNode as any).geometry;
+        if (geom) {
+          console.log("Passing geometry to TransformNode", geom);
+          targetNode.setInputGeometry?.(geom);
+        }
+      }
+      // }, 0);
     } else if (context.type === "connectionremove") {
       const connection = context.data;
       console.log("Connection removed:", connection);
@@ -197,19 +231,20 @@ export async function createEditor(
       const targetNode = editor.getNode(connection.target);
       const sourceNode = editor.getNode(connection.source);
 
+      if (targetNode) {
+      }
       // Remove the transformed output when connection is broken
       if (targetNode instanceof TransformNode) {
         targetNode.removeNode(sourceNode);
       }
       console.log("Removed geometry for disconnected", targetNode.label);
     }
+
     return context;
   });
 
   await arrange.layout();
   AreaExtensions.zoomAt(area, editor.getNodes());
 
-  return {
-    destroy: () => area.destroy(),
-  };
+  return { editor, destroy: () => area.destroy() };
 }
