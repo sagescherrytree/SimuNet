@@ -16,9 +16,9 @@ import {
   Presets as ContextMenuPresets,
 } from "rete-context-menu-plugin";
 
-import { Schemes, AreaExtra, NodeTypes, CubeNode, TransformNode } from "./types";
-import { Connection } from "./connections/Connection";
-// import { getDOMSocketPosition } from "rete-render-utils";
+import { Schemes, AreaExtra, NodeTypes, CubeNode } from "./types";
+
+import { Node } from "./types";
 
 function getContextMenuItems() {
   const items = [...Object.entries(NodeTypes)];
@@ -26,7 +26,10 @@ function getContextMenuItems() {
   return items;
 }
 
-export async function createEditor(container: HTMLElement) {
+export async function createEditor(
+  container: HTMLElement,
+  onNodeSelected: (node: Node | null) => void
+) {
   const editor = new NodeEditor<Schemes>();
   const area = new AreaPlugin<Schemes, AreaExtra>(container);
   const connection = new ConnectionPlugin<Schemes, AreaExtra>();
@@ -39,8 +42,47 @@ export async function createEditor(container: HTMLElement) {
 
   area.use(contextMenu);
 
-  AreaExtensions.selectableNodes(area, AreaExtensions.selector(), {
-    accumulating: AreaExtensions.accumulateOnCtrl(),
+  const selector = AreaExtensions.selector();
+  const accumulating = AreaExtensions.accumulateOnCtrl();
+
+  AreaExtensions.selectableNodes(area, selector, {
+    accumulating,
+  });
+
+  let currentSelectedNode: Node | null = null;
+
+  area.addPipe((context) => {
+    // Selecting a node
+    if (context.type === "nodepicked") {
+      const nodeId = context.data.id;
+      const node = editor.getNode(nodeId);
+
+      currentSelectedNode = node as Node;
+      onNodeSelected(currentSelectedNode);
+      console.log("Selected node:", currentSelectedNode);
+    }
+
+    // Unselecting a node
+    if (context.type === "pointerdown") {
+      const target = context.data.event.target;
+      if (
+        target === container ||
+        (target as HTMLElement).closest(".rete-container")
+      ) {
+        setTimeout(() => {
+          const selectedNodes = editor
+            .getNodes()
+            .filter((n) => selector.isSelected(n));
+          if (selectedNodes.length === 0) {
+            currentSelectedNode = null;
+            onNodeSelected(null);
+            console.log("Deselected all nodes");
+          }
+        }, 0);
+      }
+    }
+
+    return context;
   });
 
   render.addPreset(Presets.contextMenu.setup());

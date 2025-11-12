@@ -1,64 +1,64 @@
 import { ClassicPreset } from "rete";
 import { Node } from "./Node";
 import { socket } from "../types";
-import { GeometryData, addGeometry, removeGeometry } from "../../geometry/geometry";
+import {
+  GeometryData,
+  addGeometry,
+  removeGeometry,
+} from "../../geometry/geometry";
+import { NumberControl } from "../controls/NumberControl";
+import { Vec3Control } from "../controls/Vec3Control";
 
 export class CubeNode extends Node {
-  height = 180;
+  height = 100;
   width = 200;
 
   geometry: GeometryData;
-  sizeControl: ClassicPreset.InputControl<"number">;
+  sizeControl: NumberControl;
+  positionControl: Vec3Control;
 
   constructor() {
     super("CubeNode");
 
-    // this.addControl("a", new ClassicPreset.InputControl("text", {}));\
+    const onChange = () => {
+      removeGeometry(this.id);
+      this.execute();
+    };
 
-    this.sizeControl = new ClassicPreset.InputControl("number", {
-      initial: 1.0,
-      change: (value) => {
-        removeGeometry(this.id);
-        this.execute();
-      }
-    });
+    this.sizeControl = new NumberControl("Size", 1.0, onChange);
 
-    this.addControl("size", this.sizeControl);
+    this.positionControl = new Vec3Control(
+      "Position",
+      { x: 0, y: 0, z: 0 },
+      onChange
+    );
+
     this.addOutput("geometry", new ClassicPreset.Output(socket, "Geometry"));
-
 
     this.geometry = this.createCubeGeometry(1.0);
   }
 
   createCubeGeometry(size: number): GeometryData {
     const s = size / 2;
+    const pos = this.positionControl.value;
 
-    const vertices = new Float32Array([
-      -s,
-      -s,
-      -s, // 0
-      s,
-      -s,
-      -s, // 1
-      s,
-      s,
-      -s, // 2
-      -s,
-      s,
-      -s, // 3
-      -s,
-      -s,
-      s, // 4
-      s,
-      -s,
-      s, // 5
-      s,
-      s,
-      s, // 6
-      -s,
-      s,
-      s, // 7
-    ]);
+    const baseVertices = [
+      [-s, -s, -s], // 0
+      [s, -s, -s], // 1
+      [s, s, -s], // 2
+      [-s, s, -s], // 3
+      [-s, -s, s], // 4
+      [s, -s, s], // 5
+      [s, s, s], // 6
+      [-s, s, s], // 7
+    ];
+
+    const transformedVertices: number[] = [];
+    for (const [x, y, z] of baseVertices) {
+      transformedVertices.push(x + pos.x, y + pos.y, z + pos.z);
+    }
+
+    const vertices = new Float32Array(transformedVertices);
 
     const indices = new Uint32Array([
       // front
@@ -92,9 +92,16 @@ export class CubeNode extends Node {
     addGeometry({
       vertices: new Float32Array(this.geometry.vertices),
       indices: new Uint32Array(this.geometry.indices),
-      id: this.id
+      id: this.id,
     });
 
     return { geometry: this.geometry };
+  }
+
+  getEditableControls() {
+    return {
+      size: this.sizeControl,
+      position: this.positionControl,
+    };
   }
 }

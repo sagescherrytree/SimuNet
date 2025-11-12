@@ -44,3 +44,11 @@ export function onNewGeometry(geomCallBack: GeometryCallback) {
 export function onGeometryRemoved(geomCallBack: GeometryRemoveCallback) {
     removeSubscribers.push(geomCallBack);
 }
+
+export function updateGeometry(id: string, newVertices: Float32Array) {
+    const geom = geometries.find(g => g.id === id);
+    if (!geom) return;
+
+    geom.vertices = newVertices;
+    addSubscribers.forEach(cb => cb(geom)); // triggers renderer update
+}

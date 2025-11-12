@@ -1,18 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SimuNet: WebGPU Procedural Node Generator</title>
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SimuNet: WebGPU Procedural Node Generator</title>
-</head>
-
-<body>
-  <div id="app">
-    <div id="rete-container" style="width: 60%; height: 100%; float: left;"></div>
-    <canvas id="gpu-canvas" style="width:40%; height:100%; float:right;"></canvas>
-  </div>
-  <script type="module" src="/src/main.ts"></script>
-</body>
-
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
