@@ -124,6 +124,28 @@ export async function createEditor(
       if (node instanceof CubeNode) {
         node.removeGeometry();
       }
+    } else if (context.type === "connectioncreated") {
+      const connection = context.data;
+      setTimeout(() => {
+        const sourceNode = editor.getNode(connection.source);
+        const targetNode = editor.getNode(connection.target);
+
+        if (!sourceNode || !targetNode) {
+          console.warn("Could not find nodes for connection:", connection);
+          return;
+        }
+
+        console.log("✅ Connection established between:", sourceNode.label, "→", targetNode.label);
+
+        // Example of passing geometry
+        if (sourceNode.label === "CubeNode" && targetNode.label === "TransformNode") {
+          const geom = (sourceNode as any).geometry;
+          if (geom) {
+            console.log("Passing geometry to TransformNode", geom);
+            (targetNode as any).setInputGeometry?.(geom);
+          }
+        }
+      }, 0);
     }
     return context;
   });
