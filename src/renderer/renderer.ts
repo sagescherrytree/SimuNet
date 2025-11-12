@@ -302,8 +302,6 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
             if (this.indexCount > 0) {
                 renderPass.setVertexBuffer(0, this.vertexBuffer);
                 renderPass.setIndexBuffer(this.indexBuffer, "uint32");
-
-                renderPass.drawIndexed(this.indexCount, 1, 0, 0, 0);
             }
 
             renderPass.end();
