@@ -13,7 +13,7 @@ export const socket = new ClassicPreset.Socket("socket");
 
 export const NodeTypes = {
   CubeNode: () => new CubeNode(),
-  NodeB: () => new TransformNode(),
+  TransformNode: () => new TransformNode(),
 };
 
 export { Node, CubeNode, TransformNode };
