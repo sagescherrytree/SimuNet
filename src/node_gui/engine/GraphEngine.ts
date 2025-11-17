@@ -1,6 +1,6 @@
 // src/components/engine/GraphEngine.ts
 import { NodeEditor } from "rete";
-import { addGeometry, removeGeometry } from "../../geometry/geometry";
+import { addGeometry, removeGeometry } from "../geometry/geometry";
 import {
   isExecutable,
   isModifier,
@@ -76,7 +76,7 @@ export class GraphEngine {
 
   //Handle node creation
   async onNodeCreated(node: any) {
-    if (isExecutable(node)) {
+    if (isExecutable(node) && isGenerator(node)) {
       await node.execute();
     }
   }

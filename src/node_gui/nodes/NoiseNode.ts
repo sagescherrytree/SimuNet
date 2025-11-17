@@ -1,5 +1,5 @@
 import { Node } from "./Node";
-import { GeometryData } from "../../geometry/geometry";
+import { GeometryData } from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { IVertexDeformer } from "../interfaces/NodeCapabilities";

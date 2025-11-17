@@ -1,6 +1,6 @@
 // src/components/nodes/NodeB.ts
 import { Node } from "./Node";
-import { GeometryData } from "../../geometry/geometry";
+import { GeometryData } from "../geometry/geometry";
 import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { Vec3 } from "../controls/Vec3Control";

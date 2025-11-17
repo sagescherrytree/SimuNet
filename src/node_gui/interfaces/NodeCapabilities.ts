@@ -1,4 +1,4 @@
-import { GeometryData } from "../../geometry/geometry";
+import { GeometryData } from "../geometry/geometry";
 
 export interface IExecutable {
   execute(inputs?: Record<string, any>): Promise<any>;

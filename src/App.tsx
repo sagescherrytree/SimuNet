@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { initWebGPU, Renderer } from "./renderer/renderer";
+import { GPUContext } from "./webgpu/GPUContext";
+import { SceneManager } from "./webgpu/SceneManager";
+import { Renderer } from "./webgpu/renderer";
 import { createEditor } from "./node_gui/rete_editor";
 import { DetailsPanel } from "./node_gui/components/DetailsPanel";
 import { Node } from "./node_gui/types";
@@ -30,11 +32,26 @@ export function App() {
 
     const initialize = async () => {
       try {
-        await initWebGPU();
+        // 1. Initialize WebGPU Layer
+        const gpu = GPUContext.getInstance();
+
+        // Ensure the canvas has the ID expected by GPUContext
+        // (Or refactor GPUContext to accept an HTMLCanvasElement directly)
+        await gpu.init("gpu-canvas");
 
         if (!mounted) return;
 
-        const { destroy } = await createEditor(
+        // 2. Initialize Scene & Renderer
+        // The SceneManager automatically listens to geometry events
+        const sceneManager = new SceneManager();
+
+        // The Renderer needs the scene to know what buffers to draw
+        const renderer = new Renderer(sceneManager);
+
+        cleanupRef.current.renderer = renderer;
+
+        // 3. Initialize Node Editor
+        const { editor, destroy } = await createEditor(
           reteContainerRef.current!,
           setSelectedNode
         );
@@ -45,14 +62,23 @@ export function App() {
         }
 
         cleanupRef.current.editorDestroy = destroy;
-        cleanupRef.current.renderer = new Renderer();
 
+        // 4. Start Render Loop
+        // We run the loop here in React so we can cancel it easily
         const frame = () => {
-          if (!mounted || !cleanupRef.current.renderer) return;
+          if (!mounted) return;
 
-          cleanupRef.current.renderer.draw();
+          // The renderer's draw method handles the camera update
+          // and the actual WebGPU render pass
+          if (cleanupRef.current.renderer) {
+            // Note: If your Renderer class has a private draw,
+            // change it to public or add a public render() method.
+            (cleanupRef.current.renderer as any).draw();
+          }
+
           cleanupRef.current.animationFrameId = requestAnimationFrame(frame);
         };
+
         frame();
       } catch (error) {
         console.error("Failed to initialize:", error);
@@ -61,6 +87,7 @@ export function App() {
 
     initialize();
 
+    // Cleanup on Unmount
     return () => {
       mounted = false;
 
@@ -75,6 +102,8 @@ export function App() {
       }
 
       cleanupRef.current.renderer = null;
+      // Note: We generally don't destroy the GPU device
+      // as it's expensive to recreate.
     };
   }, []);
 
@@ -87,7 +116,7 @@ export function App() {
         overflow: "hidden",
       }}
     >
-      {/* Node Editor + Details Panel */}
+      {/* Left: Node Editor + Details Panel */}
       <div
         style={{
           flex: "0 0 60%",
@@ -98,17 +127,17 @@ export function App() {
           minWidth: 0,
         }}
       >
-        {/* Details Panel, fixed at top */}
         <div
           style={{
             flexShrink: 0,
             borderBottom: "1px solid #444",
+            background: "#222",
+            zIndex: 10,
           }}
         >
           <DetailsPanel node={selectedNode} />
         </div>
 
-        {/* Rete Container */}
         <div
           id="rete-container"
           ref={reteContainerRef}
@@ -120,14 +149,14 @@ export function App() {
         />
       </div>
 
-      {/* WebGPU Canvas */}
+      {/* Right: WebGPU Canvas */}
       <canvas
-        id="gpu-canvas"
+        id="gpu-canvas" // Matches the string passed to gpu.init()
         ref={canvasRef}
         style={{
           flex: "0 0 40%",
           height: "100%",
-          background: "#000",
+          background: "#111",
           display: "block",
         }}
       />

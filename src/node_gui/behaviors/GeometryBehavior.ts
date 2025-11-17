@@ -3,7 +3,7 @@ import {
   removeGeometry,
   updateGeometry,
   GeometryData,
-} from "../../geometry/geometry";
+} from "../geometry/geometry";
 
 /**
  * Composable behavior for managing geometry lifecycle
