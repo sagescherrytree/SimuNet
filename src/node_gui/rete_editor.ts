@@ -15,17 +15,8 @@ import {
   ContextMenuPlugin,
   Presets as ContextMenuPresets,
 } from "rete-context-menu-plugin";
-
-
-import {
-  Schemes,
-  AreaExtra,
-  NodeTypes,
-  CubeNode,
-  TransformNode,
-  IcosphereNode,
-} from "./types";
-
+import { Schemes, AreaExtra, NodeTypes } from "./types";
+import { GraphEngine } from "./engine/GraphEngine";
 import { Node } from "./types";
 
 function getContextMenuItems() {
@@ -46,101 +37,15 @@ export async function createEditor(
   const render = new ReactPlugin<Schemes, AreaExtra>({ createRoot });
   const arrange = new AutoArrangePlugin<Schemes>();
 
+  const engine = new GraphEngine(editor);
+
   const contextMenu = new ContextMenuPlugin<Schemes>({
     items: ContextMenuPresets.classic.setup(getContextMenuItems()),
   });
 
   area.use(contextMenu);
 
-  const selector = AreaExtensions.selector();
-  const accumulating = AreaExtensions.accumulateOnCtrl();
-
-  AreaExtensions.selectableNodes(area, selector, {
-    accumulating,
-  });
-
-  let currentSelectedNode: Node | null = null;
-
-  function propagateUpdate(nodeId: string) {
-    // const targetIds = connectionMap.get(nodeId);
-    // if (!targetIds || targetIds.size == 0) return;
-
-    const connections = editor.getConnections();
-    const outgoingConnections = connections.filter(
-      (connection) => connection.source === nodeId
-    );
-    const targetIds = outgoingConnections.map(
-      (connection) => connection.target
-    );
-
-    if (!targetIds || targetIds.length == 0) return;
-
-    const sourceNode = editor.getNode(nodeId);
-    if (!sourceNode) return;
-
-    // Get output geometry from source
-    let outputGeometry;
-    if ("geometry" in sourceNode) {
-      outputGeometry = (sourceNode as any).geometry;
-    }
-
-    // Update all connected targets
-    for (const targetId of targetIds) {
-      const targetNode = editor.getNode(targetId);
-      if (!targetNode) continue;
-
-      if ("setInputGeometry" in targetNode && outputGeometry) {
-        (targetNode as any).setInputGeometry(outputGeometry);
-
-        console.log(
-          "Propagated update:",
-          sourceNode.label,
-          "→",
-          targetNode.label
-        );
-
-        // Recursively propagate to next nodes in chain
-        // propagateUpdate(targetId);
-        if ("onUpdate" in targetNode) {
-          (targetNode as any).onUpdate();
-        }
-      }
-    }
-  }
-
-  area.addPipe((context) => {
-    // Selecting a node
-    if (context.type === "nodepicked") {
-      const nodeId = context.data.id;
-      const node = editor.getNode(nodeId);
-
-      currentSelectedNode = node as Node;
-      onNodeSelected(currentSelectedNode);
-      console.log("Selected node:", currentSelectedNode);
-    }
-
-    // Unselecting a node
-    if (context.type === "pointerdown") {
-      const target = context.data.event.target;
-      if (
-        target === container ||
-        (target as HTMLElement).closest(".rete-container")
-      ) {
-        setTimeout(() => {
-          const selectedNodes = editor
-            .getNodes()
-            .filter((n) => selector.isSelected(n));
-          if (selectedNodes.length === 0) {
-            currentSelectedNode = null;
-            onNodeSelected(null);
-            console.log("Deselected all nodes");
-          }
-        }, 0);
-      }
-    }
-
-    return context;
-  });
+  setupSelection(area, editor, onNodeSelected);
 
   render.addPreset(Presets.contextMenu.setup());
   render.addPreset(Presets.classic.setup());
@@ -160,7 +65,6 @@ export async function createEditor(
   connection.addPreset(ConnectionPresets.classic.setup());
 
   arrange.addPreset(ArrangePresets.classic.setup());
-  // arrange.layout({options: {direction: "DOWN"}});
 
   editor.use(area);
   area.use(connection);
@@ -171,76 +75,22 @@ export async function createEditor(
   AreaExtensions.simpleNodesOrder(area);
 
   editor.addPipe(async (context) => {
-    if (context.type === "nodecreate") {
-      const createdNode = context.data;
-      if (createdNode instanceof CubeNode || createdNode instanceof IcosphereNode) {
-        await createdNode.execute();
-      }
-    } else if (context.type === "noderemove") {
-      const node = context.data;
-      if (node instanceof CubeNode || node instanceof IcosphereNode) {
-        node.removeGeometry();
-      }
-      // TODO transform remove here
-    } else if (context.type === "connectioncreated") {
-      const connection = context.data;
+    switch (context.type) {
+      case "nodecreate":
+        await engine.onNodeCreated(context.data);
+        break;
 
-      if (!connectionMap.has(connection.source)) {
-        connectionMap.set(connection.source, new Set());
-      }
-      connectionMap.get(connection.source)!.add(connection.target);
+      case "noderemove":
+        engine.onNodeRemoved(context.data);
+        break;
 
-      // setTimeout(() => {
-      const sourceNode = editor.getNode(connection.source);
-      const targetNode = editor.getNode(connection.target);
+      case "connectioncreated":
+        await engine.onConnectionCreated(context.data);
+        break;
 
-      if (!sourceNode || !targetNode) {
-        console.warn("Could not find nodes for connection:", connection);
-        return;
-      }
-
-      console.log(
-        "Connection established between:",
-        sourceNode.label,
-        "→",
-        targetNode.label
-      );
-
-      if ("setUpdateCallback" in sourceNode) {
-        (sourceNode as any).setUpdateCallback(() => {
-          propagateUpdate(connection.source);
-        });
-      }
-
-      // Example of passing geometry
-      if (
-        // sourceNode.label === "CubeNode" &&
-        targetNode instanceof TransformNode
-      ) {
-        if (targetNode.inputGeometry) {
-          targetNode.applyTransform(targetNode.inputGeometry);
-        }
-        const geom = (sourceNode as any).geometry;
-        if (geom) {
-          console.log("Passing geometry to TransformNode", geom);
-          targetNode.setInputGeometry?.(geom);
-        }
-      }
-      // }, 0);
-    } else if (context.type === "connectionremove") {
-      const connection = context.data;
-      console.log("Connection removed:", connection);
-
-      const targetNode = editor.getNode(connection.target);
-      const sourceNode = editor.getNode(connection.source);
-
-      if (targetNode) {
-      }
-      // Remove the transformed output when connection is broken
-      if (targetNode instanceof TransformNode) {
-        targetNode.removeNode(sourceNode);
-      }
-      console.log("Removed geometry for disconnected", targetNode.label);
+      case "connectionremove":
+        await engine.onConnectionRemoved(context.data);
+        break;
     }
 
     return context;
@@ -250,4 +100,28 @@ export async function createEditor(
   AreaExtensions.zoomAt(area, editor.getNodes());
 
   return { editor, destroy: () => area.destroy() };
+}
+
+function setupSelection(
+  area: AreaPlugin<any, any>,
+  editor: NodeEditor<any>,
+  onSelect: (n: Node | null) => void
+) {
+  const selector = AreaExtensions.selector();
+  const accumulating = AreaExtensions.accumulateOnCtrl();
+
+  AreaExtensions.selectableNodes(area, selector, { accumulating });
+
+  area.addPipe((context) => {
+    if (context.type === "nodepicked") {
+      onSelect(editor.getNode(context.data.id));
+    }
+    if (context.type === "pointerdown") {
+      const target = context.data.event.target as HTMLElement;
+      if (target.closest(".rete-container") && !target.closest(".rete-node")) {
+        onSelect(null);
+      }
+    }
+    return context;
+  });
 }

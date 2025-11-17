@@ -1,15 +1,10 @@
-import { ClassicPreset } from "rete";
 import { Node } from "./Node";
-import { socket } from "../types";
-import {
-  GeometryData,
-  addGeometry,
-  removeGeometry,
-} from "../../geometry/geometry";
+import { GeometryData } from "../../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3Control } from "../controls/Vec3Control";
+import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
 
-export class IcosphereNode extends Node {
+export class IcosphereNode extends Node implements IGeometryGenerator {
   height = 100;
   width = 200;
 
@@ -18,18 +13,22 @@ export class IcosphereNode extends Node {
   subdivisionsControl: NumberControl;
   positionControl: Vec3Control;
 
-  public onUpdate?: () => void;
-
   constructor() {
     super("IcosphereNode");
 
+    this.ioBehavior.addGeometryOutput();
 
-    this.update = this.update.bind(this);
-    this.sizeControl = new NumberControl("Size", 1.0, this.update);
+    const update = () => {
+      this.geometryBehavior.removeGeometry();
+      this.execute();
+      this.updateBehavior.triggerUpdate();
+    };
+
+    this.sizeControl = new NumberControl("Size", 1.0, update);
     this.subdivisionsControl = new NumberControl(
       "Subdivisions",
       2.0,
-      this.update,
+      update,
       1.0,
       0,
       5
@@ -38,24 +37,16 @@ export class IcosphereNode extends Node {
     this.positionControl = new Vec3Control(
       "Position",
       { x: 0, y: 0, z: 0 },
-      this.update
+      update
     );
 
-    this.addOutput("geometry", new ClassicPreset.Output(socket, "Geometry"));
-
-    this.geometry = this.createIcosphereGeometry(1.0, 2.0);
+    this.geometry = this.generateGeometry();
   }
 
-  update() {
-    removeGeometry(this.id);
-    this.execute();
+  generateGeometry(): GeometryData {
+    const size = this.sizeControl.value ?? 1.0;
+    const subdivisions = this.subdivisionsControl.value ?? 2.0;
 
-    if (this.onUpdate) {
-      this.onUpdate();
-    }
-  }
-
-  createIcosphereGeometry(size: number, subdivisions: number): GeometryData {
     const phi = (1 + Math.sqrt(5.0)) * 0.5;
     const s = size / 2;
     const pos = this.positionControl.value;
@@ -76,6 +67,7 @@ export class IcosphereNode extends Node {
       [Z, -X, 0],
       [-Z, -X, 0],
     ];
+
     for (let i = 0; i < baseVertices.length; ++i) {
       let len = 0;
       for (let j = 0; j < 3; ++j) {
@@ -139,34 +131,23 @@ export class IcosphereNode extends Node {
     for (const [x, y, z] of baseVertices) {
       transformedVertices.push(s * x + pos.x, s * y + pos.y, s * z + pos.z);
     }
-    const vertices = new Float32Array(transformedVertices);
-    // this.geometry = { vertices, indices, id: this.id, sourceId: this.id };
-    return { vertices, indices, id: this.id, sourceId: this.id };
-  }
 
-  removeGeometry() {
-    removeGeometry(this.id);
+    return {
+      vertices: new Float32Array(transformedVertices),
+      indices,
+      id: this.id,
+      sourceId: this.id,
+    };
   }
 
   async execute() {
-    const size = this.sizeControl.value ?? 1.0;
-    const subdivisions = this.subdivisionsControl.value ?? 1.0;
-
     // Update geometry if control changed
-    this.geometry = this.createIcosphereGeometry(size, subdivisions);
+    this.geometry = this.generateGeometry();
     console.log("Icosphere node generated geometry:", this.geometry);
 
-    addGeometry({
-      vertices: new Float32Array(this.geometry.vertices),
-      indices: new Uint32Array(this.geometry.indices),
-      id: this.id,
-    });
+    this.geometryBehavior.addGeometry(this.geometry);
 
     return { geometry: this.geometry };
-  }
-
-  setUpdateCallback(callback: () => void) {
-    this.onUpdate = callback;
   }
 
   getEditableControls() {

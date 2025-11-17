@@ -1,16 +1,11 @@
 // src/components/nodes/NodeB.ts
-import { ClassicPreset } from "rete";
 import { Node } from "./Node";
-import { socket } from "../types";
-import {
-  GeometryData,
-  addGeometry,
-  updateGeometry,
-  removeGeometry,
-} from "../../geometry/geometry";
+import { GeometryData } from "../../geometry/geometry";
 import { Vec3Control } from "../controls/Vec3Control";
+import { IGeometryModifier } from "../interfaces/NodeCapabilities";
+import { Vec3 } from "../controls/Vec3Control";
 
-export class TransformNode extends Node {
+export class TransformNode extends Node implements IGeometryModifier {
   height = 140;
   width = 200;
 
@@ -18,45 +13,21 @@ export class TransformNode extends Node {
   rotation: Vec3Control;
   scale: Vec3Control;
 
-  isRemoved: boolean;
-
   geometry?: GeometryData;
   public inputGeometry?: GeometryData;
-
-  public onUpdate?: () => void;
 
   constructor() {
     super("TransformNode");
 
-    this.isRemoved = false;
-
-    // Input geometry from other nodes
-    this.addInput(
-      "input geometry",
-      new ClassicPreset.Input(socket, "Input Geometry")
-    );
-
-    // Output geometry
-    this.addOutput(
-      "output geometry",
-      new ClassicPreset.Output(socket, "Output Geometry")
-    );
-
-    this.onUpdate = () => {
-      if (this.inputGeometry) {
-        this.applyTransform(this.inputGeometry);
-      }
-    };
+    this.ioBehavior.addGeometryInput();
+    this.ioBehavior.addGeometryOutput();
 
     // Handler when controls change
     const onChange = () => {
-      if (this.onUpdate) {
-        this.onUpdate();
-      } else {
-        if (this.inputGeometry) {
-          this.applyTransform(this.inputGeometry);
-        }
+      if (this.inputGeometry) {
+        this.applyModification(this.inputGeometry);
       }
+      this.updateBehavior.triggerUpdate();
     };
 
     this.translation = new Vec3Control(
@@ -64,84 +35,72 @@ export class TransformNode extends Node {
       { x: 0, y: 0, z: 0 },
       onChange
     );
+
     this.rotation = new Vec3Control(
       "Rotation",
       { x: 0, y: 0, z: 0 },
       onChange,
       5
     );
-    this.scale = new Vec3Control("Scale", { x: 1, y: 1, z: 1 }, onChange); // default 1 for scale
 
-    // Subscribe to new geometries from other nodes
-    import("../../geometry/geometry").then(({ onNewGeometry }) => {
-      onNewGeometry((geom) => {
-        // If this node is connected to the input geometry, store it
-        if (!this.inputGeometry) {
-          this.inputGeometry = geom;
-          this.applyTransform(geom);
-        }
-      });
-    });
+    this.scale = new Vec3Control("Scale", { x: 1, y: 1, z: 1 }, onChange); // default 1 for scale
   }
 
   setInputGeometry(geometry: GeometryData) {
     this.inputGeometry = geometry;
+    this.applyModification(geometry);
   }
 
-  removeNode(sourceNode: Node) {
-    console.log("Source Node:", sourceNode);
-    if (!("isRemoved" in sourceNode) || !sourceNode.isRemoved) {
-      this.isRemoved = true;
-      if (sourceNode instanceof TransformNode) {
-        removeGeometry(sourceNode.id);
-        if (sourceNode.inputGeometry) {
-          sourceNode.applyTransform(sourceNode.inputGeometry);
-        }
-      } else {
-        removeGeometry(sourceNode.id);
-        addGeometry({
-          vertices: new Float32Array((sourceNode as any).geometry.vertices),
-          indices: new Uint32Array((sourceNode as any).geometry.indices),
-          id: sourceNode.id,
-        });
-        // sourceNode.execute();
-      }
+  applyModification(input: GeometryData): GeometryData | undefined {
+    if (!input) return;
+
+    const transformed = this.transformVertices(
+      input.vertices,
+      this.translation.value,
+      this.rotation.value,
+      this.scale.value
+    );
+
+    try {
+      this.geometryBehavior.updateGeometry(
+        input.sourceId || input.id,
+        transformed
+      );
+    } catch (e) {
+      console.warn("updateGeometry failed:", e);
     }
+
+    this.geometry = {
+      vertices: transformed,
+      indices: new Uint32Array(input.indices),
+      id: this.id,
+      sourceId: input.sourceId || input.id,
+    };
+
+    return this.geometry;
   }
 
-  async execute(context?: any) {
-    // For integration with Rete engine connections (optional)
-    const input = this.inputs["input geometry"];
-    console.log("INPUT OBJECT:", input);
-    if (!input) {
-      console.warn("No input object found at all");
+  async execute(inputs?: Record<string, any>) {
+    const geom = inputs?.geometry?.[0] as GeometryData;
+    if (!geom) {
+      console.warn("TransformNode: No input geometry");
       return;
     }
 
-    const geom: GeometryData = input[0] as GeometryData;
-
-    const transformedGeometry = this.applyTransform(geom);
-
-    addGeometry(transformedGeometry);
-
-    return { geometry: this.inputGeometry };
+    this.geometry = this.applyModification(geom);
+    return { geometry: this.geometry };
   }
 
-  public applyTransform(input: GeometryData): GeometryData {
-    if (!input) {
-      return;
-    }
-
-    const t = this.translation.value;
-    const r = this.rotation.value;
-    const s = this.scale.value;
-
-    const vertices = input.vertices;
+  private transformVertices(
+    vertices: Float32Array,
+    translation: Vec3,
+    rotation: Vec3,
+    scale: Vec3
+  ): Float32Array {
     const transformed = new Float32Array(vertices.length);
-
-    const rx = (r.x * Math.PI) / 180.0;
-    const ry = (r.y * Math.PI) / 180.0;
-    const rz = (r.z * Math.PI) / 180.0;
+    const rx = (rotation.x * Math.PI) / 180;
+    const ry = (rotation.y * Math.PI) / 180;
+    const rz = (rotation.z * Math.PI) / 180;
 
     const sx = Math.sin(rx),
       cx = Math.cos(rx);
@@ -151,56 +110,23 @@ export class TransformNode extends Node {
       cz = Math.cos(rz);
 
     for (let i = 0; i < vertices.length; i += 3) {
-      let x = vertices[i];
-      let y = vertices[i + 1];
-      let z = vertices[i + 2];
-
-      x = x * s.x;
-      y = y * s.y;
-      z = z * s.z;
+      let x = vertices[i] * scale.x;
+      let y = vertices[i + 1] * scale.y;
+      let z = vertices[i + 2] * scale.z;
 
       let y1 = y * cx - z * sx;
       let z1 = y * sx + z * cx;
-
       let x2 = x * cy + z1 * sy;
       let z2 = -x * sy + z1 * cy;
-
       let x3 = x2 * cz - y1 * sz;
       let y3 = x2 * sz + y1 * cz;
 
-      transformed[i] = x3 + t.x;
-      transformed[i + 1] = y3 + t.y;
-      transformed[i + 2] = z2 + t.z;
+      transformed[i] = x3 + translation.x;
+      transformed[i + 1] = y3 + translation.y;
+      transformed[i + 2] = z2 + translation.z;
     }
 
-    try {
-      updateGeometry(input.sourceId, transformed);
-      console.log("Updated Geometry");
-    } catch (e) {
-      console.warn(
-        "updateGeometry failed, make sure to import it. Falling back if desired.",
-        e
-      );
-    }
-
-    console.log("TransformNode applied transform:", input.id);
-
-    this.geometry = {
-      vertices: transformed,
-      indices: new Uint32Array(input.indices),
-      id: this.id,
-      sourceId: input.sourceId,
-    };
-    return this.geometry;
-  }
-
-  setUpdateCallback(callback: () => void) {
-    this.onUpdate = () => {
-      if (this.inputGeometry) {
-        this.applyTransform(this.inputGeometry);
-      }
-      callback();
-    };
+    return transformed;
   }
 
   getEditableControls() {

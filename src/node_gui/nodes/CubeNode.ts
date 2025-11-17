@@ -1,16 +1,10 @@
-import { ClassicPreset } from "rete";
 import { Node } from "./Node";
-import { socket } from "../types";
-import {
-  GeometryData,
-  addGeometry,
-  removeGeometry,
-} from "../../geometry/geometry";
+import { GeometryData } from "../../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3Control } from "../controls/Vec3Control";
-import { createEditor } from "../rete_editor";
+import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
 
-export class CubeNode extends Node {
+export class CubeNode extends Node implements IGeometryGenerator {
   height = 100;
   width = 200;
 
@@ -18,36 +12,30 @@ export class CubeNode extends Node {
   sizeControl: NumberControl;
   positionControl: Vec3Control;
 
-  public onUpdate?: () => void;
-
   constructor() {
     super("CubeNode");
 
-    this.update = this.update.bind(this);
+    this.ioBehavior.addGeometryOutput();
 
-    this.sizeControl = new NumberControl("Size", 1.0, this.update);
+    const update = () => {
+      this.geometryBehavior.removeGeometry();
+      this.execute();
+      this.updateBehavior.triggerUpdate();
+    };
+
+    this.sizeControl = new NumberControl("Size", 1.0, update);
 
     this.positionControl = new Vec3Control(
       "Position",
       { x: 0, y: 0, z: 0 },
-      this.update
+      update
     );
 
-    this.addOutput("geometry", new ClassicPreset.Output(socket, "Geometry"));
-
-    this.geometry = this.createCubeGeometry(1.0);
+    this.geometry = this.generateGeometry();
   }
 
-  update() {
-    removeGeometry(this.id);
-    this.execute();
-
-    if (this.onUpdate) {
-      this.onUpdate();
-    }
-  }
-
-  createCubeGeometry(size: number): GeometryData {
+  generateGeometry(): GeometryData {
+    const size = this.sizeControl.value ?? 1.0;
     const s = size / 2;
     const pos = this.positionControl.value;
 
@@ -67,8 +55,6 @@ export class CubeNode extends Node {
       transformedVertices.push(x + pos.x, y + pos.y, z + pos.z);
     }
 
-    const vertices = new Float32Array(transformedVertices);
-
     const indices = new Uint32Array([
       // front
       0, 2, 1, 0, 3, 2,
@@ -84,31 +70,22 @@ export class CubeNode extends Node {
       0, 7, 3, 0, 4, 7,
     ]);
 
-    return { vertices, indices, id: this.id, sourceId: this.id };
-  }
-
-  removeGeometry() {
-    removeGeometry(this.id);
+    return {
+      vertices: new Float32Array(transformedVertices),
+      indices,
+      id: this.id,
+      sourceId: this.id,
+    };
   }
 
   async execute() {
-    const size = this.sizeControl.value ?? 1.0;
-
     // Update geometry if control changed
-    this.geometry = this.createCubeGeometry(size);
+    this.geometry = this.generateGeometry();
     console.log("Cube node generated geometry:", this.geometry);
 
-    addGeometry({
-      vertices: new Float32Array(this.geometry.vertices),
-      indices: new Uint32Array(this.geometry.indices),
-      id: this.id,
-    });
+    this.geometryBehavior.addGeometry(this.geometry);
 
     return { geometry: this.geometry };
-  }
-
-  setUpdateCallback(callback: () => void) {
-    this.onUpdate = callback;
   }
 
   getEditableControls() {
