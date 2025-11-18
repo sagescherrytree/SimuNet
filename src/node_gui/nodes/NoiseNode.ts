@@ -1,5 +1,5 @@
 import { Node } from "./Node";
-import { GeometryData } from "../geometry/geometry";
+import { GeometryData, removeGeometry } from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { IVertexDeformer } from "../interfaces/NodeCapabilities";
@@ -23,7 +23,9 @@ export class NoiseNode
 
     const onChange = () => {
       if (this.inputGeometry) {
+        this.geometryBehavior.removeGeometry();
         this.applyModification(this.inputGeometry);
+        this.geometryBehavior.addGeometry(this.geometry);
       }
       this.updateBehavior.triggerUpdate();
     };

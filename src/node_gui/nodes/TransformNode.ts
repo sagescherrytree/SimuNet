@@ -1,6 +1,6 @@
 // src/components/nodes/NodeB.ts
 import { Node } from "./Node";
-import { GeometryData } from "../geometry/geometry";
+import { GeometryData, removeGeometry } from "../geometry/geometry";
 import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { Vec3 } from "../controls/Vec3Control";
@@ -24,8 +24,12 @@ export class TransformNode extends Node implements IGeometryModifier {
 
     // Handler when controls change
     const onChange = () => {
+      
       if (this.inputGeometry) {
+        this.geometryBehavior.removeGeometry();
         this.applyModification(this.inputGeometry);
+        this.geometryBehavior.addGeometry(this.geometry);
+
       }
       this.updateBehavior.triggerUpdate();
     };
@@ -70,7 +74,7 @@ export class TransformNode extends Node implements IGeometryModifier {
       console.warn("updateGeometry failed:", e);
     }
 
-    console.log("TransformNode applied: " + input.id + " " + input.sourceId);
+    // console.log("TransformNode applied: " + input.id + " " + input.sourceId);
 
     this.geometry = {
       vertices: transformed,

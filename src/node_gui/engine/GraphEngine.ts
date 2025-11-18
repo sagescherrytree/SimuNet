@@ -9,6 +9,7 @@ import {
   isUpdatable,
 } from "../types";
 import { Schemes } from "../types";
+import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 
 export class GraphEngine {
   constructor(private editor: NodeEditor<Schemes>) {}
@@ -43,6 +44,7 @@ export class GraphEngine {
   async onConnectionCreated(connection: any) {
     const source = this.editor.getNode(connection.source);
 
+    // TODO not getting updated rn when transform goes to transform
     if (source && isUpdatable(source)) {
       source.setUpdateCallback(() => this.propagate(source.id));
     }
@@ -56,11 +58,12 @@ export class GraphEngine {
     const source = this.editor.getNode(connection.source);
 
     // 1. Reset Target (The Modifier)
-    if (target && isModifier(target) && !target.isRemoved) {
+    if (target && isModifier(target)) {
       target.inputGeometry = null;
-      target.isRemoved = true;
+      // target.isRemoved = true;
       // TODO sourceid 
       // removeGeometry(target.id); 
+      console.log("Removing geometry: " + (target as any).sourceId + " " + target.id);
       removeGeometry((target as any).sourceId ?? target.id); 
       if (isExecutable(target)) await target.execute();
       // Force visual update if needed
@@ -71,16 +74,23 @@ export class GraphEngine {
     if (source && "geometry" in source && !source.isRemoved) {
       // source.isRemoved = true;
       const original = (source as any).geometry;
+      removeGeometry(original.sourceId);
       if (original) {
-        removeGeometry(original.sourceId ?? original.id);
-        addGeometry(
-          {
-            vertices: new Float32Array(original.vertices),
-            indices: new Uint32Array(original.indices),
-            id: original.id,
-            sourceId: original.sourceId ?? original.id
-          }
+        if (isModifier(source)) {
+          // if ()
+          // TODO I think something needs to be done here in order to address the case of deleting second transform in a chain cube->transform->transform
+          // addGeometry(source.applyModification(source.inputGeometry));
+          addGeometry(original);
+        } else {
+          addGeometry(
+            {
+              vertices: new Float32Array(original.vertices),
+              indices: new Uint32Array(original.indices),
+              id: original.id,
+              sourceId: original.sourceId ?? original.id
+            }
           );
+        }
       }
     }
   }
@@ -97,6 +107,7 @@ export class GraphEngine {
     if (!node.isRemoved) {
       node.isRemoved = true;
       removeGeometry(node.id);
+      // console.log(`nodeRemoved: ${node.id} ${node.isRemoved}`);
     }
   }
 
