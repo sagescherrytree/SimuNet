@@ -74,14 +74,16 @@ export class GraphEngine {
     if (source && "geometry" in source && !source.isRemoved) {
       // source.isRemoved = true;
       const original = (source as any).geometry;
-      removeGeometry(original.sourceId);
+      
       if (original) {
         if (isModifier(source)) {
           // if ()
           // TODO I think something needs to be done here in order to address the case of deleting second transform in a chain cube->transform->transform
           // addGeometry(source.applyModification(source.inputGeometry));
+          removeGeometry(original.sourceId); // TODO might need to remove geometry by sourceId?
           addGeometry(original);
         } else {
+          removeGeometry(original.sourceId); // TODO might need to remove geometry by sourceId?
           addGeometry(
             {
               vertices: new Float32Array(original.vertices),

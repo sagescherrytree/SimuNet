@@ -26,10 +26,10 @@ export class TransformNode extends Node implements IGeometryModifier {
     const onChange = () => {
       
       if (this.inputGeometry) {
-        this.geometryBehavior.removeGeometry();
+        // this.geometryBehavior.removeGeometry();
         this.applyModification(this.inputGeometry);
         // TODO maybe only call addgeometry/removegeometry if no connections out?
-        this.geometryBehavior.addGeometry(this.geometry);
+        // this.geometryBehavior.addGeometry(this.geometry);
 
       }
       // removegeometry only removes geometry for this node's id, not source node; 

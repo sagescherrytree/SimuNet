@@ -23,9 +23,9 @@ export class NoiseNode
 
     const onChange = () => {
       if (this.inputGeometry) {
-        this.geometryBehavior.removeGeometry();
+        // this.geometryBehavior.removeGeometry();
         this.applyModification(this.inputGeometry);
-        this.geometryBehavior.addGeometry(this.geometry);
+        // this.geometryBehavior.addGeometry(this.geometry);
       }
       this.updateBehavior.triggerUpdate();
     };
