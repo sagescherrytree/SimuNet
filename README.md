@@ -2,6 +2,8 @@
 
 A WebGPU Node Based Procedural Generator focusing on simulations.
 
+[Demo link](https://sagescherrytree.github.io/SimuNet/)
+
 ## Concept and Goal
 
 Our concept is very simple; to make a node based procedural tool on WebGPU, because it is simple to access, and runs fast on a GPU. Similar to Houdini, this system would use nodes to spawn geometry, and one can modify them also through node based logic. We propose to use nodes corresponding to compute shaders to act on all the data which is passed through. Parameters, if present, will be exposed via nodes, which is the visual component that the user is able to interact with. WebGPU is also used to render the results of each of the compute shaders, so the user can easily follow what happens in each step of the process, in addition to it being fast as it runs on the GPU. 
