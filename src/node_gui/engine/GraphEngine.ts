@@ -56,20 +56,31 @@ export class GraphEngine {
     const source = this.editor.getNode(connection.source);
 
     // 1. Reset Target (The Modifier)
-    if (target && isModifier(target)) {
-      target.inputGeometry = undefined;
-      removeGeometry(target.id);
+    if (target && isModifier(target) && !target.isRemoved) {
+      target.inputGeometry = null;
+      target.isRemoved = true;
+      // TODO sourceid 
+      // removeGeometry(target.id); 
+      removeGeometry((target as any).sourceId ?? target.id); 
       if (isExecutable(target)) await target.execute();
       // Force visual update if needed
       if (isUpdatable(target)) target.onUpdate?.();
     }
 
     // 2. Restore Source (The Original Shape)
-    if (source && "geometry" in source) {
+    if (source && "geometry" in source && !source.isRemoved) {
+      // source.isRemoved = true;
       const original = (source as any).geometry;
       if (original) {
-        removeGeometry(original.id);
-        addGeometry(original);
+        removeGeometry(original.sourceId ?? original.id);
+        addGeometry(
+          {
+            vertices: new Float32Array(original.vertices),
+            indices: new Uint32Array(original.indices),
+            id: original.id,
+            sourceId: original.sourceId ?? original.id
+          }
+          );
       }
     }
   }
@@ -83,7 +94,10 @@ export class GraphEngine {
 
   //Handle node deletion
   onNodeRemoved(node: any) {
-    removeGeometry(node.id);
+    if (!node.isRemoved) {
+      node.isRemoved = true;
+      removeGeometry(node.id);
+    }
   }
 
   // Helper to parse "geometry0", "geometry1"

@@ -16,6 +16,7 @@ export class GeometryBehavior {
       vertices: new Float32Array(geometry.vertices),
       indices: new Uint32Array(geometry.indices),
       id: this.nodeId,
+      sourceId: this.nodeId,
     });
   }
 

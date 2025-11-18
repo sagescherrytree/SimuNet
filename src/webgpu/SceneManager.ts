@@ -36,7 +36,8 @@ export class SceneManager {
 
     // Flatten all geometries into one batch (Batch Rendering)
     for (const geom of geometries) {
-      totalVertices.push(...Array.from(geom.vertices));
+      // TODO I think the ... might stop working at large sizes of arrays (issue we had with icosphere earlier) so make if getting a crash type of error w/ lots of geometry later might be the cause
+      totalVertices.push(...Array.from(geom.vertices)); 
 
       // Offset indices so they point to the correct vertices in the merged buffer
       for (let i = 0; i < geom.indices.length; i++) {

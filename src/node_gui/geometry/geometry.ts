@@ -12,11 +12,12 @@ let geometries: GeometryData[] = [];
 type GeometryCallback = (geom: GeometryData) => void;
 type GeometryRemoveCallback = (id: string) => void;
 
+// TODO I think don't need as arrays anymore since just one per scene? also the id isn't used for anything
 const addSubscribers: GeometryCallback[] = [];
 const removeSubscribers: GeometryRemoveCallback[] = [];
 
 export function addGeometry(geom: GeometryData) {
-  removeGeometry(geom.id);
+  removeGeometry(geom.sourceId ?? geom.id);
   geometries.push(geom);
   addSubscribers.forEach((cb) => cb(geom));
 }
@@ -32,15 +33,15 @@ export function clearGeometries() {
 
 export function removeGeometry(id: string) {
   const prevLength = geometries.length;
+  console.log("Removing ID: " + id);
   geometries = geometries.filter((x) => x.id !== id);
-
   if (geometries.length < prevLength) {
     removeSubscribers.forEach((cb) => cb(id));
   }
 }
 
-export function removeTransform(sourceID: string) {
-  removeGeometry(sourceID);
+export function removeTransform(sourceId: string) {
+  removeGeometry(sourceId); 
 }
 
 export function onNewGeometry(geomCallBack: GeometryCallback) {

@@ -99,8 +99,8 @@ export class Renderer {
 
     if (
       !this.scene.vertexBuffer ||
-      !this.scene.indexBuffer ||
-      this.scene.indexCount === 0
+      !this.scene.indexBuffer 
+      // this.scene.indexCount === 0
     ) {
       return;
     }
@@ -127,7 +127,9 @@ export class Renderer {
     passEncoder.setBindGroup(0, this.bindGroup);
     passEncoder.setVertexBuffer(0, this.scene.vertexBuffer);
     passEncoder.setIndexBuffer(this.scene.indexBuffer, "uint32");
-    passEncoder.drawIndexed(this.scene.indexCount);
+    if (this.scene.indexCount !== 0) {
+      passEncoder.drawIndexed(this.scene.indexCount);
+    }
     passEncoder.end();
 
     this.gpu.device.queue.submit([commandEncoder.finish()]);

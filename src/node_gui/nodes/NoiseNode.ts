@@ -42,13 +42,13 @@ export class NoiseNode
     if (!input) return;
 
     const deformed = this.deformVertices(input.vertices);
-    this.geometryBehavior.updateGeometry(input.sourceId || input.id, deformed);
+    this.geometryBehavior.updateGeometry(input.sourceId ?? input.id, deformed);
 
     this.geometry = {
       vertices: deformed,
       indices: new Uint32Array(input.indices),
       id: this.id,
-      sourceId: input.sourceId || input.id,
+      sourceId: input.sourceId ?? input.id,
     };
 
     return this.geometry;

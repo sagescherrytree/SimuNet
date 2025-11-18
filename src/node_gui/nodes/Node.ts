@@ -20,6 +20,8 @@ export abstract class Node
   protected updateBehavior: UpdateBehavior;
   protected ioBehavior: IOBehavior;
 
+  public isRemoved: boolean;
+
   public onUpdate?: () => void;
 
   constructor(name: string) {
@@ -27,6 +29,7 @@ export abstract class Node
     this.geometryBehavior = new GeometryBehavior(this.id);
     this.updateBehavior = new UpdateBehavior();
     this.ioBehavior = new IOBehavior(this);
+    this.isRemoved = false;
   }
 
   abstract execute(inputs?: Record<string, any>): Promise<any>;

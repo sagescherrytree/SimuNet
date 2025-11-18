@@ -63,19 +63,23 @@ export class TransformNode extends Node implements IGeometryModifier {
 
     try {
       this.geometryBehavior.updateGeometry(
-        input.sourceId || input.id,
+        input.sourceId ?? input.id,
         transformed
       );
     } catch (e) {
       console.warn("updateGeometry failed:", e);
     }
 
+    console.log("TransformNode applied: " + input.id + " " + input.sourceId);
+
     this.geometry = {
       vertices: transformed,
       indices: new Uint32Array(input.indices),
       id: this.id,
-      sourceId: input.sourceId || input.id,
+      sourceId: input.sourceId ?? input.id,
     };
+
+    console.log (this.geometry.vertices == this.inputGeometry.vertices);
 
     return this.geometry;
   }
