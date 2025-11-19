@@ -46,15 +46,20 @@ export class Camera {
   yaw: number = 0;
   pitch: number = 0;
   moveSpeed: number = 0.004;
+  panSpeed: number = 0.005;
+  zoomSpeed: number = 0.1;
   sensitivity: number = 0.15;
 
   static readonly nearPlane = 0.1;
   static readonly farPlane = 1000;
   static readonly fovYDegrees = 45; // Moved here as a static constant
 
+  private isRightMouseDown: boolean = false;
+  private isMiddleMouseDown: boolean = false;
+
   keys: { [key: string]: boolean } = {};
 
-  private gpu: GPUContext; // <--- Reference to GPU Context
+  private gpu: GPUContext;
 
   constructor() {
     // 1. Get the Singleton Instance
@@ -81,25 +86,80 @@ export class Camera {
     // 4. Event Listeners
     window.addEventListener("keydown", (event) => this.onKeyEvent(event, true));
     window.addEventListener("keyup", (event) => this.onKeyEvent(event, false));
-    window.onblur = () => (this.keys = {});
+    window.onblur = () => {
+      this.keys = {};
+      this.isRightMouseDown = false;
+      this.isMiddleMouseDown = false;
+    };
 
     // 5. Canvas Event Listeners (Use this.gpu.canvas)
-    this.gpu.canvas.addEventListener("mousedown", () =>
-      this.gpu.canvas.requestPointerLock()
-    );
-    this.gpu.canvas.addEventListener("mouseup", () =>
-      document.exitPointerLock()
-    );
-    this.gpu.canvas.addEventListener("mousemove", (event) =>
-      this.onMouseMove(event)
-    );
+    this.gpu.canvas.addEventListener("mousedown", (e) => this.onMouseDown(e));
+    this.gpu.canvas.addEventListener("mouseup", (e) => this.onMouseUp(e));
+    this.gpu.canvas.addEventListener("mousemove", (e) => this.onMouseMove(e));
+    this.gpu.canvas.addEventListener("wheel", (e) => this.onWheel(e));
   }
 
   private onKeyEvent(event: KeyboardEvent, down: boolean) {
-    this.keys[event.key.toLowerCase()] = down;
+    const key = event.key.toLowerCase();
+    this.keys[key] = down;
+
+    if (down && key === "f") {
+      this.focusOnPoint(vec3.create(0, 0, 0));
+    }
+
     if (this.keys["alt"]) {
       event.preventDefault();
     }
+  }
+
+  private onMouseDown(event: MouseEvent) {
+    // Right mouse button (2) rotates
+    if (event.button === 2) {
+      this.isRightMouseDown = true;
+      this.gpu.canvas.requestPointerLock();
+    }
+    // Middle mouse button (1) pans
+    else if (event.button === 1 || event.button === 0) {
+      this.isMiddleMouseDown = true;
+      event.preventDefault();
+    }
+  }
+
+  private onMouseUp(event: MouseEvent) {
+    if (event.button === 2) {
+      this.isRightMouseDown = false;
+      document.exitPointerLock();
+    } else if (event.button === 1 || event.button === 0) {
+      this.isMiddleMouseDown = false;
+    }
+  }
+
+  private onMouseMove(event: MouseEvent) {
+    // Right mouse button rotates
+    if (
+      this.isRightMouseDown &&
+      document.pointerLockElement === this.gpu.canvas
+    ) {
+      this.rotateCamera(
+        event.movementX * this.sensitivity,
+        event.movementY * this.sensitivity
+      );
+    }
+    // Middle mouse button pans
+    else if (this.isMiddleMouseDown) {
+      this.panCamera(event.movementX, event.movementY);
+    }
+  }
+
+  private onWheel(event: WheelEvent) {
+    event.preventDefault();
+
+    // Zoom by moving camera forward/backward along view direction
+    const zoomAmount = -event.deltaY * this.zoomSpeed * 0.01;
+    this.cameraPos = vec3.add(
+      this.cameraPos,
+      vec3.scale(this.cameraFront, zoomAmount)
+    );
   }
 
   private rotateCamera(dx: number, dy: number) {
@@ -125,16 +185,26 @@ export class Camera {
     );
   }
 
-  private onMouseMove(event: MouseEvent) {
-    if (document.pointerLockElement === this.gpu.canvas) {
-      this.rotateCamera(
-        event.movementX * this.sensitivity,
-        event.movementY * this.sensitivity
-      );
-    }
+  private panCamera(dx: number, dy: number) {
+    // Pan the camera perpendicular to view direction
+    const panX = vec3.scale(this.cameraRight, -dx * this.panSpeed);
+    const panY = vec3.scale(this.cameraUp, dy * this.panSpeed);
+
+    this.cameraPos = vec3.add(this.cameraPos, panX);
+    this.cameraPos = vec3.add(this.cameraPos, panY);
+  }
+
+  private focusOnPoint(point: Vec3, distance: number = 10) {
+    // Move camera to look at point from current angle
+    const offset = vec3.scale(this.cameraFront, -distance);
+    this.cameraPos = vec3.add(point, offset);
   }
 
   private processInput(deltaTime: number) {
+    if (!this.isRightMouseDown) {
+      return;
+    }
+
     let moveDir = vec3.create(0, 0, 0);
     if (this.keys["w"]) {
       moveDir = vec3.add(moveDir, this.cameraFront);
