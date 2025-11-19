@@ -42,44 +42,104 @@ export class CubeNode extends Node implements IGeometryGenerator {
     const rotation = this.rotationControl.value;
     const scale = this.scaleControl.value;
 
-    const baseVertices = [
-      [-1, -1, -1], // 0
-      [1, -1, -1], // 1
-      [1, 1, -1], // 2
-      [-1, 1, -1], // 3
-      [-1, -1, 1], // 4
-      [1, -1, 1], // 5
-      [1, 1, 1], // 6
-      [-1, 1, 1], // 7
+    const finalVertices: number[] = [];
+    const finalNormals: number[] = [];
+    let indices: number[] = [];
+    let vertexCount = 0;
+
+    const faceDefinitions = [
+      // Face +Z (Back, Normal: [0, 0, 1]) - Vertices listed counter-clockwise from view
+      {
+        N: [0, 0, 1],
+        V: [
+          [-1, -1, 1],
+          [1, -1, 1],
+          [1, 1, 1],
+          [-1, 1, 1],
+        ],
+      },
+      // Face -Z (Front, Normal: [0, 0, -1])
+      {
+        N: [0, 0, -1],
+        V: [
+          [-1, 1, -1],
+          [1, 1, -1],
+          [1, -1, -1],
+          [-1, -1, -1],
+        ],
+      },
+      // Face +X (Right, Normal: [1, 0, 0])
+      {
+        N: [1, 0, 0],
+        V: [
+          [1, -1, -1],
+          [1, -1, 1],
+          [1, 1, 1],
+          [1, 1, -1],
+        ],
+      },
+      // Face -X (Left, Normal: [-1, 0, 0])
+      {
+        N: [-1, 0, 0],
+        V: [
+          [-1, -1, 1],
+          [-1, -1, -1],
+          [-1, 1, -1],
+          [-1, 1, 1],
+        ],
+      },
+      // Face +Y (Top, Normal: [0, 1, 0])
+      {
+        N: [0, 1, 0],
+        V: [
+          [-1, 1, 1],
+          [1, 1, 1],
+          [1, 1, -1],
+          [-1, 1, -1],
+        ],
+      },
+      // Face -Y (Bottom, Normal: [0, -1, 0])
+      {
+        N: [0, -1, 0],
+        V: [
+          [-1, -1, -1],
+          [1, -1, -1],
+          [1, -1, 1],
+          [-1, -1, 1],
+        ],
+      },
     ];
 
-    const transformedVertices = this.transformVertices(
-      baseVertices,
-      translation,
-      rotation,
-      scale
-    );
+    const quadTriangles = [0, 1, 2, 0, 2, 3];
 
-    const indices = new Uint32Array([
-      // front
-      0, 2, 1, 0, 3, 2,
-      // back
-      4, 5, 6, 4, 6, 7,
-      // top
-      3, 6, 2, 3, 7, 6,
-      // bottom
-      0, 1, 5, 0, 5, 4,
-      // right
-      1, 6, 5, 1, 2, 6,
-      // left
-      0, 7, 3, 0, 4, 7,
-    ]);
+    for (const face of faceDefinitions) {
+      const N = face.N;
+      const V_face = face.V;
 
-    const bounds = calculateBounds(transformedVertices);
+      for (const index of quadTriangles) {
+        const V = V_face[index];
+
+        const [x, y, z] = this.transfromVertices(
+          V,
+          translation,
+          rotation,
+          scale
+        );
+
+        finalVertices.push(x, y, z);
+
+        finalNormals.push(N[0], N[1], N[2]);
+
+        indices.push(vertexCount++);
+      }
+    }
+
+    const bounds = calculateBounds(finalVertices);
 
     return {
-      vertices: new Float32Array(transformedVertices),
-      indices,
+      vertices: new Float32Array(finalVertices),
+      indices: new Uint32Array(indices),
+      normals: new Float32Array(finalNormals),
       id: this.id,
       sourceId: this.id,
       boundingSphere: bounds.sphere,
@@ -87,19 +147,18 @@ export class CubeNode extends Node implements IGeometryGenerator {
     };
   }
 
-  private transformVertices(
-    baseVertices: number[][],
+  private transfromVertices(
+    V: number[],
     translation: Vec3,
     rotation: Vec3,
     scale: Vec3
-  ): number[] {
-    const transformed: number[] = [];
-    // Convert degrees to radians for rotation
+  ): [number, number, number] {
+    const [x0, y0, z0] = V;
+
     const rx = (rotation.x * Math.PI) / 180;
     const ry = (rotation.y * Math.PI) / 180;
     const rz = (rotation.z * Math.PI) / 180;
 
-    // Precalculate sin and cos values
     const sx = Math.sin(rx),
       cx = Math.cos(rx);
     const sy = Math.sin(ry),
@@ -107,35 +166,25 @@ export class CubeNode extends Node implements IGeometryGenerator {
     const sz = Math.sin(rz),
       cz = Math.cos(rz);
 
-    for (const [x0, y0, z0] of baseVertices) {
-      // Scale
-      let x = x0 * scale.x;
-      let y = y0 * scale.y;
-      let z = z0 * scale.z;
+    // Scale
+    let x = x0 * scale.x;
+    let y = y0 * scale.y;
+    let z = z0 * scale.z;
 
-      // Rotate (X -> Y -> Z order, same as TransformNode)
+    // X-Rotation
+    let y1 = y * cx - z * sx;
+    let z1 = y * sx + z * cx;
 
-      // X-Rotation
-      let y1 = y * cx - z * sx;
-      let z1 = y * sx + z * cx;
+    // Y-Rotation
+    let x2 = x * cy + z1 * sy;
+    let z2 = -x * sy + z1 * cy;
 
-      // Y-Rotation
-      let x2 = x * cy + z1 * sy;
-      let z2 = -x * sy + z1 * cy;
+    // Z-Rotation
+    let x3 = x2 * cz - y1 * sz;
+    let y3 = x2 * sz + y1 * cz;
 
-      // Z-Rotation
-      let x3 = x2 * cz - y1 * sz;
-      let y3 = x2 * sz + y1 * cz;
-
-      // Translate (Position)
-      transformed.push(
-        x3 + translation.x,
-        y3 + translation.y,
-        z2 + translation.z
-      );
-    }
-
-    return transformed;
+    // Translate (Position)
+    return [x3 + translation.x, y3 + translation.y, z2 + translation.z];
   }
 
   async execute() {

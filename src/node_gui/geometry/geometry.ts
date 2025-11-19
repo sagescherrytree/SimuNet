@@ -1,7 +1,11 @@
 // src/geometry/geometry.ts.
+import { GPUContext } from "../../webgpu/GPUContext";
+
+// Place arrays into a buffer.
 export interface GeometryData {
-  vertices: Float32Array;
-  indices: Uint32Array;
+  vertices: Float32Array; // TODO move these to GPU
+  indices: Uint32Array; // TODO move to buffer.
+  normals?: Float32Array; // TODO move to buffer.
   id: string;
   sourceId?: string;
   boundingSphere?: {
@@ -27,6 +31,8 @@ type GeometryRemoveCallback = (id: string) => void;
 const addSubscribers: GeometryCallback[] = [];
 const rebuildSubscribers: (() => void)[] = [];
 const removeSubscribers: GeometryRemoveCallback[] = [];
+
+// TODO: Create vertex buffer.
 
 export function addGeometry(geom: GeometryData) {
   geometries.push(geom);

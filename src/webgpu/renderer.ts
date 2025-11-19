@@ -1,3 +1,4 @@
+import lambertShader from "./shaders/lambertShader.wgsl";
 import positionShader from "./shaders/positionShader.wgsl";
 import { Camera } from "./stage/camera";
 import { GPUContext } from "./GPUContext";
@@ -18,8 +19,13 @@ export class Renderer {
   public selectedNodeId: string | null = null;
   public selectedGeometry: GeometryData | null = null;
 
+  private lightBuffer: GPUBuffer;
+  private lightData: Float32Array;
+
   public onNodeSelected?: (nodeId: string, geometry: GeometryData) => void;
   public onNodeDeselected?: () => void;
+
+  private shaderMode = 1;
 
   constructor(sceneManager: SceneManager) {
     this.gpu = GPUContext.getInstance();
@@ -44,6 +50,24 @@ export class Renderer {
     };
 
     this.pipeline = this.createPipeline();
+
+    const lightData = new Float32Array([
+      5.0,
+      5.0,
+      5.0, // Position (vec3)
+      0.8, // Ambient (f32)
+      1.0,
+      1.0,
+      1.0, // Color (vec3)
+      0.0, // Padding (f32) - Total 8 floats
+    ]);
+
+    this.lightData = lightData;
+
+    this.lightBuffer = this.gpu.device.createBuffer({
+      size: this.lightData.byteLength,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
 
     this.bindGroup = this.createBindGroup();
 
@@ -79,18 +103,23 @@ export class Renderer {
 
   private createPipeline(): GPURenderPipeline {
     const shaderModule = this.gpu.device.createShaderModule({
-      code: positionShader,
+      label: "render shadeer module",
+      code: this.shaderMode == 0 ? positionShader : lambertShader,
     });
 
     return this.gpu.device.createRenderPipeline({
+      label: "complete-render-pipeline",
       layout: "auto",
       vertex: {
         module: shaderModule,
         entryPoint: "vs_main",
         buffers: [
           {
-            arrayStride: 12,
-            attributes: [{ shaderLocation: 0, offset: 0, format: "float32x3" }],
+            arrayStride: 24,
+            attributes: [
+              { shaderLocation: 0, offset: 0, format: "float32x3" },
+              { shaderLocation: 1, offset: 12, format: "float32x3" },
+            ],
           },
         ],
       },
@@ -99,7 +128,7 @@ export class Renderer {
         entryPoint: "fs_main",
         targets: [{ format: this.gpu.format }],
       },
-      primitive: { topology: "triangle-list", cullMode: "back" },
+      primitive: { topology: "triangle-list", cullMode: "none" },
       depthStencil: {
         format: "depth24plus",
         depthWriteEnabled: true,
@@ -121,11 +150,19 @@ export class Renderer {
     );
 
     return this.gpu.device.createBindGroup({
+      label: "main-bind-group",
       layout: this.pipeline.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer: this.camera.uniformsBuffer } },
-        { binding: 1, resource: { buffer: modelBuffer } },
-      ],
+      entries:
+        this.shaderMode == 0
+          ? [
+              { binding: 0, resource: { buffer: this.camera.uniformsBuffer } },
+              { binding: 1, resource: { buffer: modelBuffer } },
+            ]
+          : [
+              { binding: 0, resource: { buffer: this.camera.uniformsBuffer } },
+              { binding: 1, resource: { buffer: modelBuffer } },
+              { binding: 2, resource: { buffer: this.lightBuffer } },
+            ],
     });
   }
 
@@ -149,11 +186,15 @@ export class Renderer {
   private draw() {
     this.camera.onFrame(16);
 
-    if (
-      !this.scene.vertexBuffer ||
-      !this.scene.indexBuffer
-      // this.scene.indexCount === 0
-    ) {
+    if (this.shaderMode != 0) {
+      this.gpu.device.queue.writeBuffer(
+        this.lightBuffer,
+        0,
+        this.lightData.buffer
+      );
+    }
+
+    if (!this.scene.vertexBuffer || !this.scene.indexBuffer) {
       return;
     }
 

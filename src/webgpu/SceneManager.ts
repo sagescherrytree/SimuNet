@@ -40,9 +40,25 @@ export class SceneManager {
 
     // Flatten all geometries into one batch (Batch Rendering)
     for (const geom of geometries) {
-      for (const v of geom.vertices) {
-        totalVertices.push(v);
+      const vertexCount = geom.vertices.length / 3;
+      const normalData = geom.normals || new Float32Array(geom.vertices.length);
+
+      for (let i = 0; i < vertexCount; i++) {
+        const vIndex = i * 3;
+
+        totalVertices.push(
+          geom.vertices[vIndex],
+          geom.vertices[vIndex + 1],
+          geom.vertices[vIndex + 2]
+        );
+
+        totalVertices.push(
+          normalData[vIndex],
+          normalData[vIndex + 1],
+          normalData[vIndex + 2]
+        );
       }
+
       // Offset indices so they point to the correct vertices in the merged buffer
       for (let i = 0; i < geom.indices.length; i++) {
         totalIndices.push(geom.indices[i] + vertexOffset);
