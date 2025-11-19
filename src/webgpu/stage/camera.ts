@@ -105,6 +105,7 @@ export class Camera {
     this.gpu.canvas.addEventListener("mouseup", (e) => this.onMouseUp(e));
     this.gpu.canvas.addEventListener("mousemove", (e) => this.onMouseMove(e));
     this.gpu.canvas.addEventListener("wheel", (e) => this.onWheel(e));
+    this.gpu.canvas.addEventListener("contextmenu", (e) => this.onContextMenu(e));
   }
 
   public recalculateProjection(aspectRatio: number) {
@@ -132,6 +133,10 @@ export class Camera {
     if (this.keys["alt"]) {
       event.preventDefault();
     }
+  }
+
+  private onContextMenu(event: MouseEvent) {
+    event.preventDefault();
   }
 
   private onMouseDown(event: MouseEvent) {
