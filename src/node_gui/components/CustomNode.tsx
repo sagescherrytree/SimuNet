@@ -1,4 +1,4 @@
-import { ClassicScheme, RenderEmit, Presets } from "rete-react-plugin";
+import { RenderEmit, Presets } from "rete-react-plugin";
 import styled, { css } from "styled-components";
 import { isGenerator, isModifier, isCombiner, Schemes } from "../types";
 import { Node } from "../nodes/Node";
@@ -62,7 +62,7 @@ export const NodeStyles = styled.div<
   width: ${(props) =>
     Number.isFinite(props.width) ? `${props.width}px` : "200px"};
   height: ${(props) =>
-    Number.isFinite(props.height) ? `${props.height}px` : "auto"};
+    Number.isFinite(props.height) ? `${props.height}px` : "100px"};
   min-width: 180px;
   padding: 0;
   position: relative;
@@ -77,7 +77,6 @@ export const NodeStyles = styled.div<
       filter: brightness(0.9);
       border-color: ${props.colors.borderHover};
       box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.4);
-      transform: translateY(-2px);
     `}
 
   .title {

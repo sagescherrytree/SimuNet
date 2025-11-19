@@ -57,7 +57,7 @@ export function Vec3ControlComponent(props: { data: Vec3Control }) {
         style={{
           fontSize: "14px",
           color: "#ccc",
-          width: "5rem",
+          width: "6rem",
           flexShrink: 0,
         }}
       >

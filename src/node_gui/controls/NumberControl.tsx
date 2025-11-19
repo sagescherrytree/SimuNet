@@ -53,7 +53,7 @@ export function NumberControlComponent(props: { data: NumberControl }) {
         style={{
           fontSize: "14px",
           color: "#ccc",
-          width: "5rem",
+          width: "6rem",
           flexShrink: 0,
         }}
       >

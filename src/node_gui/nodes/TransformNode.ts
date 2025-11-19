@@ -6,9 +6,6 @@ import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { Vec3 } from "../controls/Vec3Control";
 
 export class TransformNode extends Node implements IGeometryModifier {
-  height = 140;
-  width = 200;
-
   translation: Vec3Control;
   rotation: Vec3Control;
   scale: Vec3Control;

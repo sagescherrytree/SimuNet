@@ -5,9 +5,6 @@ import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
 
 export class IcosphereNode extends Node implements IGeometryGenerator {
-  height = 100;
-  width = 200;
-
   sizeControl: NumberControl;
   subdivisionsControl: NumberControl;
   positionControl: Vec3Control;

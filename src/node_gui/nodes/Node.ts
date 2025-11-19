@@ -14,7 +14,7 @@ export abstract class Node
   extends ClassicPreset.Node
   implements IExecutable, IUpdatable, IControllable
 {
-  height = 140;
+  height = 100;
   width = 200;
 
   protected geometryBehavior: GeometryBehavior;

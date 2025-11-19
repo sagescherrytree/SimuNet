@@ -20,11 +20,33 @@ import { Schemes, AreaExtra, NodeTypes } from "./types";
 import { GraphEngine } from "./engine/GraphEngine";
 import { Node } from "./types";
 import { CustomNode } from "./components/CustomNode";
+import { CustomConnection } from "./components/CustomConnection";
+import { CustomSocket } from "./components/CustomSocket";
+
+type ContextMenuItem = [string, () => Schemes["Node"]];
 
 function getContextMenuItems() {
-  const items = [...Object.entries(NodeTypes)];
+  const { Cube, Icosphere, Noise, Transform } = NodeTypes;
 
-  return items;
+  const primitiveItems: ContextMenuItem[] = [
+    ["Cube", Cube],
+    ["Icosphere", Icosphere],
+  ];
+
+  const deformationItems: ContextMenuItem[] = [
+    ["Noise", Noise],
+    ["Transform", Transform],
+  ];
+
+  primitiveItems.sort((a, b) => a[0].localeCompare(b[0]));
+  deformationItems.sort((a, b) => a[0].localeCompare(b[0]));
+
+  const items = [
+    ["Geometry", primitiveItems],
+    ["Modify", deformationItems],
+  ];
+
+  return items as any;
 }
 
 export const connectionMap = new Map<string, Set<string>>();
@@ -55,6 +77,12 @@ export async function createEditor(
       customize: {
         node() {
           return CustomNode;
+        },
+        connection() {
+          return CustomConnection;
+        },
+        socket() {
+          return CustomSocket;
         },
       },
       socketPositionWatcher: getDOMSocketPosition({

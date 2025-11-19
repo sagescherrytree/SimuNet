@@ -5,9 +5,6 @@ import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
 
 export class CubeNode extends Node implements IGeometryGenerator {
-  height = 100;
-  width = 200;
-
   sizeControl: NumberControl;
   positionControl: Vec3Control;
 
@@ -80,7 +77,6 @@ export class CubeNode extends Node implements IGeometryGenerator {
     // Update geometry if control changed
     this.geometry = this.generateGeometry();
     console.log("Cube node generated geometry:", this.geometry);
-
 
     return { geometry: this.geometry };
   }
