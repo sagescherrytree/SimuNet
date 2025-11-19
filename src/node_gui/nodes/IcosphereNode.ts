@@ -18,7 +18,6 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
     this.ioBehavior.addGeometryOutput();
 
     const update = () => {
-      // this.geometryBehavior.removeGeometry();
       this.execute();
       this.updateBehavior.triggerUpdate();
     };
@@ -30,7 +29,7 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
       update,
       1.0,
       0,
-      5
+      6
     );
 
     this.positionControl = new Vec3Control(
@@ -115,7 +114,6 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
         let v02 = midpoint(v0, v2);
         let v12 = midpoint(v1, v2);
 
-        // TODO rotation direction
         newTriangles.push(v0, v01, v02);
         newTriangles.push(v1, v12, v01);
         newTriangles.push(v2, v02, v12);
@@ -143,8 +141,6 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
     // Update geometry if control changed
     this.geometry = this.generateGeometry();
     console.log("Icosphere node generated geometry:", this.geometry);
-
-    // this.geometryBehavior.addGeometry(this.geometry);
 
     return { geometry: this.geometry };
   }

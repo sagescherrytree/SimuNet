@@ -17,7 +17,6 @@ export class CubeNode extends Node implements IGeometryGenerator {
     this.ioBehavior.addGeometryOutput();
 
     const update = () => {
-      // this.geometryBehavior.removeGeometry();
       this.execute();
       this.updateBehavior.triggerUpdate();
     };
@@ -82,7 +81,6 @@ export class CubeNode extends Node implements IGeometryGenerator {
     this.geometry = this.generateGeometry();
     console.log("Cube node generated geometry:", this.geometry);
 
-    // this.geometryBehavior.addGeometry(this.geometry);
 
     return { geometry: this.geometry };
   }

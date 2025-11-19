@@ -91,23 +91,6 @@ export async function createEditor(
         engine.updateAllGeometries(context);
         break;
     }
-    // switch (context.type) {
-    //   case "nodecreate":
-    //     await engine.onNodeCreated(context.data);
-    //     break;
-
-    //   case "noderemove":
-    //     engine.onNodeRemoved(context.data);
-    //     break;
-
-    //   case "connectioncreated":
-    //     await engine.onConnectionCreated(context.data);
-    //     break;
-
-    //   case "connectionremove":
-    //     await engine.onConnectionRemoved(context.data);
-    //     break;
-    // }
 
     return context;
   });

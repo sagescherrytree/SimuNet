@@ -25,16 +25,8 @@ export class TransformNode extends Node implements IGeometryModifier {
     const onChange = () => {
       
       if (this.inputGeometry) {
-        // this.geometryBehavior.removeGeometry();
         this.applyModification(this.inputGeometry);
-        // TODO maybe only call addgeometry/removegeometry if no connections out?
-        // this.geometryBehavior.addGeometry(this.geometry);
-
       }
-      // removegeometry only removes geometry for this node's id, not source node; 
-      // should only do that geometryBehavior stuff if this node should be drawn?
-      //  or should just update same geometry object possibly rather than readding
-      // trigger update not propagating? possibly updating old geometry object that got removed in other node
       this.updateBehavior.triggerUpdate();
     };
 
@@ -70,7 +62,6 @@ export class TransformNode extends Node implements IGeometryModifier {
     );
 
    
-    // console.log("TransformNode applied: " + input.id + " " + input.sourceId);
 
     this.geometry = {
       vertices: transformed,
@@ -79,7 +70,9 @@ export class TransformNode extends Node implements IGeometryModifier {
       sourceId: input.sourceId ?? input.id,
     };
 
-    console.log (this.geometry.vertices == this.inputGeometry.vertices);
+    if (this.geometry.vertices == this.inputGeometry.vertices) {
+      console.warn("TransformNode: Input geometry and output using same vertex array");
+    }
 
     return this.geometry;
   }
