@@ -13,6 +13,8 @@ import {
   IGeometryGenerator,
   IUpdatable,
 } from "./interfaces/NodeCapabilities";
+import { PlaneNode } from "./nodes/PlaneNode";
+import { TorusNode } from "./nodes/TorusNode";
 
 export type Schemes = GetSchemes<Node & { node: Node }, Connection<Node, Node>>;
 
@@ -39,6 +41,8 @@ export const NodeTypes = {
   Icosphere: createThematicNode(IcosphereNode),
   Transform: createThematicNode(TransformNode),
   Noise: createThematicNode(NoiseNode),
+  Plane: createThematicNode(PlaneNode),
+  Torus: createThematicNode(TorusNode),
 };
 
 export const isExecutable = (n: any): n is IExecutable =>

@@ -26,11 +26,13 @@ import { CustomSocket } from "./components/CustomSocket";
 type ContextMenuItem = [string, () => Schemes["Node"]];
 
 function getContextMenuItems() {
-  const { Cube, Icosphere, Noise, Transform } = NodeTypes;
+  const { Cube, Icosphere, Noise, Transform, Plane, Torus } = NodeTypes;
 
   const primitiveItems: ContextMenuItem[] = [
     ["Cube", Cube],
     ["Icosphere", Icosphere],
+    ["Plane", Plane],
+    ["Torus", Torus],
   ];
 
   const deformationItems: ContextMenuItem[] = [
