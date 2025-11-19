@@ -25,7 +25,7 @@ export class Renderer {
   public onNodeSelected?: (nodeId: string, geometry: GeometryData) => void;
   public onNodeDeselected?: () => void;
 
-  private shaderMode = 1;
+  private shaderMode = 0;
 
   constructor(sceneManager: SceneManager) {
     this.gpu = GPUContext.getInstance();

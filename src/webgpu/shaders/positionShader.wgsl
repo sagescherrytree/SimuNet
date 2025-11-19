@@ -21,7 +21,7 @@ struct VertexOut {
 fn vs_main(vertexData : VertexIn) -> VertexOut {
   var out : VertexOut;
   out.position = camera.viewProj * (model.model * vec4<f32>(vertexData.position, 1.0));
-  out.vColor = (vertexData.position + vertexData.normal * 0.0001 + vec3<f32>(1.0,1.0,1.0)) * 0.5;
+  out.vColor = (vertexData.position + vec3<f32>(1.0,1.0,1.0)) * 0.5;
   return out;
 }
 
