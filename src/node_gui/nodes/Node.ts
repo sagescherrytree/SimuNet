@@ -8,6 +8,7 @@ import {
 import { GeometryBehavior } from "../behaviors/GeometryBehavior";
 import { UpdateBehavior } from "../behaviors/UpdateBehavior";
 import { IOBehavior } from "../behaviors/IOBehavior";
+import { GeometryData } from "../geometry/geometry";
 
 export abstract class Node
   extends ClassicPreset.Node
@@ -19,6 +20,8 @@ export abstract class Node
   protected geometryBehavior: GeometryBehavior;
   protected updateBehavior: UpdateBehavior;
   protected ioBehavior: IOBehavior;
+
+  public geometry?: GeometryData;
 
   public isRemoved: boolean;
 

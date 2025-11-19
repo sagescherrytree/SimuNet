@@ -8,7 +8,6 @@ export class NoiseNode
   extends Node
   implements IGeometryModifier, IVertexDeformer
 {
-  public geometry?: GeometryData;
   public inputGeometry?: GeometryData;
 
   strengthControl: NumberControl;
@@ -37,14 +36,13 @@ export class NoiseNode
 
   setInputGeometry(geometry: GeometryData) {
     this.inputGeometry = geometry;
-    this.applyModification(geometry);
+    this.applyModification(this.inputGeometry);
   }
 
   applyModification(input: GeometryData): GeometryData | undefined {
     if (!input) return;
 
     const deformed = this.deformVertices(input.vertices);
-    this.geometryBehavior.updateGeometry(input.sourceId ?? input.id, deformed);
 
     this.geometry = {
       vertices: deformed,

@@ -13,7 +13,6 @@ export class TransformNode extends Node implements IGeometryModifier {
   rotation: Vec3Control;
   scale: Vec3Control;
 
-  geometry?: GeometryData;
   public inputGeometry?: GeometryData;
 
   constructor() {
@@ -57,7 +56,7 @@ export class TransformNode extends Node implements IGeometryModifier {
 
   setInputGeometry(geometry: GeometryData) {
     this.inputGeometry = geometry;
-    this.applyModification(geometry);
+    this.applyModification(this.inputGeometry);
   }
 
   applyModification(input: GeometryData): GeometryData | undefined {
@@ -70,15 +69,7 @@ export class TransformNode extends Node implements IGeometryModifier {
       this.scale.value
     );
 
-    try {
-      this.geometryBehavior.updateGeometry(
-        input.sourceId ?? input.id,
-        transformed
-      );
-    } catch (e) {
-      console.warn("updateGeometry failed:", e);
-    }
-
+   
     // console.log("TransformNode applied: " + input.id + " " + input.sourceId);
 
     this.geometry = {

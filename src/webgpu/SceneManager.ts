@@ -2,6 +2,7 @@ import {
   onNewGeometry,
   onGeometryRemoved,
   getGeometries,
+  addRebuildSubscriber,
 } from "../node_gui/geometry/geometry";
 import { GPUContext } from "./GPUContext";
 
@@ -18,6 +19,7 @@ export class SceneManager {
     // Bind events to rebuild buffers when geometry changes
     onNewGeometry(() => this.rebuildBuffers());
     onGeometryRemoved(() => this.rebuildBuffers());
+    addRebuildSubscriber(() => this.rebuildBuffers());
 
     // Initial build
     this.rebuildBuffers();

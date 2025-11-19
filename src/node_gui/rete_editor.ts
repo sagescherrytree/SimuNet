@@ -18,6 +18,8 @@ import {
 import { Schemes, AreaExtra, NodeTypes } from "./types";
 import { GraphEngine } from "./engine/GraphEngine";
 import { Node } from "./types";
+import { Connection } from "./connections/Connection";
+
 
 function getContextMenuItems() {
   const items = [...Object.entries(NodeTypes)];
@@ -78,20 +80,34 @@ export async function createEditor(
     switch (context.type) {
       case "nodecreate":
         await engine.onNodeCreated(context.data);
+        engine.updateAllGeometries(context);
         break;
-
-      case "noderemove":
-        engine.onNodeRemoved(context.data);
-        break;
-
       case "connectioncreated":
         await engine.onConnectionCreated(context.data);
+        engine.updateAllGeometries(context);
         break;
-
       case "connectionremove":
-        await engine.onConnectionRemoved(context.data);
+      case "noderemove":
+        engine.updateAllGeometries(context);
         break;
     }
+    // switch (context.type) {
+    //   case "nodecreate":
+    //     await engine.onNodeCreated(context.data);
+    //     break;
+
+    //   case "noderemove":
+    //     engine.onNodeRemoved(context.data);
+    //     break;
+
+    //   case "connectioncreated":
+    //     await engine.onConnectionCreated(context.data);
+    //     break;
+
+    //   case "connectionremove":
+    //     await engine.onConnectionRemoved(context.data);
+    //     break;
+    // }
 
     return context;
   });

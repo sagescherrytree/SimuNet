@@ -6,7 +6,7 @@ export interface IExecutable {
 
 export interface IGeometryGenerator {
   generateGeometry(): GeometryData;
-  geometry: GeometryData;
+  geometry?: GeometryData;
 }
 
 export interface IGeometryModifier {

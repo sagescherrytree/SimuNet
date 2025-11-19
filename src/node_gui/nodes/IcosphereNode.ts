@@ -8,7 +8,6 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
   height = 100;
   width = 200;
 
-  public geometry: GeometryData;
   sizeControl: NumberControl;
   subdivisionsControl: NumberControl;
   positionControl: Vec3Control;
@@ -19,7 +18,7 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
     this.ioBehavior.addGeometryOutput();
 
     const update = () => {
-      this.geometryBehavior.removeGeometry();
+      // this.geometryBehavior.removeGeometry();
       this.execute();
       this.updateBehavior.triggerUpdate();
     };
@@ -145,7 +144,7 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
     this.geometry = this.generateGeometry();
     console.log("Icosphere node generated geometry:", this.geometry);
 
-    this.geometryBehavior.addGeometry(this.geometry);
+    // this.geometryBehavior.addGeometry(this.geometry);
 
     return { geometry: this.geometry };
   }
