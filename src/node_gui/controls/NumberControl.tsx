@@ -32,15 +32,20 @@ export class NumberControl extends ClassicPreset.Control {
   }
 }
 
-export function NumberControlComponent(props: { data: NumberControl }) {
-  const { label, value, setValue } = props.data;
+export function NumberControlComponent({
+  data,
+  ...rest
+}: {
+  data: NumberControl;
+}) {
+  const { label, value, setValue } = data;
   const [localValue, setLocalValue] = useState(value ?? 0);
 
   useEffect(() => {
     setLocalValue(value ?? 0);
   }, [value]);
 
-  const stepSize = props.data.stepSize;
+  const stepSize = data.stepSize;
   return (
     <div
       style={{
@@ -63,14 +68,14 @@ export function NumberControlComponent(props: { data: NumberControl }) {
         type="number"
         value={localValue}
         step={stepSize}
-        min={props.data.min}
-        max={props.data.max}
+        min={data.min}
+        max={data.max}
         onChange={(e) => {
           const newValue =
             e.target.value === "" ? 0 : parseFloat(e.target.value);
           setLocalValue(newValue);
           if (!Number.isNaN(newValue)) {
-            setValue.call(props.data, newValue);
+            setValue.call(data, newValue);
           }
         }}
         style={{

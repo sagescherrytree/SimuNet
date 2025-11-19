@@ -52,10 +52,10 @@ function getNodeColors(node: Node) {
 }
 
 export const NodeStyles = styled.div<
-  NodeExtraData & { selected: boolean; colors: typeof nodeColors.default }
+  NodeExtraData & { selected: boolean; $colors: typeof nodeColors.default }
 >`
-  background: ${(props) => props.colors.bgGradient};
-  border: 2px solid ${(props) => props.colors.border};
+  background: ${(props) => props.$colors.bgGradient};
+  border: 2px solid ${(props) => props.$colors.border};
   border-radius: 12px;
   cursor: pointer;
   box-sizing: border-box;
@@ -73,21 +73,21 @@ export const NodeStyles = styled.div<
   ${(props) =>
     props.selected &&
     css`
-      background: ${props.colors.borderHover};
+      background: ${props.$colors.borderHover};
       filter: brightness(0.9);
-      border-color: ${props.colors.borderHover};
+      border-color: ${props.$colors.borderHover};
       box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.4);
     `}
 
   .title {
-    color: ${(props) => props.colors.text};
+    color: ${(props) => props.$colors.text};
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 16px;
     font-weight: 600;
     padding: 12px 16px;
     text-align: center;
-    border-bottom: 2px solid ${(props) => props.colors.border};
-    background: ${(props) => props.colors.bg};
+    border-bottom: 2px solid ${(props) => props.$colors.border};
+    background: ${(props) => props.$colors.bg};
     border-radius: 10px 10px 0 0;
   }
 
@@ -96,17 +96,17 @@ export const NodeStyles = styled.div<
     css`
       .title {
         background: transparent;
-        color: ${props.colors.bg};
+        color: ${props.$colors.bg};
       }
     `}
 
   .input, .output {
     & .socket-component {
-      background: ${(props) => props.colors.border};
-      border-color: ${(props) => props.colors.text};
+      background: ${(props) => props.$colors.border};
+      border-color: ${(props) => props.$colors.text};
 
       &:hover {
-        background: ${(props) => props.colors.borderHover};
+        background: ${(props) => props.$colors.borderHover};
       }
     }
   }
@@ -155,14 +155,19 @@ type Props = {
   emit: RenderEmit<Schemes>;
 };
 
-export function CustomNode(props: Props) {
-  const inputs = Object.entries(props.data.inputs);
-  const outputs = Object.entries(props.data.outputs);
-  const controls = Object.entries(props.data.controls);
-  const selected = props.data.selected || false;
-  const { id, label, width, height } = props.data;
+export function CustomNode({
+  data,
+  emit,
+  selected: _selected,
+  ...rest
+}: Props & { colors?: any; selected?: any }) {
+  const inputs = Object.entries(data.inputs);
+  const outputs = Object.entries(data.outputs);
+  const controls = Object.entries(data.controls);
+  const selected = data.selected || false;
+  const { id, label, width, height } = data;
 
-  const nodeInstance = props.data.node;
+  const nodeInstance = data.node;
 
   sortByIndex(inputs);
   sortByIndex(outputs);
@@ -177,10 +182,11 @@ export function CustomNode(props: Props) {
       selected={selected}
       width={width}
       height={height}
-      colors={colors}
+      $colors={colors}
       className="rete-node"
       data-node-id={id}
       data-testid="node"
+      {...rest}
     >
       {/* Input sockets */}
       {inputs.map(([key, input], index) =>
@@ -196,7 +202,7 @@ export function CustomNode(props: Props) {
           >
             <RefSocket
               name="input-socket"
-              emit={props.emit}
+              emit={emit}
               side="input"
               socketKey={key}
               nodeId={id}
@@ -216,11 +222,7 @@ export function CustomNode(props: Props) {
           {controls.map(([key, control]) => {
             return control ? (
               <div key={key} className="control">
-                <RefControl
-                  name="control"
-                  emit={props.emit}
-                  payload={control}
-                />
+                <RefControl name="control" emit={emit} payload={control} />
               </div>
             ) : null;
           })}
@@ -242,7 +244,7 @@ export function CustomNode(props: Props) {
             <RefSocket
               name="output-socket"
               side="output"
-              emit={props.emit}
+              emit={emit}
               socketKey={key}
               nodeId={id}
               payload={output.socket}

@@ -30,8 +30,8 @@ export class Vec3Control extends ClassicPreset.Control {
   }
 }
 
-export function Vec3ControlComponent(props: { data: Vec3Control }) {
-  const { label, value, setValue } = props.data;
+export function Vec3ControlComponent({ data, ...rest }: { data: Vec3Control }) {
+  const { label, value, setValue } = data;
   const [localValue, setLocalValue] = useState<Vec3>(value);
 
   useEffect(() => setLocalValue(value), [value]);
@@ -41,7 +41,7 @@ export function Vec3ControlComponent(props: { data: Vec3Control }) {
     const updated = { ...localValue, [axis]: parsed };
     setLocalValue(updated);
     if (!Number.isNaN(parsed)) {
-      setValue.call(props.data, updated);
+      setValue.call(data, updated);
     }
   };
 
@@ -92,7 +92,7 @@ export function Vec3ControlComponent(props: { data: Vec3Control }) {
             </label>
             <input
               type="number"
-              step={props.data.stepSize}
+              step={data.stepSize}
               value={localValue[axis] ?? 0}
               onChange={(e) => handleChange(axis, e.target.value)}
               style={{
