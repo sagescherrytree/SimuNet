@@ -151,9 +151,9 @@ export class TorusNode extends Node implements IGeometryGenerator {
           const c = a + 1;
           const d = b + 1;
 
-          indices.push(a, b, c);
+          indices.push(a, c, b);
 
-          indices.push(c, b, d);
+          indices.push(c, d, b);
         }
       }
     }
