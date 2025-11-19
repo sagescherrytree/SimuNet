@@ -47,6 +47,7 @@ export class Renderer {
 
     this.bindGroup = this.createBindGroup();
 
+    this.gpu.addResizeCallback(() => this.createDepthTexture());
     this.createDepthTexture();
   }
 

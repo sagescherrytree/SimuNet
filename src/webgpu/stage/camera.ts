@@ -87,6 +87,10 @@ export class Camera {
 
     this.rotateCamera(0, 0);
 
+    this.gpu.addResizeCallback((newAspect) => {
+      this.recalculateProjection(newAspect);
+    });
+
     // 4. Event Listeners
     window.addEventListener("keydown", (event) => this.onKeyEvent(event, true));
     window.addEventListener("keyup", (event) => this.onKeyEvent(event, false));
@@ -101,6 +105,17 @@ export class Camera {
     this.gpu.canvas.addEventListener("mouseup", (e) => this.onMouseUp(e));
     this.gpu.canvas.addEventListener("mousemove", (e) => this.onMouseMove(e));
     this.gpu.canvas.addEventListener("wheel", (e) => this.onWheel(e));
+  }
+
+  public recalculateProjection(aspectRatio: number) {
+    this.projMat = mat4.perspective(
+      toRadians(Camera.fovYDegrees),
+      aspectRatio,
+      Camera.nearPlane,
+      Camera.farPlane
+    );
+
+    this.invProjMat = mat4.inverse(this.projMat);
   }
 
   private onKeyEvent(event: KeyboardEvent, down: boolean) {

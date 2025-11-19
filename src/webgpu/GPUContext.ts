@@ -6,6 +6,8 @@ export class GPUContext {
 
   private static instance: GPUContext;
 
+  private onResizeCallbacks: ((aspect: number) => void)[] = [];
+
   private constructor() {}
 
   public static getInstance(): GPUContext {
@@ -39,9 +41,39 @@ export class GPUContext {
     });
 
     console.log("WebGPU Initialized");
+
+    this.notifyResizeSubscribers();
   }
 
   public get aspectRatio(): number {
     return this.canvas.width / this.canvas.height;
+  }
+
+  public resize(client_width: number, client_height: number): void {
+    const devicePixelRatio = window.devicePixelRatio;
+
+    // Update the canvas drawing buffer size (for WebGPU rendering)
+    this.canvas.width = client_width * devicePixelRatio;
+    this.canvas.height = client_height * devicePixelRatio;
+
+    // Reconfigure the context (essential for WebGPU after a size change)
+    this.context.configure({
+      device: this.device,
+      format: this.format,
+    });
+
+    // 3. Notify all subscribers (Camera)
+    this.notifyResizeSubscribers();
+  }
+
+  public addResizeCallback(callback: (aspect: number) => void): void {
+    this.onResizeCallbacks.push(callback);
+    // Immediately call back on registration to initialize the camera's projection
+    callback(this.aspectRatio);
+  }
+
+  private notifyResizeSubscribers(): void {
+    const newAspect = this.aspectRatio;
+    this.onResizeCallbacks.forEach((cb) => cb(newAspect));
   }
 }

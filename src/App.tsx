@@ -44,6 +44,17 @@ export function App() {
 
     let mounted = true;
 
+    const gpu = GPUContext.getInstance();
+
+    const resizeHandler = () => {
+      // Calculate the new client dimensions based on the CSS layout (40% width, 100% height)
+      const canvasContainerWidth = window.innerWidth * 0.4;
+      const canvasContainerHeight = window.innerHeight;
+
+      // Call the GPUContext's resize method with the new CLIENT dimensions
+      gpu.resize(canvasContainerWidth, canvasContainerHeight);
+    };
+
     const initialize = async () => {
       try {
         // 1. Initialize WebGPU Layer
@@ -52,6 +63,10 @@ export function App() {
         // Ensure the canvas has the ID expected by GPUContext
         // (Or refactor GPUContext to accept an HTMLCanvasElement directly)
         await gpu.init("gpu-canvas");
+
+        window.addEventListener("resize", resizeHandler);
+
+        resizeHandler();
 
         if (!mounted) return;
 
@@ -128,6 +143,8 @@ export function App() {
         cancelAnimationFrame(cleanupRef.current.animationFrameId);
         cleanupRef.current.animationFrameId = null;
       }
+
+      window.removeEventListener("resize", resizeHandler);
 
       if (cleanupRef.current.editorDestroy) {
         cleanupRef.current.editorDestroy();
