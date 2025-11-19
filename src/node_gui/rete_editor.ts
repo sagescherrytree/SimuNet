@@ -7,6 +7,7 @@ import {
   Presets as ConnectionPresets,
 } from "rete-connection-plugin";
 import { ReactPlugin, Presets } from "rete-react-plugin";
+import { getDOMSocketPosition } from "rete-render-utils";
 import {
   AutoArrangePlugin,
   Presets as ArrangePresets,
@@ -18,8 +19,7 @@ import {
 import { Schemes, AreaExtra, NodeTypes } from "./types";
 import { GraphEngine } from "./engine/GraphEngine";
 import { Node } from "./types";
-import { Connection } from "./connections/Connection";
-
+import { CustomNode } from "./components/CustomNode";
 
 function getContextMenuItems() {
   const items = [...Object.entries(NodeTypes)];
@@ -50,18 +50,24 @@ export async function createEditor(
   setupSelection(area, editor, onNodeSelected);
 
   render.addPreset(Presets.contextMenu.setup());
-  render.addPreset(Presets.classic.setup());
-  // TODO does vertical setup need CSS to do manually? I'm certain there must be some way to do on TS side
-  // render.addPreset(Presets.classic.setup({
-  //   socketPositionWatcher: getDOMSocketPosition({
-  //     offset({x,y}, nodeId, side, key) {
-  //       return {
-  //         x: x,
-  //         y: y + 100 * (side === "input" ? -1 : 1)
-  //       }
-  //     }
-  //   })
-  // }));
+  render.addPreset(
+    Presets.classic.setup({
+      customize: {
+        node() {
+          return CustomNode;
+        },
+      },
+      socketPositionWatcher: getDOMSocketPosition({
+        offset({ x, y }, nodeId, side) {
+          // FIX: Reduce offset to 10px to match the vertical positioning better.
+          return {
+            x: x + (side === "input" || side === "output" ? -18 : 0),
+            y: y + 20 * (side === "input" ? -1 : 1), // Using 10px
+          };
+        },
+      }),
+    })
+  );
 
   // connection.
   connection.addPreset(ConnectionPresets.classic.setup());

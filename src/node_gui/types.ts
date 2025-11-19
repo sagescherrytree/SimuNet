@@ -14,17 +14,31 @@ import {
   IUpdatable,
 } from "./interfaces/NodeCapabilities";
 
-export type Schemes = GetSchemes<Node, Connection<Node, Node>>;
+export type Schemes = GetSchemes<Node & { node: Node }, Connection<Node, Node>>;
 
 export type AreaExtra = any;
 
 export const socket = new ClassicPreset.Socket("socket");
 
+type NodeConstructor<T extends Node> = new (...args: any[]) => T;
+
+function createThematicNode<T extends Node>(NodeClass: NodeConstructor<T>) {
+  return () => {
+    const nodeInstance = new NodeClass();
+
+    const nodeData = Object.assign(nodeInstance, {
+      node: nodeInstance,
+    }) as Node & { node: Node };
+
+    return nodeData;
+  };
+}
+
 export const NodeTypes = {
-  CubeNode: () => new CubeNode(),
-  IcosphereNode: () => new IcosphereNode(),
-  TransformNode: () => new TransformNode(),
-  NoiseNode: () => new NoiseNode(),
+  Cube: createThematicNode(CubeNode),
+  Icosphere: createThematicNode(IcosphereNode),
+  Transform: createThematicNode(TransformNode),
+  Noise: createThematicNode(NoiseNode),
 };
 
 export const isExecutable = (n: any): n is IExecutable =>

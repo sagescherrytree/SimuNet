@@ -1,6 +1,6 @@
 // src/components/nodes/NodeB.ts
 import { Node } from "./Node";
-import { GeometryData, removeGeometry } from "../geometry/geometry";
+import { GeometryData } from "../geometry/geometry";
 import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { Vec3 } from "../controls/Vec3Control";
@@ -23,7 +23,6 @@ export class TransformNode extends Node implements IGeometryModifier {
 
     // Handler when controls change
     const onChange = () => {
-      
       if (this.inputGeometry) {
         this.applyModification(this.inputGeometry);
       }
@@ -61,8 +60,6 @@ export class TransformNode extends Node implements IGeometryModifier {
       this.scale.value
     );
 
-   
-
     this.geometry = {
       vertices: transformed,
       indices: new Uint32Array(input.indices),
@@ -71,7 +68,9 @@ export class TransformNode extends Node implements IGeometryModifier {
     };
 
     if (this.geometry.vertices == this.inputGeometry.vertices) {
-      console.warn("TransformNode: Input geometry and output using same vertex array");
+      console.warn(
+        "TransformNode: Input geometry and output using same vertex array"
+      );
     }
 
     return this.geometry;

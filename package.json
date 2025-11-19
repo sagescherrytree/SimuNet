@@ -9,6 +9,7 @@
   },
   "devDependencies": {
     "@tweakpane/core": "^1.1.7",
+    "@types/styled-components": "^5.1.36",
     "@vitejs/plugin-react": "^5.1.0",
     "@webgpu/types": "^0.1.31",
     "tweakpane-plugin-file-import": "^0.2.0",
@@ -29,6 +30,7 @@
     "rete-context-menu-plugin": "^2.0.6",
     "rete-react-plugin": "^2.1.0",
     "rete-render-utils": "^2.0.3",
+    "styled-components": "^6.1.19",
     "tweakpane": "^3.1.8",
     "tweakpane-plugin-file-import": "^0.2.0",
     "wgpu-matrix": "^3.2.0"
