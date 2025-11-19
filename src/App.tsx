@@ -24,6 +24,20 @@ export function App() {
   });
 
   useEffect(() => {
+    const renderer = cleanupRef.current.renderer;
+
+    if (renderer) {
+      if (selectedNode && selectedNode.geometry) {
+        renderer.selectedNodeId = selectedNode.id;
+        renderer.selectedGeometry = selectedNode.geometry;
+      } else {
+        renderer.selectedNodeId = null;
+        renderer.selectedGeometry = null;
+      }
+    }
+  }, [selectedNode]);
+
+  useEffect(() => {
     if (!reteContainerRef.current || !canvasRef.current) {
       return;
     }
@@ -51,10 +65,29 @@ export function App() {
         cleanupRef.current.renderer = renderer;
 
         // 3. Initialize Node Editor
-        const { editor, destroy } = await createEditor(
+        const { editor, destroy, getNodeById } = await createEditor(
           reteContainerRef.current!,
           setSelectedNode
         );
+
+        renderer.onNodeSelected = (nodeId, geometry) => {
+          console.log("Selected node from 3D view:", nodeId);
+          console.log("Geometry:", geometry);
+
+          const node = getNodeById(nodeId);
+
+          if (node) {
+            setSelectedNode(node);
+          } else {
+            console.error(`Node with ID ${nodeId} not found in editor.`);
+            setSelectedNode(null);
+          }
+        };
+
+        renderer.onNodeDeselected = () => {
+          console.log("Deselected - clicked empty space");
+          setSelectedNode(null);
+        };
 
         if (!mounted) {
           destroy();
@@ -160,6 +193,26 @@ export function App() {
           display: "block",
         }}
       />
+
+      {selectedNode && (
+        <div
+          style={{
+            position: "fixed",
+            top: "10px",
+            right: "10px",
+            padding: "10px 20px",
+            backgroundColor: "rgba(0, 255, 0, 0.9)",
+            color: "black",
+            fontFamily: "monospace",
+            fontSize: "14px",
+            borderRadius: "5px",
+            zIndex: 10000,
+            pointerEvents: "none",
+          }}
+        >
+          Selected: {selectedNode.id}
+        </div>
+      )}
     </div>
   );
 }

@@ -56,6 +56,10 @@ export class Camera {
 
   private isRightMouseDown: boolean = false;
   private isMiddleMouseDown: boolean = false;
+  private leftClickStartPos: { x: number; y: number } | null = null;
+
+  onFocusRequested?: () => void;
+  onObjectClick?: (ray: { origin: Vec3; direction: Vec3 }) => void;
 
   keys: { [key: string]: boolean } = {};
 
@@ -104,7 +108,10 @@ export class Camera {
     this.keys[key] = down;
 
     if (down && key === "f") {
-      this.focusOnPoint(vec3.create(0, 0, 0));
+      if (this.onFocusRequested) {
+        this.onFocusRequested();
+      }
+      event.preventDefault();
     }
 
     if (this.keys["alt"]) {
@@ -113,13 +120,19 @@ export class Camera {
   }
 
   private onMouseDown(event: MouseEvent) {
+    if (event.button === 0) {
+      // Store click position to check if it's a drag or click
+      this.leftClickStartPos = { x: event.clientX, y: event.clientY };
+      this.isMiddleMouseDown = true;
+      event.preventDefault();
+    }
     // Right mouse button (2) rotates
     if (event.button === 2) {
       this.isRightMouseDown = true;
       this.gpu.canvas.requestPointerLock();
     }
     // Middle mouse button (1) pans
-    else if (event.button === 1 || event.button === 0) {
+    else if (event.button === 1) {
       this.isMiddleMouseDown = true;
       event.preventDefault();
     }
@@ -129,8 +142,21 @@ export class Camera {
     if (event.button === 2) {
       this.isRightMouseDown = false;
       document.exitPointerLock();
-    } else if (event.button === 1 || event.button === 0) {
+    } else if (event.button === 1) {
       this.isMiddleMouseDown = false;
+    } else if (event.button === 0) {
+      if (this.leftClickStartPos) {
+        const dx = Math.abs(event.clientX - this.leftClickStartPos.x);
+        const dy = Math.abs(event.clientY - this.leftClickStartPos.y);
+        const dragThreshold = 5; // pixels
+
+        // Only trigger selection if mouse didn't move much
+        if (dx < dragThreshold && dy < dragThreshold) {
+          this.handleObjectSelection(event);
+        }
+      }
+      this.isMiddleMouseDown = false;
+      this.leftClickStartPos = null;
     }
   }
 
@@ -194,8 +220,65 @@ export class Camera {
     this.cameraPos = vec3.add(this.cameraPos, panY);
   }
 
-  private focusOnPoint(point: Vec3, distance: number = 10) {
-    // Move camera to look at point from current angle
+  getRayFromMouse(
+    mouseX: number,
+    mouseY: number
+  ): { origin: Vec3; direction: Vec3 } {
+    const canvas = this.gpu.canvas;
+    const rect = canvas.getBoundingClientRect();
+
+    // Convert to normalized device coordinates (-1 to +1)
+    const x = ((mouseX - rect.left) / rect.width) * 2 - 1;
+    const y = -(((mouseY - rect.top) / rect.height) * 2 - 1); // Y is flipped
+
+    // Ray in normalized device coordinates
+    const rayNDC = vec3.create(x, y, 1);
+
+    // Transform through inverse projection to get view space direction
+    // We need to manually do the matrix-vector multiplication
+    const rayClip = vec3.create(x, y, -1);
+
+    // Get view matrix
+    const lookPos = vec3.add(this.cameraPos, this.cameraFront);
+    const viewMat = mat4.lookAt(this.cameraPos, lookPos, [0, 1, 0]);
+    const invViewMat = mat4.inverse(viewMat);
+
+    // Transform ray direction from clip space to world space
+    // For direction vectors, we only care about rotation (not translation)
+    const rayEye = vec3.create(
+      this.invProjMat[0] * rayClip[0],
+      this.invProjMat[5] * rayClip[1],
+      -1.0
+    );
+
+    // Transform from view space to world space
+    const rayWorld = vec3.create(
+      invViewMat[0] * rayEye[0] +
+        invViewMat[4] * rayEye[1] +
+        invViewMat[8] * rayEye[2],
+      invViewMat[1] * rayEye[0] +
+        invViewMat[5] * rayEye[1] +
+        invViewMat[9] * rayEye[2],
+      invViewMat[2] * rayEye[0] +
+        invViewMat[6] * rayEye[1] +
+        invViewMat[10] * rayEye[2]
+    );
+
+    return {
+      origin: this.cameraPos,
+      direction: vec3.normalize(rayWorld),
+    };
+  }
+
+  private handleObjectSelection(event: MouseEvent) {
+    const ray = this.getRayFromMouse(event.clientX, event.clientY);
+
+    if (this.onObjectClick) {
+      this.onObjectClick(ray);
+    }
+  }
+
+  public focusOnPoint(point: Vec3, distance: number = 10) {
     const offset = vec3.scale(this.cameraFront, -distance);
     this.cameraPos = vec3.add(point, offset);
   }

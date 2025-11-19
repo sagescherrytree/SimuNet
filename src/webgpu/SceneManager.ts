@@ -5,6 +5,8 @@ import {
   addRebuildSubscriber,
 } from "../node_gui/geometry/geometry";
 import { GPUContext } from "./GPUContext";
+import { vec3, Vec3 } from "wgpu-matrix";
+import { GeometryData } from "../node_gui/geometry/geometry";
 
 export class SceneManager {
   public vertexBuffer?: GPUBuffer;
@@ -71,5 +73,99 @@ export class SceneManager {
     console.log(
       `Scene updated: ${geometries.length} objects, ${this.indexCount} indices`
     );
+  }
+
+  findClickedGeometry(ray: { origin: Vec3; direction: Vec3 }): {
+    geometry: GeometryData;
+    nodeId: string;
+    distance: number;
+  } | null {
+    const geometries = getGeometries();
+    let closestHit: {
+      geometry: GeometryData;
+      nodeId: string;
+      distance: number;
+    } | null = null;
+    let closestDistance = Infinity;
+
+    for (const geom of geometries) {
+      let distance: number | null = null;
+
+      // Try sphere intersection first (faster)
+      if (geom.boundingSphere) {
+        distance = this.raySphereIntersection(
+          ray,
+          geom.boundingSphere.center,
+          geom.boundingSphere.radius
+        );
+      }
+      // Fallback to box
+      else if (geom.boundingBox) {
+        distance = this.rayBoxIntersection(
+          ray,
+          geom.boundingBox.min,
+          geom.boundingBox.max
+        );
+      }
+
+      if (distance !== null && distance > 0 && distance < closestDistance) {
+        closestDistance = distance;
+        closestHit = {
+          geometry: geom,
+          nodeId: geom.sourceId || geom.id, // Use sourceId if available, fallback to id
+          distance,
+        };
+      }
+    }
+
+    return closestHit;
+  }
+
+  private raySphereIntersection(
+    ray: { origin: Vec3; direction: Vec3 },
+    sphereCenter: [number, number, number],
+    sphereRadius: number
+  ): number | null {
+    const oc = vec3.sub(ray.origin, sphereCenter);
+    const a = vec3.dot(ray.direction, ray.direction);
+    const b = 2.0 * vec3.dot(oc, ray.direction);
+    const c = vec3.dot(oc, oc) - sphereRadius * sphereRadius;
+    const discriminant = b * b - 4 * a * c;
+
+    if (discriminant < 0) return null;
+
+    const t = (-b - Math.sqrt(discriminant)) / (2.0 * a);
+    return t > 0 ? t : null;
+  }
+
+  private rayBoxIntersection(
+    ray: { origin: Vec3; direction: Vec3 },
+    boxMin: [number, number, number],
+    boxMax: [number, number, number]
+  ): number | null {
+    const invDir = [
+      1 / ray.direction[0],
+      1 / ray.direction[1],
+      1 / ray.direction[2],
+    ];
+
+    const t1 = (boxMin[0] - ray.origin[0]) * invDir[0];
+    const t2 = (boxMax[0] - ray.origin[0]) * invDir[0];
+    const t3 = (boxMin[1] - ray.origin[1]) * invDir[1];
+    const t4 = (boxMax[1] - ray.origin[1]) * invDir[1];
+    const t5 = (boxMin[2] - ray.origin[2]) * invDir[2];
+    const t6 = (boxMax[2] - ray.origin[2]) * invDir[2];
+
+    const tmin = Math.max(
+      Math.max(Math.min(t1, t2), Math.min(t3, t4)),
+      Math.min(t5, t6)
+    );
+    const tmax = Math.min(
+      Math.min(Math.max(t1, t2), Math.max(t3, t4)),
+      Math.max(t5, t6)
+    );
+
+    if (tmax < 0 || tmin > tmax) return null;
+    return tmin > 0 ? tmin : tmax;
   }
 }

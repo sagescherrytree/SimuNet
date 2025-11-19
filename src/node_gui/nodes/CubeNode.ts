@@ -1,5 +1,5 @@
 import { Node } from "./Node";
-import { GeometryData } from "../geometry/geometry";
+import { calculateBounds, GeometryData } from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
@@ -65,11 +65,15 @@ export class CubeNode extends Node implements IGeometryGenerator {
       0, 7, 3, 0, 4, 7,
     ]);
 
+    const bounds = calculateBounds(transformedVertices);
+
     return {
       vertices: new Float32Array(transformedVertices),
       indices,
       id: this.id,
       sourceId: this.id,
+      boundingSphere: bounds.sphere,
+      boundingBox: bounds.box,
     };
   }
 

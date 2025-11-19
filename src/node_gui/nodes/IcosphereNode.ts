@@ -1,5 +1,5 @@
 import { Node } from "./Node";
-import { GeometryData } from "../geometry/geometry";
+import { GeometryData, calculateBounds } from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
@@ -126,11 +126,15 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
       transformedVertices.push(s * x + pos.x, s * y + pos.y, s * z + pos.z);
     }
 
+    const bounds = calculateBounds(transformedVertices);
+
     return {
       vertices: new Float32Array(transformedVertices),
       indices,
       id: this.id,
       sourceId: this.id,
+      boundingSphere: bounds.sphere,
+      boundingBox: bounds.box,
     };
   }
 

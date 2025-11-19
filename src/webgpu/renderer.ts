@@ -2,6 +2,8 @@ import positionShader from "./shaders/positionShader.wgsl";
 import { Camera } from "./stage/camera";
 import { GPUContext } from "./GPUContext";
 import { SceneManager } from "./SceneManager";
+import { GeometryData } from "../node_gui/geometry/geometry";
+import { vec3 } from "wgpu-matrix";
 
 export class Renderer {
   private gpu: GPUContext;
@@ -13,16 +15,65 @@ export class Renderer {
   private depthTexture!: GPUTexture;
   private depthView!: GPUTextureView;
 
+  public selectedNodeId: string | null = null;
+  public selectedGeometry: GeometryData | null = null;
+
+  public onNodeSelected?: (nodeId: string, geometry: GeometryData) => void;
+  public onNodeDeselected?: () => void;
+
   constructor(sceneManager: SceneManager) {
     this.gpu = GPUContext.getInstance();
     this.scene = sceneManager;
     this.camera = new Camera();
+
+    this.setupObjectSelection();
+
+    this.camera.onFocusRequested = () => {
+      if (this.selectedGeometry?.boundingSphere) {
+        const center = this.selectedGeometry.boundingSphere.center;
+        const radius = this.selectedGeometry.boundingSphere.radius;
+
+        const distance = radius * 5;
+
+        const focusPoint = vec3.create(center[0], center[1], center[2]);
+
+        this.camera.focusOnPoint(focusPoint, distance);
+      } else {
+        console.log("No object selected to focus on.");
+      }
+    };
 
     this.pipeline = this.createPipeline();
 
     this.bindGroup = this.createBindGroup();
 
     this.createDepthTexture();
+  }
+
+  private setupObjectSelection() {
+    this.camera.onObjectClick = (ray) => {
+      const hit = this.scene.findClickedGeometry(ray);
+
+      if (hit) {
+        this.selectedNodeId = hit.nodeId;
+        this.selectedGeometry = hit.geometry;
+        console.log(
+          `Selected node: ${hit.nodeId} at distance ${hit.distance.toFixed(2)}`
+        );
+
+        if (this.onNodeSelected) {
+          this.onNodeSelected(hit.nodeId, hit.geometry);
+        }
+      } else {
+        this.selectedNodeId = null;
+        this.selectedGeometry = null;
+        console.log("Clicked empty space");
+
+        if (this.onNodeDeselected) {
+          this.onNodeDeselected();
+        }
+      }
+    };
   }
 
   private createPipeline(): GPURenderPipeline {
@@ -99,7 +150,7 @@ export class Renderer {
 
     if (
       !this.scene.vertexBuffer ||
-      !this.scene.indexBuffer 
+      !this.scene.indexBuffer
       // this.scene.indexCount === 0
     ) {
       return;

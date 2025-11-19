@@ -1,5 +1,5 @@
 import { Node } from "./Node";
-import { GeometryData } from "../geometry/geometry";
+import { calculateBounds, GeometryData } from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
@@ -158,11 +158,15 @@ export class TorusNode extends Node implements IGeometryGenerator {
       }
     }
 
+    const bounds = calculateBounds(vertices);
+
     return {
       vertices: new Float32Array(vertices),
       indices: new Uint32Array(indices),
       id: this.id,
       sourceId: this.id,
+      boundingSphere: bounds.sphere,
+      boundingBox: bounds.box,
     };
   }
 

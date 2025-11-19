@@ -134,7 +134,15 @@ export async function createEditor(
   await arrange.layout();
   AreaExtensions.zoomAt(area, editor.getNodes());
 
-  return { editor, destroy: () => area.destroy() };
+  const getNodeById = (id: string) => {
+    return editor.getNode(id);
+  };
+
+  return {
+    editor,
+    destroy: () => {},
+    getNodeById,
+  };
 }
 
 function setupSelection(
@@ -153,7 +161,11 @@ function setupSelection(
     }
     if (context.type === "pointerdown") {
       const target = context.data.event.target as HTMLElement;
-      if (target.closest(".rete-container") && !target.closest(".rete-node")) {
+      if (
+        !target.closest(".rete-node") &&
+        !target.closest(".socket") &&
+        !target.closest(".rete-connection")
+      ) {
         onSelect(null);
       }
     }

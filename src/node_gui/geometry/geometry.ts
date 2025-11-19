@@ -4,6 +4,14 @@ export interface GeometryData {
   indices: Uint32Array;
   id: string;
   sourceId?: string;
+  boundingSphere?: {
+    center: [number, number, number];
+    radius: number;
+  };
+  boundingBox?: {
+    min: [number, number, number];
+    max: [number, number, number];
+  };
 }
 
 import { Node } from "../types";
@@ -20,19 +28,7 @@ const addSubscribers: GeometryCallback[] = [];
 const rebuildSubscribers: (() => void)[] = [];
 const removeSubscribers: GeometryRemoveCallback[] = [];
 
-// export function nodesToGeometries() {
-//   // removing--just do in getgeometries? so don't have update issues
-//   clearGeometries();
-//   for (const n of nodesForGeometries) {
-//     if (n.geometry) {
-//       geometries.push(n.geometry);
-//     }
-//   }
-//   // addSubscribers.forEach((cb) => cb(null)); // TODO passing null; callback doesn't actually use value so should just remove (not passing in geometry from each node to avoid redundant rebuilding)
-// }
-
 export function addGeometry(geom: GeometryData) {
-  // removeGeometry(geom.sourceId ?? geom.id);
   geometries.push(geom);
   addSubscribers.forEach((cb) => cb(geom));
 }
@@ -69,7 +65,7 @@ export function removeGeometry(id: string) {
 }
 
 export function removeTransform(sourceId: string) {
-  removeGeometry(sourceId); 
+  removeGeometry(sourceId);
 }
 
 export function onNewGeometry(geomCallBack: GeometryCallback) {
@@ -80,7 +76,7 @@ export function runRebuild() {
   rebuildSubscribers.forEach((cb) => cb());
 }
 
-export function addRebuildSubscriber(callback: (() => void)) {
+export function addRebuildSubscriber(callback: () => void) {
   rebuildSubscribers.push(callback);
 }
 
@@ -96,5 +92,53 @@ export function updateGeometry(id: string, newVertices: Float32Array) {
   addSubscribers.forEach((cb) => cb(geom)); // triggers renderer update
 }
 
+export function calculateBounds(vertices: number[]): {
+  sphere: { center: [number, number, number]; radius: number };
+  box: { min: [number, number, number]; max: [number, number, number] };
+} {
+  if (vertices.length === 0) {
+    return {
+      sphere: { center: [0, 0, 0], radius: 0 },
+      box: { min: [0, 0, 0], max: [0, 0, 0] },
+    };
+  }
 
+  let minX = Infinity,
+    minY = Infinity,
+    minZ = Infinity;
+  let maxX = -Infinity,
+    maxY = -Infinity,
+    maxZ = -Infinity;
 
+  // Find bounding box
+  for (let i = 0; i < vertices.length; i += 3) {
+    minX = Math.min(minX, vertices[i]);
+    minY = Math.min(minY, vertices[i + 1]);
+    minZ = Math.min(minZ, vertices[i + 2]);
+    maxX = Math.max(maxX, vertices[i]);
+    maxY = Math.max(maxY, vertices[i + 1]);
+    maxZ = Math.max(maxZ, vertices[i + 2]);
+  }
+
+  // Calculate bounding sphere
+  const center: [number, number, number] = [
+    (minX + maxX) / 2,
+    (minY + maxY) / 2,
+    (minZ + maxZ) / 2,
+  ];
+
+  // Find max distance from center to any vertex
+  let maxDistSq = 0;
+  for (let i = 0; i < vertices.length; i += 3) {
+    const dx = vertices[i] - center[0];
+    const dy = vertices[i + 1] - center[1];
+    const dz = vertices[i + 2] - center[2];
+    const distSq = dx * dx + dy * dy + dz * dz;
+    maxDistSq = Math.max(maxDistSq, distSq);
+  }
+
+  return {
+    sphere: { center, radius: Math.sqrt(maxDistSq) },
+    box: { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] },
+  };
+}

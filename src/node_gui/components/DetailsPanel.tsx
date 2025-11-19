@@ -129,7 +129,7 @@ export function DetailsPanel({ node }: DetailsPanelProps) {
       );
     }
 
-    const controls = node.controls;
+    const controls = node.controls ?? {};
     const controlEntries = Object.entries(controls);
 
     // If no controls are set
