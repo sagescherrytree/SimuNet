@@ -1,13 +1,14 @@
 import { Node } from "./Node";
 import { GeometryData, calculateBounds } from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
-import { Vec3Control } from "../controls/Vec3Control";
+import { Vec3, Vec3Control } from "../controls/Vec3Control";
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
 
 export class IcosphereNode extends Node implements IGeometryGenerator {
-  sizeControl: NumberControl;
   subdivisionsControl: NumberControl;
   positionControl: Vec3Control;
+  rotationControl: Vec3Control;
+  scaleControl: Vec3Control;
 
   constructor() {
     super("IcosphereNode");
@@ -19,7 +20,6 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
       this.updateBehavior.triggerUpdate();
     };
 
-    this.sizeControl = new NumberControl("Size", 1.0, update);
     this.subdivisionsControl = new NumberControl(
       "Subdivisions",
       2.0,
@@ -35,20 +35,31 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
       update
     );
 
+    this.rotationControl = new Vec3Control(
+      "Rotation",
+      { x: 0, y: 0, z: 0 },
+      update,
+      5
+    );
+
+    this.scaleControl = new Vec3Control("Scale", { x: 1, y: 1, z: 1 }, update);
+
     this.geometry = this.generateGeometry();
   }
 
   generateGeometry(): GeometryData {
-    const size = this.sizeControl.value ?? 1.0;
     const subdivisions = this.subdivisionsControl.value ?? 2.0;
 
+    const translation = this.positionControl.value;
+    const rotation = this.rotationControl.value;
+    const scale = this.scaleControl.value;
+
     const phi = (1 + Math.sqrt(5.0)) * 0.5;
-    const s = size / 2;
-    const pos = this.positionControl.value;
 
     const Z = 1.0;
     const X = 1.0 / phi;
-    const baseVertices = [
+
+    let baseVertices = [
       [-X, 0, Z],
       [X, 0, Z],
       [-X, 0, -Z],
@@ -92,7 +103,7 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
         }
         let len = Math.sqrt(sum);
         for (let i = 0; i < 3; ++i) {
-          newVert[i] /= len;
+          newVert[i] /= len; // Normalize to radius 1 again
         }
         triSplitMap.set(key, baseVertices.length);
         baseVertices.push(newVert);
@@ -100,6 +111,7 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
       return triSplitMap.get(key);
     }
 
+    // Subdivision loop
     for (let i = 0; i < subdivisions; ++i) {
       const newTriangles = [];
       for (let j = 0; j < triIndices.length; j += 3) {
@@ -121,10 +133,13 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
 
     const indices = new Uint32Array(triIndices);
 
-    const transformedVertices: number[] = [];
-    for (const [x, y, z] of baseVertices) {
-      transformedVertices.push(s * x + pos.x, s * y + pos.y, s * z + pos.z);
-    }
+    // Transformation logic applied here
+    const transformedVertices: number[] = this.transformVertices(
+      baseVertices,
+      translation,
+      rotation,
+      scale
+    );
 
     const bounds = calculateBounds(transformedVertices);
 
@@ -138,6 +153,55 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
     };
   }
 
+  private transformVertices(
+    baseVertices: number[][],
+    translation: Vec3,
+    rotation: Vec3,
+    scale: Vec3
+  ): number[] {
+    const transformed: number[] = [];
+    // Convert degrees to radians for rotation
+    const rx = (rotation.x * Math.PI) / 180;
+    const ry = (rotation.y * Math.PI) / 180;
+    const rz = (rotation.z * Math.PI) / 180;
+
+    // Precalculate sin and cos values
+    const sx = Math.sin(rx),
+      cx = Math.cos(rx);
+    const sy = Math.sin(ry),
+      cy = Math.cos(ry);
+    const sz = Math.sin(rz),
+      cz = Math.cos(rz);
+
+    for (const [x0, y0, z0] of baseVertices) {
+      // Scale
+      let x = x0 * scale.x;
+      let y = y0 * scale.y;
+      let z = z0 * scale.z;
+
+      // X-Rotation
+      let y1 = y * cx - z * sx;
+      let z1 = y * sx + z * cx;
+
+      // Y-Rotation
+      let x2 = x * cy + z1 * sy;
+      let z2 = -x * sy + z1 * cy;
+
+      // Z-Rotation
+      let x3 = x2 * cz - y1 * sz;
+      let y3 = x2 * sz + y1 * cz;
+
+      // Translate (Position)
+      transformed.push(
+        x3 + translation.x,
+        y3 + translation.y,
+        z2 + translation.z
+      );
+    }
+
+    return transformed;
+  }
+
   async execute() {
     // Update geometry if control changed
     this.geometry = this.generateGeometry();
@@ -148,9 +212,10 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
 
   getEditableControls() {
     return {
-      size: this.sizeControl,
       subdivisions: this.subdivisionsControl,
       position: this.positionControl,
+      rotation: this.rotationControl,
+      scale: this.scaleControl,
     };
   }
 }
