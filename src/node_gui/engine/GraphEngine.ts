@@ -98,6 +98,7 @@ export class GraphEngine {
     console.log("Updating node->geometry");
     console.log(allNodes);
     nodesForGeometries.length = 0;
+    // TODO note if we ever add nodes with more than one input, or that somehow count as a base geometry while also having an input, then need to make sure to add a check to avoid looping in tree. as is, there's no way to have a base geometry lead to a loop
     let addThisOrChildren = (node: Node) => {
       const outConn = allConnections.filter((conn) => conn.source === node.id);
       if (outConn.length === 0) {

@@ -50,6 +50,13 @@ export class TransformNode extends Node implements IGeometryModifier {
 
   applyModification(input: GeometryData): GeometryData | undefined {
     if (!input) return;
+    // TODO once operating on GPU-side, probably make this.outputEnabled into more of a passthrough:
+    //  that is, here check: 
+    //  if (this.outputEnabled) {
+    //    ... // do this transformation
+    //  } else {
+    //   use copyBufferToBuffer to copy inputGeometry vertex/index buffers directly to output
+    //  }
 
     const transformed = this.transformVertices(
       input.vertices,
