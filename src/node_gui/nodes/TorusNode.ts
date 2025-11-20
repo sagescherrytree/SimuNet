@@ -1,5 +1,9 @@
 import { Node } from "./Node";
-import { calculateBounds, GeometryData } from "../geometry/geometry";
+import {
+  calculateBounds,
+  generateWireframeIndices,
+  GeometryData,
+} from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
@@ -171,6 +175,8 @@ export class TorusNode extends Node implements IGeometryGenerator {
 
     const bounds = calculateBounds(vertices);
 
+    const wireframeIndices = generateWireframeIndices(new Uint32Array(indices));
+
     const gpu = GPUContext.getInstance();
 
     // TODO transform normals too
@@ -195,6 +201,7 @@ export class TorusNode extends Node implements IGeometryGenerator {
     return {
       vertices: new Float32Array(vertices),
       indices: new Uint32Array(indices),
+      wireframeIndices: wireframeIndices,
       vertexBuffer: vertexBuffer,
       indexBuffer: indexBuffer,
       id: this.id,

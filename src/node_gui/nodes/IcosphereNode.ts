@@ -1,5 +1,9 @@
 import { Node } from "./Node";
-import { GeometryData, calculateBounds } from "../geometry/geometry";
+import {
+  GeometryData,
+  calculateBounds,
+  generateWireframeIndices,
+} from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3, Vec3Control } from "../controls/Vec3Control";
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
@@ -134,6 +138,8 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
 
     const indices = new Uint32Array(triIndices);
 
+    const wireframeIndices = generateWireframeIndices(new Uint32Array(indices));
+
     const baseNormals: number[][] = baseVertices.slice();
 
     // Transformation logic applied here
@@ -175,6 +181,7 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
     return {
       vertices: new Float32Array(transformedVertices),
       indices,
+      wireframeIndices: wireframeIndices,
       vertexBuffer: vertexBuffer,
       indexBuffer: indexBuffer,
       id: this.id,

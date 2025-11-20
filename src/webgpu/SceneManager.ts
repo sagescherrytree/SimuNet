@@ -11,7 +11,10 @@ import { GeometryData } from "../node_gui/geometry/geometry";
 export class SceneManager {
   public vertexBuffer?: GPUBuffer;
   public indexBuffer?: GPUBuffer;
+  public wireframeIndexBuffer?: GPUBuffer;
+
   public indexCount: number = 0;
+  public wireframeIndexCount: number = 0;
 
   private gpu: GPUContext;
 
@@ -27,15 +30,51 @@ export class SceneManager {
     this.rebuildBuffers();
   }
 
+  // Fallback function in case there are no wireframes in the geometry node itself
+  // Done so that wireframes aren't regenerated on each scene rebuild, only when geometry actually changes
+  private generateWireframeIndices(triangleIndices: Uint32Array): Uint32Array {
+    const edges = new Set<string>();
+    const lineIndices: number[] = [];
+
+    // For each triangle, add its 3 edges
+    for (let i = 0; i < triangleIndices.length; i += 3) {
+      const i0 = triangleIndices[i];
+      const i1 = triangleIndices[i + 1];
+      const i2 = triangleIndices[i + 2];
+
+      // Create edges (using sorted pairs to avoid duplicates)
+      const edge1 = `${Math.min(i0, i1)}-${Math.max(i0, i1)}`;
+      const edge2 = `${Math.min(i1, i2)}-${Math.max(i1, i2)}`;
+      const edge3 = `${Math.min(i2, i0)}-${Math.max(i2, i0)}`;
+
+      if (!edges.has(edge1)) {
+        edges.add(edge1);
+        lineIndices.push(i0, i1);
+      }
+      if (!edges.has(edge2)) {
+        edges.add(edge2);
+        lineIndices.push(i1, i2);
+      }
+      if (!edges.has(edge3)) {
+        edges.add(edge3);
+        lineIndices.push(i2, i0);
+      }
+    }
+
+    return new Uint32Array(lineIndices);
+  }
+
   private rebuildBuffers() {
     const geometries = getGeometries();
     if (geometries.length === 0) {
       this.indexCount = 0;
+      this.wireframeIndexCount = 0;
       return;
     }
 
     let totalVertices: number[] = [];
     let totalIndices: number[] = [];
+    let totalWireframeIndices: number[] = [];
     let vertexOffset = 0;
 
     // Flatten all geometries into one batch (Batch Rendering)
@@ -64,12 +103,21 @@ export class SceneManager {
         totalIndices.push(geom.indices[i] + vertexOffset);
       }
 
+      const wireframeForGeom =
+        geom.wireframeIndices || this.generateWireframeIndices(geom.indices);
+      for (let i = 0; i < wireframeForGeom.length; i++) {
+        totalWireframeIndices.push(wireframeForGeom[i] + vertexOffset);
+      }
+
       vertexOffset += geom.vertices.length / 3;
     }
 
     const vertexData = new Float32Array(totalVertices);
     const indexData = new Uint32Array(totalIndices);
+    const wireframeIndexData = new Uint32Array(totalWireframeIndices);
+
     this.indexCount = indexData.length;
+    this.wireframeIndexCount = wireframeIndexData.length;
 
     // Create Buffers
     // optimization: In a real app, you wouldn't destroy/create every frame,
@@ -85,6 +133,16 @@ export class SceneManager {
       usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
     });
     this.gpu.device.queue.writeBuffer(this.indexBuffer, 0, indexData.buffer);
+
+    this.wireframeIndexBuffer = this.gpu.device.createBuffer({
+      size: Math.max(wireframeIndexData.byteLength, 32),
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+    });
+    this.gpu.device.queue.writeBuffer(
+      this.wireframeIndexBuffer,
+      0,
+      wireframeIndexData.buffer
+    );
 
     console.log(
       `Scene updated: ${geometries.length} objects, ${this.indexCount} indices`

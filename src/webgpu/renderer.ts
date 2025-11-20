@@ -3,6 +3,7 @@ import positionShader from "./shaders/positionShader.wgsl";
 import { Camera } from "./stage/camera";
 import { GPUContext } from "./GPUContext";
 import { SceneManager } from "./SceneManager";
+import { PipelineManager } from "./PipelineManager";
 import { GeometryData } from "../node_gui/geometry/geometry";
 import { vec3 } from "wgpu-matrix";
 
@@ -11,7 +12,8 @@ export class Renderer {
   private scene: SceneManager;
   private camera: Camera;
 
-  private pipeline: GPURenderPipeline;
+  private pipelineManager: PipelineManager;
+
   private bindGroup: GPUBindGroup;
   private depthTexture!: GPUTexture;
   private depthView!: GPUTextureView;
@@ -25,12 +27,14 @@ export class Renderer {
   public onNodeSelected?: (nodeId: string, geometry: GeometryData) => void;
   public onNodeDeselected?: () => void;
 
-  private shaderMode = 1;
+  private shaderMode: 0 | 1 = 1;
+  private wireframeMode = false;
 
   constructor(sceneManager: SceneManager) {
     this.gpu = GPUContext.getInstance();
     this.scene = sceneManager;
     this.camera = new Camera();
+    this.pipelineManager = new PipelineManager();
 
     this.setupObjectSelection();
 
@@ -48,8 +52,6 @@ export class Renderer {
         console.log("No object selected to focus on.");
       }
     };
-
-    this.pipeline = this.createPipeline();
 
     const lightData = new Float32Array([
       5.0,
@@ -101,42 +103,6 @@ export class Renderer {
     };
   }
 
-  private createPipeline(): GPURenderPipeline {
-    const shaderModule = this.gpu.device.createShaderModule({
-      label: "render shadeer module",
-      code: this.shaderMode == 0 ? positionShader : lambertShader,
-    });
-
-    return this.gpu.device.createRenderPipeline({
-      label: "complete-render-pipeline",
-      layout: "auto",
-      vertex: {
-        module: shaderModule,
-        entryPoint: "vs_main",
-        buffers: [
-          {
-            arrayStride: 24,
-            attributes: [
-              { shaderLocation: 0, offset: 0, format: "float32x3" },
-              { shaderLocation: 1, offset: 12, format: "float32x3" },
-            ],
-          },
-        ],
-      },
-      fragment: {
-        module: shaderModule,
-        entryPoint: "fs_main",
-        targets: [{ format: this.gpu.format }],
-      },
-      primitive: { topology: "triangle-list", cullMode: "none" },
-      depthStencil: {
-        format: "depth24plus",
-        depthWriteEnabled: true,
-        depthCompare: "less",
-      },
-    });
-  }
-
   private createBindGroup(): GPUBindGroup {
     const modelBuffer = this.gpu.device.createBuffer({
       size: 64,
@@ -149,27 +115,28 @@ export class Renderer {
       new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
     );
 
+    const initialPipeline = this.pipelineManager.getPipeline({
+      shader: this.shaderMode,
+      wireframe: this.wireframeMode,
+    });
+
     return this.gpu.device.createBindGroup({
       label: "main-bind-group",
-      layout: this.pipeline.getBindGroupLayout(0),
-      entries:
-        this.shaderMode == 0
-          ? [
-              { binding: 0, resource: { buffer: this.camera.uniformsBuffer } },
-              { binding: 1, resource: { buffer: modelBuffer } },
-            ]
-          : [
-              { binding: 0, resource: { buffer: this.camera.uniformsBuffer } },
-              { binding: 1, resource: { buffer: modelBuffer } },
-              { binding: 2, resource: { buffer: this.lightBuffer } },
-            ],
+      layout: initialPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.camera.uniformsBuffer } },
+        { binding: 1, resource: { buffer: modelBuffer } },
+        { binding: 2, resource: { buffer: this.lightBuffer } },
+      ],
     });
   }
 
   public toggleShader() {
     this.shaderMode = this.shaderMode === 0 ? 1 : 0;
-    this.pipeline = this.createPipeline();
-    this.bindGroup = this.createBindGroup();
+  }
+
+  public toggleWireframe() {
+    this.wireframeMode = !this.wireframeMode;
   }
 
   private createDepthTexture() {
@@ -204,6 +171,11 @@ export class Renderer {
       return;
     }
 
+    const currentPipeline = this.pipelineManager.getPipeline({
+      shader: this.shaderMode,
+      wireframe: this.wireframeMode,
+    });
+
     const commandEncoder = this.gpu.device.createCommandEncoder();
     const passEncoder = commandEncoder.beginRenderPass({
       colorAttachments: [
@@ -222,12 +194,19 @@ export class Renderer {
       },
     });
 
-    passEncoder.setPipeline(this.pipeline);
+    passEncoder.setPipeline(currentPipeline);
     passEncoder.setBindGroup(0, this.bindGroup);
     passEncoder.setVertexBuffer(0, this.scene.vertexBuffer);
-    passEncoder.setIndexBuffer(this.scene.indexBuffer, "uint32");
-    if (this.scene.indexCount !== 0) {
-      passEncoder.drawIndexed(this.scene.indexCount);
+    if (this.wireframeMode && this.scene.wireframeIndexBuffer) {
+      passEncoder.setIndexBuffer(this.scene.wireframeIndexBuffer, "uint32");
+      if (this.scene.wireframeIndexCount !== 0) {
+        passEncoder.drawIndexed(this.scene.wireframeIndexCount);
+      }
+    } else {
+      passEncoder.setIndexBuffer(this.scene.indexBuffer, "uint32");
+      if (this.scene.indexCount !== 0) {
+        passEncoder.drawIndexed(this.scene.indexCount);
+      }
     }
     passEncoder.end();
 

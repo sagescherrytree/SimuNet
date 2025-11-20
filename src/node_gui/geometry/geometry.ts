@@ -6,11 +6,12 @@ export interface GeometryData {
   vertices: Float32Array; // TODO move these to GPU <- will no longer use these, delete later
   indices: Uint32Array; // TODO move to buffer.
   normals?: Float32Array; // TODO move to buffer.
+  wireframeIndices?: Uint32Array;
 
   // buffer VertexBuffer.
   // buffer IndexBuffer.
-  vertexBuffer: GPUBuffer; // vertex positions + normal
-  indexBuffer: GPUBuffer; // Indices.
+  vertexBuffer?: GPUBuffer; // vertex positions + normal
+  indexBuffer?: GPUBuffer; // Indices.
 
   id: string;
   sourceId?: string;
@@ -100,6 +101,38 @@ export function updateGeometry(id: string, newVertices: Float32Array) {
 
   geom.vertices = newVertices;
   addSubscribers.forEach((cb) => cb(geom)); // triggers renderer update
+}
+
+export function generateWireframeIndices(
+  triangleIndices: Uint32Array
+): Uint32Array {
+  const edges = new Set<string>();
+  const lineIndices: number[] = [];
+
+  for (let i = 0; i < triangleIndices.length; i += 3) {
+    const i0 = triangleIndices[i];
+    const i1 = triangleIndices[i + 1];
+    const i2 = triangleIndices[i + 2];
+
+    const edge1 = `${Math.min(i0, i1)}-${Math.max(i0, i1)}`;
+    const edge2 = `${Math.min(i1, i2)}-${Math.max(i1, i2)}`;
+    const edge3 = `${Math.min(i2, i0)}-${Math.max(i2, i0)}`;
+
+    if (!edges.has(edge1)) {
+      edges.add(edge1);
+      lineIndices.push(i0, i1);
+    }
+    if (!edges.has(edge2)) {
+      edges.add(edge2);
+      lineIndices.push(i1, i2);
+    }
+    if (!edges.has(edge3)) {
+      edges.add(edge3);
+      lineIndices.push(i2, i0);
+    }
+  }
+
+  return new Uint32Array(lineIndices);
 }
 
 export function calculateBounds(vertices: number[]): {

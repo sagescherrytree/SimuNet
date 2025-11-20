@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { GPUContext } from "./webgpu/GPUContext";
 import { SceneManager } from "./webgpu/SceneManager";
 import { Renderer } from "./webgpu/renderer";
@@ -246,6 +246,38 @@ export function App() {
             }
           >
             💡
+          </button>
+
+          {/* Wireframe Button */}
+          <button
+            onClick={() => {
+              if (cleanupRef.current.renderer) {
+                cleanupRef.current.renderer.toggleWireframe();
+              }
+            }}
+            title="Toggle Wireframe"
+            style={{
+              padding: "6px",
+              backgroundColor: "#444",
+              color: "#fff",
+              border: "1px solid #666",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "16px",
+              width: "32px",
+              height: "32px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.backgroundColor = "#555")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.backgroundColor = "#444")
+            }
+          >
+            🌐
           </button>
         </div>
 

@@ -1,6 +1,9 @@
 import { Node } from "./Node";
-import { calculateBounds, GeometryData } from "../geometry/geometry";
-import { NumberControl } from "../controls/NumberControl";
+import {
+  calculateBounds,
+  GeometryData,
+  generateWireframeIndices,
+} from "../geometry/geometry";
 import { Vec3, Vec3Control } from "../controls/Vec3Control"; // Import Vec3 type
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
 import { GPUContext } from "../../webgpu/GPUContext";
@@ -137,6 +140,8 @@ export class CubeNode extends Node implements IGeometryGenerator {
 
     const bounds = calculateBounds(finalVertices);
 
+    const wireframeIndices = generateWireframeIndices(new Uint32Array(indices));
+
     const gpu = GPUContext.getInstance();
 
     const vertexData = new Float32Array(
@@ -164,6 +169,7 @@ export class CubeNode extends Node implements IGeometryGenerator {
       vertices: new Float32Array(finalVertices),
       indices: new Uint32Array(indices),
       normals: new Float32Array(finalNormals),
+      wireframeIndices: wireframeIndices,
       vertexBuffer: vertexBuffer,
       indexBuffer: indexBuffer,
       id: this.id,

@@ -1,5 +1,9 @@
 import { Node } from "./Node";
-import { calculateBounds, GeometryData } from "../geometry/geometry";
+import {
+  calculateBounds,
+  generateWireframeIndices,
+  GeometryData,
+} from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
@@ -109,6 +113,8 @@ export class PlaneNode extends Node implements IGeometryGenerator {
 
     const bounds = calculateBounds(transformedVertices);
 
+    const wireframeIndices = generateWireframeIndices(new Uint32Array(indices));
+
     const gpu = GPUContext.getInstance();
 
     const vertexData = new Float32Array(transformedVertices.length * 2);
@@ -134,6 +140,7 @@ export class PlaneNode extends Node implements IGeometryGenerator {
     return {
       vertices: new Float32Array(transformedVertices),
       indices,
+      wireframeIndices: wireframeIndices,
       vertexBuffer: vertexBuffer,
       indexBuffer: indexBuffer,
       id: this.id,
