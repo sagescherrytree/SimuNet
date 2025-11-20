@@ -166,6 +166,12 @@ export class Renderer {
     });
   }
 
+  public toggleShader() {
+    this.shaderMode = this.shaderMode === 0 ? 1 : 0;
+    this.pipeline = this.createPipeline();
+    this.bindGroup = this.createBindGroup();
+  }
+
   private createDepthTexture() {
     this.depthTexture = this.gpu.device.createTexture({
       size: [this.gpu.canvas.width, this.gpu.canvas.height],

@@ -200,36 +200,86 @@ export function App() {
       </div>
 
       {/* Right: WebGPU Canvas */}
-      <canvas
-        id="gpu-canvas" // Matches the string passed to gpu.init()
-        ref={canvasRef}
-        style={{
-          flex: "0 0 40%",
-          height: "100%",
-          background: "#111",
-          display: "block",
-        }}
-      />
-
-      {selectedNode && (
+      <div style={{ flex: "0 0 40%", height: "100%", position: "relative" }}>
+        {/* Canvas Toolbar */}
         <div
           style={{
-            position: "fixed",
+            position: "absolute",
             top: "10px",
             right: "10px",
-            padding: "10px 20px",
-            backgroundColor: "rgba(0, 255, 0, 0.9)",
-            color: "black",
-            fontFamily: "monospace",
-            fontSize: "14px",
-            borderRadius: "5px",
-            zIndex: 10000,
-            pointerEvents: "none",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+            padding: "8px",
+            backgroundColor: "rgba(34, 34, 34, 0.95)",
+            borderRadius: "6px",
+            zIndex: 100,
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
           }}
         >
-          Selected: {selectedNode.id}
+          <button
+            onClick={() => {
+              if (cleanupRef.current.renderer) {
+                cleanupRef.current.renderer.toggleShader();
+              }
+            }}
+            title="Toggle Lighting Shader"
+            style={{
+              padding: "6px",
+              backgroundColor: "#444",
+              color: "#fff",
+              border: "1px solid #666",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "16px",
+              width: "32px",
+              height: "32px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.backgroundColor = "#555")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.backgroundColor = "#444")
+            }
+          >
+            💡
+          </button>
         </div>
-      )}
+
+        <canvas
+          id="gpu-canvas"
+          ref={canvasRef}
+          style={{
+            width: "100%",
+            height: "100%",
+            background: "#111",
+            display: "block",
+          }}
+        />
+
+        {selectedNode && (
+          <div
+            style={{
+              position: "absolute",
+              top: "10px",
+              left: "10px",
+              padding: "10px 20px",
+              backgroundColor: "rgba(0, 255, 0, 0.9)",
+              color: "black",
+              fontFamily: "monospace",
+              fontSize: "14px",
+              borderRadius: "5px",
+              zIndex: 10000,
+              pointerEvents: "none",
+            }}
+          >
+            Selected: {selectedNode.id}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
