@@ -3,6 +3,7 @@ import { GeometryData, calculateBounds } from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3, Vec3Control } from "../controls/Vec3Control";
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
+import { GPUContext } from "../../webgpu/GPUContext";
 
 export class IcosphereNode extends Node implements IGeometryGenerator {
   subdivisionsControl: NumberControl;
@@ -133,6 +134,8 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
 
     const indices = new Uint32Array(triIndices);
 
+    const baseNormals: number[][] = baseVertices.slice();
+
     // Transformation logic applied here
     const transformedVertices: number[] = this.transformVertices(
       baseVertices,
@@ -141,11 +144,39 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
       scale
     );
 
+    // TODO apply transforms to normals as well (inverse transpose of transformation matrix--rotate and invert scale)
+    // TODO can .flatMpa for applying transform
+    const transformedNormals: number[] = baseNormals.flat();
+
     const bounds = calculateBounds(transformedVertices);
+
+    const gpu = GPUContext.getInstance();
+
+    const vertexData = new Float32Array(
+      transformedVertices.length + transformedNormals.length
+    );
+    for (let i = 0; i < transformedVertices.length; ++i) {
+      vertexData[2 * i] = transformedVertices[i];
+      vertexData[2 * i + 1] = transformedNormals[i];
+    }
+    const vertexBuffer = gpu.device.createBuffer({
+      size: Math.max(vertexData.byteLength, 32), // Min size safety
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    });
+    gpu.device.queue.writeBuffer(vertexBuffer, 0, vertexData.buffer);
+
+    const indexData = new Uint32Array(indices);
+    const indexBuffer = gpu.device.createBuffer({
+      size: Math.max(indexData.byteLength, 32),
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+    });
+    gpu.device.queue.writeBuffer(indexBuffer, 0, indexData.buffer);
 
     return {
       vertices: new Float32Array(transformedVertices),
       indices,
+      vertexBuffer: vertexBuffer,
+      indexBuffer: indexBuffer,
       id: this.id,
       sourceId: this.id,
       boundingSphere: bounds.sphere,

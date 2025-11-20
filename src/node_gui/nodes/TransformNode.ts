@@ -4,6 +4,7 @@ import { GeometryData } from "../geometry/geometry";
 import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { Vec3 } from "../controls/Vec3Control";
+import { GPUContext } from "../../webgpu/GPUContext";
 
 export class TransformNode extends Node implements IGeometryModifier {
   translation: Vec3Control;
@@ -57,9 +58,13 @@ export class TransformNode extends Node implements IGeometryModifier {
       this.scale.value
     );
 
+    // TODO: Pass in vertex + index buffer from primitive node: input.vertexBuffer, input.indexBuffer
+    // TODO: Invoke compute shader.
+
     this.geometry = {
       vertices: transformed,
       indices: new Uint32Array(input.indices),
+      // TODO set vertexBuffer and indexBuffer (eventually, remove .vertices and .indices^)
       id: this.id,
       sourceId: input.sourceId ?? input.id,
     };

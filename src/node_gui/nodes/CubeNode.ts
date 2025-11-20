@@ -3,6 +3,7 @@ import { calculateBounds, GeometryData } from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3, Vec3Control } from "../controls/Vec3Control"; // Import Vec3 type
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
+import { GPUContext } from "../../webgpu/GPUContext";
 
 export class CubeNode extends Node implements IGeometryGenerator {
   positionControl: Vec3Control;
@@ -136,10 +137,35 @@ export class CubeNode extends Node implements IGeometryGenerator {
 
     const bounds = calculateBounds(finalVertices);
 
+    const gpu = GPUContext.getInstance();
+
+    const vertexData = new Float32Array(
+      finalVertices.length + finalNormals.length
+    );
+    for (let i = 0; i < finalVertices.length; ++i) {
+      vertexData[2 * i] = finalVertices[i];
+      vertexData[2 * i + 1] = finalNormals[i];
+    }
+
+    const vertexBuffer = gpu.device.createBuffer({
+      size: Math.max(vertexData.byteLength, 32), // Min size safety
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    });
+    gpu.device.queue.writeBuffer(vertexBuffer, 0, vertexData.buffer);
+
+    const indexData = new Uint32Array(indices);
+    const indexBuffer = gpu.device.createBuffer({
+      size: Math.max(indexData.byteLength, 32),
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+    });
+    gpu.device.queue.writeBuffer(indexBuffer, 0, indexData.buffer);
+
     return {
       vertices: new Float32Array(finalVertices),
       indices: new Uint32Array(indices),
       normals: new Float32Array(finalNormals),
+      vertexBuffer: vertexBuffer,
+      indexBuffer: indexBuffer,
       id: this.id,
       sourceId: this.id,
       boundingSphere: bounds.sphere,

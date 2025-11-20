@@ -3,6 +3,7 @@ import { calculateBounds, GeometryData } from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
+import { GPUContext } from "../../webgpu/GPUContext";
 
 export class PlaneNode extends Node implements IGeometryGenerator {
   widthControl: NumberControl;
@@ -35,6 +36,7 @@ export class PlaneNode extends Node implements IGeometryGenerator {
       update,
       5.0
     );
+    // TODO add subdivisions option
 
     this.geometry = this.generateGeometry();
   }
@@ -107,9 +109,33 @@ export class PlaneNode extends Node implements IGeometryGenerator {
 
     const bounds = calculateBounds(transformedVertices);
 
+    const gpu = GPUContext.getInstance();
+
+    const vertexData = new Float32Array(transformedVertices.length * 2);
+    const upVector = [0, 1, 0]; // TODO apply transform
+    for (let i = 0; i < transformedVertices.length; ++i) {
+      vertexData[2 * i] = transformedVertices[i];
+      vertexData[2 * i + 1] = upVector[i % 3];
+    }
+
+    const vertexBuffer = gpu.device.createBuffer({
+      size: Math.max(vertexData.byteLength, 32), // Min size safety
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    });
+    gpu.device.queue.writeBuffer(vertexBuffer, 0, vertexData.buffer);
+
+    const indexData = new Uint32Array(indices);
+    const indexBuffer = gpu.device.createBuffer({
+      size: Math.max(indexData.byteLength, 32),
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+    });
+    gpu.device.queue.writeBuffer(indexBuffer, 0, indexData.buffer);
+
     return {
       vertices: new Float32Array(transformedVertices),
       indices,
+      vertexBuffer: vertexBuffer,
+      indexBuffer: indexBuffer,
       id: this.id,
       sourceId: this.id,
       boundingSphere: bounds.sphere,

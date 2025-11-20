@@ -3,6 +3,7 @@ import { calculateBounds, GeometryData } from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryGenerator } from "../interfaces/NodeCapabilities";
+import { GPUContext } from "../../webgpu/GPUContext";
 
 export class TorusNode extends Node implements IGeometryGenerator {
   majorRadiusControl: NumberControl;
@@ -115,11 +116,15 @@ export class TorusNode extends Node implements IGeometryGenerator {
     const vertices: number[] = [];
     const indices: number[] = [];
 
+    const baseNormals: number[] = [];
+
     for (let i = 0; i <= tubularSegments; i++) {
       const u = (i / tubularSegments) * 2 * Math.PI;
       const cosU = Math.cos(u);
       const sinU = Math.sin(u);
 
+      const innerCircleX = Math.cos(u) * R;
+      const innerCircleZ = Math.sin(u) * R;
       for (let j = 0; j <= radialSegments; j++) {
         const v = (j / radialSegments) * 2 * Math.PI;
         const cosV = Math.cos(v);
@@ -129,6 +134,12 @@ export class TorusNode extends Node implements IGeometryGenerator {
         const base_x = tubeRadius * cosU;
         const base_y = r * sinV;
         const base_z = tubeRadius * sinU;
+
+        const dX = base_x - innerCircleX;
+        const dY = base_y;
+        const dZ = base_z - innerCircleZ;
+        const dLength = Math.sqrt(dX * dX + dY * dY + dZ * dZ);
+        baseNormals.push(dX / dLength, dY / dLength, dZ / dLength);
 
         const [rot_x, rot_y, rot_z] = this.rotatePoint(
           base_x,
@@ -160,9 +171,32 @@ export class TorusNode extends Node implements IGeometryGenerator {
 
     const bounds = calculateBounds(vertices);
 
+    const gpu = GPUContext.getInstance();
+
+    // TODO transform normals too
+    const vertexData = new Float32Array(vertices.length + baseNormals.length);
+    for (let i = 0; i < vertices.length; ++i) {
+      vertexData[2 * i] = vertices[i];
+      vertexData[2 * i + 1] = baseNormals[i];
+    }
+    const vertexBuffer = gpu.device.createBuffer({
+      size: Math.max(vertexData.byteLength, 32), // Min size safety
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    });
+    gpu.device.queue.writeBuffer(vertexBuffer, 0, vertexData.buffer);
+
+    const indexData = new Uint32Array(indices);
+    const indexBuffer = gpu.device.createBuffer({
+      size: Math.max(indexData.byteLength, 32),
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+    });
+    gpu.device.queue.writeBuffer(indexBuffer, 0, indexData.buffer);
+
     return {
       vertices: new Float32Array(vertices),
       indices: new Uint32Array(indices),
+      vertexBuffer: vertexBuffer,
+      indexBuffer: indexBuffer,
       id: this.id,
       sourceId: this.id,
       boundingSphere: bounds.sphere,
