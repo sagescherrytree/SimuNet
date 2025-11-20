@@ -25,6 +25,8 @@ export abstract class Node
 
   public isRemoved: boolean;
 
+  public outputEnabled: boolean = true;
+
   public onUpdate?: () => void;
 
   constructor(name: string) {
@@ -41,5 +43,17 @@ export abstract class Node
   setUpdateCallback(callback: () => void) {
     this.updateBehavior.setUpdateCallback(callback);
     this.onUpdate = callback;
+  }
+
+  public toggleOutput() {
+    this.outputEnabled = !this.outputEnabled;
+
+    // Trigger update through the callback if available
+    if (this.onUpdate) {
+      this.onUpdate();
+    } else {
+      // Fallback: trigger local update
+      this.updateBehavior.triggerUpdate();
+    }
   }
 }

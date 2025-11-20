@@ -51,7 +51,7 @@ export function runAddSubscribers(geom: GeometryData) {
 export function getGeometries() {
   geometries.length = 0;
   for (const n of nodesForGeometries) {
-    if (n.geometry) {
+    if (n.geometry && n.outputEnabled) {
       geometries.push(n.geometry);
     }
   }

@@ -1,6 +1,10 @@
 // src/components/engine/GraphEngine.ts
 import { NodeEditor, Root } from "rete";
-import { addGeometry, removeGeometry, geometries, clearGeometries, runAddSubscribers, nodesForGeometries, runRebuild } from "../geometry/geometry";
+import {
+  clearGeometries,
+  nodesForGeometries,
+  runRebuild,
+} from "../geometry/geometry";
 import {
   isExecutable,
   isModifier,
@@ -43,11 +47,9 @@ export class GraphEngine {
           console.log(target);
           await target.execute();
         }
-          
       }
       await this.propagate(target.id); // TODO is await needed?
     }
-    
   }
 
   // Handle new connection logic
@@ -55,17 +57,15 @@ export class GraphEngine {
     const source = this.editor.getNode(connection.source);
 
     await this.propagate(connection.source);
-    
   }
 
   //Handle node creation
   async onNodeCreated(node: any) {
     node.setUpdateCallback(async () => {
-      await this.propagate(node.id)
+      await this.propagate(node.id);
       runRebuild();
     });
   }
-
 
   // Helper to parse "geometry0", "geometry1"
   private getInputIndex(key: string): number {
@@ -85,7 +85,7 @@ export class GraphEngine {
           break;
         case "nodecreate":
           // if (isGenerator(context.data)) {
-            allNodes.push(context.data);
+          allNodes.push(context.data);
           // }
           break;
         case "noderemove":
@@ -99,25 +99,24 @@ export class GraphEngine {
     console.log(allNodes);
     nodesForGeometries.length = 0;
     let addThisOrChildren = (node: Node) => {
-      const outConn = allConnections.filter(conn => conn.source === node.id);
+      const outConn = allConnections.filter((conn) => conn.source === node.id);
       if (outConn.length === 0) {
         console.log("Adding node: ");
         console.log(node);
         nodesForGeometries.push(node);
       } else {
-        
         for (let c of outConn) {
           const target = this.editor.getNode(c.target);
           addThisOrChildren(target);
         }
       }
-    }
+    };
     for (let n of allNodes) {
       if (isGenerator(n)) {
         addThisOrChildren(n);
       }
     }
     console.log(nodesForGeometries);
-    runRebuild()
+    runRebuild();
   }
 }

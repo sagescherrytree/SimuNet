@@ -167,7 +167,13 @@ export function CustomNode({
   const selected = data.selected || false;
   const { id, label, width, height } = data;
 
-  const nodeInstance = data.node;
+  const nodeInstance = data as Node;
+
+  console.log(`🔍 CustomNode render - ${label}:`, {
+    hasToggleOutput: typeof nodeInstance.toggleOutput === "function",
+    hasGeometry: !!nodeInstance.geometry,
+    outputEnabled: nodeInstance.outputEnabled,
+  });
 
   sortByIndex(inputs);
   sortByIndex(outputs);
@@ -215,6 +221,62 @@ export function CustomNode({
       <div className="title" data-testid="title">
         {label}
       </div>
+
+      {nodeInstance.geometry && (
+        <div
+          style={{
+            position: "absolute",
+            top: "12px",
+            right: "8px",
+            pointerEvents: "auto",
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <button
+            onPointerDown={(e) => {
+              console.log(`👆 Button pointer down for node: ${label}`);
+              e.stopPropagation(); // Stop Rete from seeing this
+              e.preventDefault();
+            }}
+            onClick={(e) => {
+              console.log(`👆 Button clicked for node: ${label}`);
+              e.stopPropagation();
+              e.preventDefault();
+              nodeInstance.toggleOutput();
+            }}
+            style={{
+              padding: "2px 2px",
+              fontSize: "10px",
+              background: nodeInstance.outputEnabled ? "#3b3b3bff" : "#999",
+              color: "transparent",
+              border: "1px solid rgba(255,255,255,0.3)",
+              borderRadius: "4px",
+              cursor: "pointer",
+              pointerEvents: "auto",
+              display: "block",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = nodeInstance.outputEnabled
+                ? "#222222ff"
+                : "#777";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = nodeInstance.outputEnabled
+                ? "#3b3b3bff"
+                : "#999";
+            }}
+            title={
+              nodeInstance.outputEnabled
+                ? "Hide from viewport"
+                : "Show in viewport"
+            }
+          >
+            {nodeInstance.outputEnabled ? "🟢" : "⚪"}
+          </button>
+        </div>
+      )}
 
       {/* Controls */}
       {controls.length > 0 && (

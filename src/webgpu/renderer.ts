@@ -1,5 +1,3 @@
-import lambertShader from "./shaders/lambertShader.wgsl";
-import positionShader from "./shaders/positionShader.wgsl";
 import { Camera } from "./stage/camera";
 import { GPUContext } from "./GPUContext";
 import { SceneManager } from "./SceneManager";
