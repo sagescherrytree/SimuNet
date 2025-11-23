@@ -5,6 +5,8 @@ import { Vec3Control } from "../controls/Vec3Control";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { Vec3 } from "../controls/Vec3Control";
 import { GPUContext } from "../../webgpu/GPUContext";
+// Import transform compute shader.
+import transformComputeShader from '../../webgpu/shaders/transform.cs.wgsl';
 
 export class TransformNode extends Node implements IGeometryModifier {
   translation: Vec3Control;
@@ -12,6 +14,15 @@ export class TransformNode extends Node implements IGeometryModifier {
   scale: Vec3Control;
 
   public inputGeometry?: GeometryData;
+
+  transformUniformBuffer?: GPUBuffer;
+
+  transformComputeBindGroupLayout: GPUBindGroupLayout;
+  transformComputeBindGroup: GPUBindGroup;
+  transformComputePipeline: GPUComputePipeline;
+
+  // Workgroup size.
+  workgroupSize = 64;
 
   constructor() {
     super("TransformNode");
@@ -66,12 +77,48 @@ export class TransformNode extends Node implements IGeometryModifier {
     );
 
     // TODO: Pass in vertex + index buffer from primitive node: input.vertexBuffer, input.indexBuffer
+    // NOTE: the division by 3 only applies if verts only contains positions.
+    const vertexCount = input.vertices.length / 3;
+
+    // GPU stuffs.
+    const gpu = GPUContext.getInstance();
+
+    // Set up buffers.
+    // Input buffers for verts and indices.
+    const vertexBuffer = input.vertexBuffer;
+    const indexBuffer = input.indexBuffer;
+
+    console.log("TransformNode: incoming vertexBuffer", vertexBuffer);
+    console.log("TransformNode: incoming vertex buffer size:", vertexBuffer?.size);
+
+    // Output buffer for transformed vertices.
+    const outputVertexBuffer = gpu.device.createBuffer({
+      size: input.vertexBuffer!.size,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_SRC,
+    });
+
     // TODO: Invoke compute shader.
+    this.updateUniformBuffer();
+    this.setupComputePipeline(vertexBuffer!, outputVertexBuffer);
+
+    // Invoke compute pass.
+    const encoder = gpu.device.createCommandEncoder();
+    const pass = encoder.beginComputePass();
+    pass.setPipeline(this.transformComputePipeline);
+    pass.setBindGroup(0, this.transformComputeBindGroup);
+
+    const workgroups = Math.ceil(vertexCount / this.workgroupSize);
+    pass.dispatchWorkgroups(workgroups);
+
+    pass.end();
+    gpu.device.queue.submit([encoder.finish()]);
 
     this.geometry = {
       vertices: transformed,
       indices: new Uint32Array(input.indices),
       // TODO set vertexBuffer and indexBuffer (eventually, remove .vertices and .indices^)
+      vertexBuffer: outputVertexBuffer,
+      indexBuffer: indexBuffer,
       id: this.id,
       sourceId: input.sourceId ?? input.id,
     };
@@ -84,6 +131,68 @@ export class TransformNode extends Node implements IGeometryModifier {
 
     return this.geometry;
   }
+
+  updateUniformBuffer() {
+    const gpu = GPUContext.getInstance();
+    const data = new Float32Array([
+      this.translation.value.x, this.translation.value.y, this.translation.value.z, 0,
+      this.rotation.value.x, this.rotation.value.y, this.rotation.value.z, 0,
+      this.scale.value.x, this.scale.value.y, this.scale.value.z, 0
+    ]);
+
+    if (!this.transformUniformBuffer) {
+      this.transformUniformBuffer = gpu.device.createBuffer({
+        size: data.byteLength,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+    }
+    gpu.device.queue.writeBuffer(this.transformUniformBuffer, 0, data);
+  }
+
+  // TODO: create bindgroups and compute pipeline to pass into compute shader.
+  // Pass in buffers for input vertices.
+  setupComputePipeline(vertexBuffer: GPUBuffer, outputVertexBuffer: GPUBuffer) {
+    const gpu = GPUContext.getInstance();
+
+    this.transformComputeBindGroupLayout = gpu.device.createBindGroupLayout({
+      label: "transform compute BGL",
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
+        { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+        { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+      ]
+    });
+
+    const shaderModule = gpu.device.createShaderModule({
+      label: "transform compute shader",
+      code: transformComputeShader,
+    });
+
+    const pipelineLayout = gpu.device.createPipelineLayout({
+      label: "transform compute layout",
+      bindGroupLayouts: [this.transformComputeBindGroupLayout]
+    });
+
+    this.transformComputePipeline = gpu.device.createComputePipeline({
+      label: "transform compute pipeline",
+      layout: pipelineLayout,
+      compute: { module: shaderModule, entryPoint: "main" },
+    });
+
+    this.transformComputeBindGroup = gpu.device.createBindGroup({
+      layout: this.transformComputeBindGroupLayout,
+      entries: [
+        { binding: 0, resource: { buffer: vertexBuffer } },
+        { binding: 1, resource: { buffer: outputVertexBuffer } },
+        { binding: 2, resource: { buffer: this.transformUniformBuffer! } },
+      ]
+    });
+
+    console.log("TransformNode: compute shader loaded");
+    console.log("TransformNode: pipeline created:", this.transformComputePipeline);
+    console.log("TransformNode: bind group:", this.transformComputeBindGroup);
+  }
+
 
   async execute(inputs?: Record<string, any>) {
     const geom = inputs?.geometry?.[0] as GeometryData;

@@ -154,14 +154,14 @@ export class CubeNode extends Node implements IGeometryGenerator {
 
     const vertexBuffer = gpu.device.createBuffer({
       size: Math.max(vertexData.byteLength, 32), // Min size safety
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
     gpu.device.queue.writeBuffer(vertexBuffer, 0, vertexData.buffer);
 
     const indexData = new Uint32Array(indices);
     const indexBuffer = gpu.device.createBuffer({
       size: Math.max(indexData.byteLength, 32),
-      usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
     gpu.device.queue.writeBuffer(indexBuffer, 0, indexData.buffer);
 

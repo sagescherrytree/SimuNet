@@ -1,13 +1,3 @@
-struct Camera {
-  viewProj : mat4x4<f32>
-};
-struct Model {
-  model : mat4x4<f32>
-};
-
-@binding(0) @group(0) var<uniform> camera : Camera;
-@binding(1) @group(0) var<uniform> model : Model;
-
 struct Transformation {
   translate : vec3<f32>,
   rotation : vec3<f32>,
@@ -15,43 +5,45 @@ struct Transformation {
 };
 
 struct VertexIn {
-  @location(0) position : vec3<f32>,
-  @location(1) normal : vec3<f32>
+  position : vec3<f32>,
+  normal : vec3<f32>
 }
 
-@binding(0) var<storage, read> vertices: vec4<f32>;
+// Read in from TransformNode.ts compute pipeline.
+@group(0) @binding(0) var<storage, read> inputVertices: array<VertexIn>;
 
-fn get_rotation_values(rx: f32, ry: f32, rz: f32)
-    -> struct {
-        sx: f32, cx: f32,
-        sy: f32, cy: f32,
-        sz: f32, cz: f32
-    }
-{
-    let sx = sin(rx);
-    let cx = cos(rx);
+@group(0) @binding(1) var<storage, read_write> outputVertices: array<VertexIn>;
 
-    let sy = sin(ry);
-    let cy = cos(ry);
+@group(0) @binding(2) var<uniform> transform: Transformation;
 
-    let sz = sin(rz);
-    let cz = cos(rz);
-
-    return struct {
-        sx: sx, cx: cx,
-        sy: sy, cy: cy,
-        sz: sz, cz: cz
-    };
+struct RotVals {
+    sx: f32, cx: f32,
+    sy: f32, cy: f32,
+    sz: f32, cz: f32,
 }
 
-@compute
-fn main(vertexData: VertexIn) {
-    let v = vertexData.position;
-    let t = params.translation;
-    let r = params.rotation;
-    let s = params.scale;
+fn compute_rot(rx: f32, ry: f32, rz: f32) -> RotVals {
+    return RotVals(
+        sin(rx), cos(rx),
+        sin(ry), cos(ry),
+        sin(rz), cos(rz)
+    );
+}
 
-    let rot = get_rotation_values(r.x, r.y, r.z);
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+
+    let index = id.x;
+    if (index >= arrayLength(&inputVertices)) { return; }
+
+    let curr = inputVertices[index];
+    let v = curr.position;
+
+    let t = transform.translate;
+    let r = transform.rotation;
+    let s = transform.scale;
+
+    let rot = compute_rot(r.x, r.y, r.z);
 
     var x = v.x * s.x;
     var y = v.y * s.y;
@@ -59,16 +51,11 @@ fn main(vertexData: VertexIn) {
 
     var y1 = y * rot.cx - z * rot.sx;
     var z1 = y * rot.sx + z * rot.cx;
-
     var x2 = x * rot.cy + z1 * rot.sy;
     var z2 = -x * rot.sy + z1 * rot.cy;
-
     var x3 = x2 * rot.cz - y1 * rot.sz;
     var y3 = x2 * rot.sz + y1 * rot.cz;
 
-    outVertices[index] = vec3f(
-        x3 + t.x,
-        y3 + t.y,
-        z2 + t.z
-    );
+    outputVertices[index].position = vec3<f32>(x3 + t.x, y3 + t.y, z2 + t.z);
+    outputVertices[index].normal = curr.normal;
 }
