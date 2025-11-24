@@ -6,6 +6,8 @@ import { IVertexDeformer } from "../interfaces/NodeCapabilities";
 import { GPUContext } from "../../webgpu/GPUContext";
 // Import noise compute shader.
 import noiseComputeShader from '../../webgpu/shaders/noise.cs.wgsl';
+import fbmNoiseComputeShader from '../../webgpu/shaders/fbmNoise.cs.wgsl';
+import worleyNoiseComputeShader from '../../webgpu/shaders/worleyNoise.cs.wgsl';
 
 export class NoiseNode
   extends Node
@@ -25,6 +27,10 @@ export class NoiseNode
   scaleControl: NumberControl;
   seedControl: NumberControl;
 
+  // TODO better control--dropdown? need to setup
+  noiseStyleControl: NumberControl;
+  modificationStyleControl: NumberControl;
+  
   constructor() {
     super("NoiseNode");
 
@@ -41,6 +47,10 @@ export class NoiseNode
     this.strengthControl = new NumberControl("Strength", 0.5, onChange, 0.1);
     this.scaleControl = new NumberControl("Scale", 1.0, onChange, 0.1);
     this.seedControl = new NumberControl("Seed", 0, onChange, 1, 0, 1000);
+    this.noiseStyleControl = new NumberControl("Noise Type", 0, onChange, 1, 0, 2);
+    this.modificationStyleControl = new NumberControl("Transformation Type", 0, onChange, 1, 0, 1);
+    
+
   }
 
   setInputGeometry(geometry: GeometryData) {
@@ -131,7 +141,7 @@ export class NoiseNode
       this.strengthControl.value,
       this.scaleControl.value,
       this.seedControl.value,
-      0.0
+      this.modificationStyleControl.value,
     ]);
 
     if (!this.deformationUniformBuffer) {
@@ -157,10 +167,24 @@ export class NoiseNode
       ]
     });
 
-    const shaderModule = gpu.device.createShaderModule({
-      label: "noise deformation compute shader",
-      code: noiseComputeShader,
-    });
+    let shaderModule;
+    if (this.noiseStyleControl.value === 1) {
+      shaderModule = gpu.device.createShaderModule({
+        label: "worley noise deformation compute shader",
+        code: worleyNoiseComputeShader,
+      });
+      console.log(shaderModule);
+    } else if (this.noiseStyleControl.value === 2) {
+      shaderModule = gpu.device.createShaderModule({
+        label: "fbm noise deformation compute shader",
+        code: fbmNoiseComputeShader,
+      });
+    } else {
+      shaderModule = gpu.device.createShaderModule({
+        label: "basic noise deformation compute shader",
+        code: noiseComputeShader,
+      });
+    }
 
     const pipelineLayout = gpu.device.createPipelineLayout({
       label: "noise deformation compute layout",
@@ -234,6 +258,8 @@ export class NoiseNode
       strength: this.strengthControl,
       scale: this.scaleControl,
       seed: this.seedControl,
+      noiseStyle: this.noiseStyleControl,
+      modificationStyle: this.modificationStyleControl,
     };
   }
 }

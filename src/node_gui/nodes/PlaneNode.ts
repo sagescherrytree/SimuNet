@@ -15,6 +15,9 @@ export class PlaneNode extends Node implements IGeometryGenerator {
   positionControl: Vec3Control;
   rotationControl: Vec3Control;
 
+  // Subdivision controller.
+  subdivisionControl: NumberControl;
+
   constructor() {
     super("PlaneNode");
 
@@ -40,7 +43,8 @@ export class PlaneNode extends Node implements IGeometryGenerator {
       update,
       5.0
     );
-    // TODO add subdivisions option
+    // TODO add subdivisions option.
+    this.subdivisionControl = new NumberControl("Subdivisions", 1, update, 1, 1);
 
     this.geometry = this.generateGeometry();
   }
@@ -86,6 +90,7 @@ export class PlaneNode extends Node implements IGeometryGenerator {
     const height = this.heightControl.value ?? 2.0;
     const pos = this.positionControl.value;
     const rot = this.rotationControl.value;
+    const subdivisions = Math.max(1, Math.floor(this.subdivisionControl.value ?? 0));
 
     const degToRad = Math.PI / 180;
     const rx = rot.x * degToRad;
@@ -102,26 +107,59 @@ export class PlaneNode extends Node implements IGeometryGenerator {
       [-w2, 0, h2],
     ];
 
-    const transformedVertices: number[] = [];
-    for (const [x, y, z] of baseVertices) {
-      const [rx_out, ry_out, rz_out] = this.rotatePoint(x, y, z, rx, ry, rz);
+    const gridCount = subdivisions + 1;
+    const vertexCount = gridCount * gridCount;
 
-      transformedVertices.push(rx_out + pos.x, ry_out + pos.y, rz_out + pos.z);
+    // Add subdivide logic on CPU.
+    const transformedVertices: number[] = [];
+
+    // Add vertices based on w2/subdivisions, h2/subdivisions.
+    for (let j = 0; j < gridCount; j++) {
+      const hSubdivisions = j / subdivisions;
+      const dH = -h2 + hSubdivisions * height;
+      for (let i = 0; i < gridCount; i++) {
+        const wSubdivisions = i / subdivisions;
+        const dW = -w2 + wSubdivisions * width;
+
+        const [rx_out, ry_out, rz_out] = this.rotatePoint(dW, 0, dH, rx, ry, rz);
+
+        transformedVertices.push(rx_out + pos.x, ry_out + pos.y, rz_out + pos.z);
+      }
     }
 
-    const indices = new Uint32Array([0, 2, 1, 0, 3, 2]);
+    // for (const [x, y, z] of baseVertices) {
+    //   const [rx_out, ry_out, rz_out] = this.rotatePoint(x, y, z, rx, ry, rz);
+
+    //   transformedVertices.push(rx_out + pos.x, ry_out + pos.y, rz_out + pos.z);
+    // }
+
+    // const indices = new Uint32Array([0, 2, 1, 0, 3, 2]);
 
     const bounds = calculateBounds(transformedVertices);
+
+    // Updating indices.
+    const indexArray : number[] = [];
+    for (let j = 0; j < gridCount - 1; ++j) {
+      for (let i = 0; i < gridCount - 1; ++i) {
+        indexArray.push(i + j * gridCount);
+        indexArray.push(i + (j + 1) * gridCount);
+        indexArray.push(i + 1 + j * gridCount);
+        indexArray.push(i + 1 + j * gridCount);
+        indexArray.push(i + (j + 1) * gridCount);
+        indexArray.push(i + 1 + (j + 1) * gridCount);
+      }
+    }
+    const indices = new Uint32Array(indexArray);
 
     const wireframeIndices = generateWireframeIndices(new Uint32Array(indices));
 
     const gpu = GPUContext.getInstance();
 
     // TODO adapt for subdivision options
-    const vertexData = new Float32Array(4 * 8);
+    const vertexData = new Float32Array(vertexCount * 8);
     const upVector = [0, 1, 0]; // TODO apply transform
 
-    for (let i = 0; i < transformedVertices.length / 3; i++) {
+    for (let i = 0; i < vertexCount; i++) {
       vertexData[8 * i] = transformedVertices[i * 3];
       vertexData[8 * i + 1] = transformedVertices[i * 3 + 1];
       vertexData[8 * i + 2] = transformedVertices[i * 3 + 2];
@@ -131,8 +169,6 @@ export class PlaneNode extends Node implements IGeometryGenerator {
       vertexData[8 * i + 6] = upVector[2];
       vertexData[8 * i + 7] = 0;
     }
-
-
 
     const vertexBuffer = gpu.device.createBuffer({
       size: Math.max(vertexData.byteLength, 32), // Min size safety
@@ -180,6 +216,7 @@ export class PlaneNode extends Node implements IGeometryGenerator {
       height: this.heightControl,
       position: this.positionControl,
       rotation: this.rotationControl,
+      subdivision: this.subdivisionControl,
     };
   }
 }
