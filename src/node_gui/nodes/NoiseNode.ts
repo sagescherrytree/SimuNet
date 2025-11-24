@@ -3,12 +3,23 @@ import { GeometryData, removeGeometry } from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { IVertexDeformer } from "../interfaces/NodeCapabilities";
+import { GPUContext } from "../../webgpu/GPUContext";
+// Import noise compute shader.
+import noiseComputeShader from '../../webgpu/shaders/noise.cs.wgsl';
 
 export class NoiseNode
   extends Node
-  implements IGeometryModifier, IVertexDeformer
-{
+  implements IGeometryModifier, IVertexDeformer {
   public inputGeometry?: GeometryData;
+
+  deformationUniformBuffer?: GPUBuffer;
+
+  deformationComputeBindGroupLayout: GPUBindGroupLayout;
+  deformationComputeBindGroup: GPUBindGroup;
+  deformationComputePipeline: GPUComputePipeline;
+
+  // Workgroup size.
+  workgroupSize = 64;
 
   strengthControl: NumberControl;
   scaleControl: NumberControl;
@@ -40,17 +51,141 @@ export class NoiseNode
   applyModification(input: GeometryData): GeometryData | undefined {
     if (!input) return;
 
-    const deformed = this.deformVertices(input.vertices);
+    const stride = 8 * 4; // 32 bytes to fit vec4 padding.
+    const vertexCount = input.vertexBuffer!.size / stride;
+
+    // GPU stuffs.
+    const gpu = GPUContext.getInstance();
+
+    // Set up buffers.
+    // Input buffers for verts and indices.
+    const vertexBuffer = input.vertexBuffer;
+    const indexBuffer = input.indexBuffer;
+
+    console.log("TransformNode: incoming vertexBuffer", vertexBuffer);
+    console.log("TransformNode: incoming vertex buffer size:", vertexBuffer?.size);
+
+    // Output buffer for transformed vertices.
+    const outputVertexBuffer = gpu.device.createBuffer({
+      size: input.vertexBuffer!.size,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_SRC,
+    });
+
+    this.updateUniformBuffer();
+    this.setupComputePipeline(vertexBuffer!, outputVertexBuffer);
+
+    // Invoke compute pass.
+    const encoder = gpu.device.createCommandEncoder();
+    const pass = encoder.beginComputePass();
+    pass.setPipeline(this.deformationComputePipeline);
+    pass.setBindGroup(0, this.deformationComputeBindGroup);
+
+    const workgroups = Math.ceil(vertexCount / this.workgroupSize);
+    pass.dispatchWorkgroups(workgroups);
+
+    pass.end();
+    gpu.device.queue.submit([encoder.finish()]);
+
+    // Debug.
+    gpu.device.queue.onSubmittedWorkDone().then(async () => {
+      const readBuffer = gpu.device.createBuffer({
+        size: outputVertexBuffer.size,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+      });
+
+      const enc = gpu.device.createCommandEncoder();
+      enc.copyBufferToBuffer(
+        outputVertexBuffer,
+        0,
+        readBuffer,
+        0,
+        outputVertexBuffer.size
+      );
+      gpu.device.queue.submit([enc.finish()]);
+
+      await readBuffer.mapAsync(GPUMapMode.READ);
+      const gpuVerts = new Float32Array(readBuffer.getMappedRange());
+      console.log("[NoiseNode.ts] GPU output vertices:", gpuVerts);
+    });
+
+    // const deformed = this.deformVertices(input.vertices);
 
     this.geometry = {
-      vertices: deformed,
+      vertices: new Float32Array(input.vertices),
       indices: new Uint32Array(input.indices),
+      vertexBuffer: outputVertexBuffer,
+      indexBuffer: indexBuffer,
       id: this.id,
       sourceId: input.sourceId ?? input.id,
     };
 
     return this.geometry;
   }
+
+  updateUniformBuffer() {
+    const gpu = GPUContext.getInstance();
+
+    // strength, scale, seed, padding
+    const data = new Float32Array([
+      this.strengthControl.value,
+      this.scaleControl.value,
+      this.seedControl.value,
+      0.0
+    ]);
+
+    if (!this.deformationUniformBuffer) {
+      this.deformationUniformBuffer = gpu.device.createBuffer({
+        size: data.byteLength,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+    }
+
+    gpu.device.queue.writeBuffer(this.deformationUniformBuffer, 0, data);
+  }
+
+  // Pass in buffers for input vertices.
+  setupComputePipeline(vertexBuffer: GPUBuffer, outputVertexBuffer: GPUBuffer) {
+    const gpu = GPUContext.getInstance();
+
+    this.deformationComputeBindGroupLayout = gpu.device.createBindGroupLayout({
+      label: "noise deformation compute BGL",
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
+        { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+        { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+      ]
+    });
+
+    const shaderModule = gpu.device.createShaderModule({
+      label: "noise deformation compute shader",
+      code: noiseComputeShader,
+    });
+
+    const pipelineLayout = gpu.device.createPipelineLayout({
+      label: "noise deformation compute layout",
+      bindGroupLayouts: [this.deformationComputeBindGroupLayout]
+    });
+
+    this.deformationComputePipeline = gpu.device.createComputePipeline({
+      label: "noise deformation compute pipeline",
+      layout: pipelineLayout,
+      compute: { module: shaderModule, entryPoint: "main" },
+    });
+
+    this.deformationComputeBindGroup = gpu.device.createBindGroup({
+      layout: this.deformationComputeBindGroupLayout,
+      entries: [
+        { binding: 0, resource: { buffer: vertexBuffer } },
+        { binding: 1, resource: { buffer: outputVertexBuffer } },
+        { binding: 2, resource: { buffer: this.deformationUniformBuffer! } },
+      ]
+    });
+
+    console.log("NoiseNode: compute shader loaded");
+    console.log("NoiseNode: pipeline created:", this.deformationComputePipeline);
+    console.log("NoiseNode: bind group:", this.deformationComputeBindGroup);
+  }
+
 
   deformVertices(vertices: Float32Array): Float32Array {
     const deformed = new Float32Array(vertices.length);
