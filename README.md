@@ -33,14 +33,52 @@ We aim to construct the system such that we can easily add in new simulations as
 
 For Milestone 1, we completed the skeleton for our node network. We used the Rete.js library to construct the node GUI, and we set up the basic renderer.ts pipeline to render cubes and icospheres to the viewport. We also implemented the node connection structure (naive), and transform node which modifies the input geometry. 
 
+![](images/spinning_coob.gif)
+
 ## Milestone 2
 
 #### Milestone 2 Goals
 
-- [] Noise and deformation node (GPU).
-- [] More base geometries.
-- [] Rendering options (basic lambert shader).
-- [] Saving/loading node network.
+- [X] Restructured Milestone 1 code.
+- [X] Noise and deformation node (GPU).
+- [X] More base geometries.
+- [X] Rendering options (basic lambert shader).
+
+### Code Restructuring
+
+### New Nodes and Features
+
+#### Noise Node
+
+Our noise node now contains three options for noise.
+
+| ![](images/simpleNoise.png) | ![](images/worleyNoise.png) | ![](images/perlinNoise.png) |
+|:--:|:--:|:--:|
+| Simple Noise | Worley Noise | Perlin Noise |
+
+The noise modifications all now run via compute shaders.
+
+#### Plane Node
+
+Our plane node now includes subdivisions! 
+
+| ![](images/subdivision=1.png) | ![](images/subdivision=16.png) |
+|:--:|:--:|
+| Subdivision = 1 | Subdivision = 16 |
+
+### Compute Pipeline
+
+![](images/computePipeline.png)
+
+In this milestone, we introduce a compute pipeline to run our modifications to each of the primitives that we create. Illustrated in the diagram above, we create vertex buffers and index buffers to hold the primitive data. In the modification nodes (e.g. the TransformNode in the example), the vertex buffers and index buffers get passed through the node, and will be updated for any new modification. 
+
+Let us take the TransformNode as an example to look at how modifications are propagated. Each node, as stated above, will take in its source vertex buffer and source index buffer. For Transformations, we only specifically modify the vertex buffer. This gets modified through a compute pass, where the buffer gets passed into a compute shader that applies the transformation, and the results then get saved in an output vertex buffer and propagated further downstream. For each update, only the current node and its descendents get updated.
+
+Currently, we use multiple draw calls to update our geometry visuals on the renderer.
+
+Here is an image of our application as per Milestone 2.
+
+![](images/spinning_deformed_donut.gif)
 
 ## Milestone 3
 
