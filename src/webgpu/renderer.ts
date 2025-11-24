@@ -165,10 +165,10 @@ export class Renderer {
       );
     }
 
-    if (this.scene.getGeometries().length === 0) {
-    // if (!this.scene.vertexBuffer || !this.scene.indexBuffer) {
-      return;
-    }
+    // if (this.scene.getGeometries().length === 0) {
+    // // if (!this.scene.vertexBuffer || !this.scene.indexBuffer) {
+    //   return;
+    // }
 
     const currentPipeline = this.pipelineManager.getPipeline({
       shader: this.shaderMode,
