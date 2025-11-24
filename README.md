@@ -74,9 +74,15 @@ In this milestone, we introduce a compute pipeline to run our modifications to e
 
 Let us take the TransformNode as an example to look at how modifications are propagated. Each node, as stated above, will take in its source vertex buffer and source index buffer. For Transformations, we only specifically modify the vertex buffer. This gets modified through a compute pass, where the buffer gets passed into a compute shader that applies the transformation, and the results then get saved in an output vertex buffer and propagated further downstream. For each update, only the current node and its descendents get updated.
 
-Currently, we use multiple draw calls to update our geometry visuals on the renderer.
+Currently, we use multiple draw calls, one per each object that is set to be visible, to update our geometry visuals on the renderer.
 
-Here is an image of our application as per Milestone 2.
+### Rendering Options
+
+Output meshes can be displayed using simple normal-based lighting or using a gradient based on vertex positions. They can also be viewed either as solid objects or as wireframes.
+
+
+https://github.com/user-attachments/assets/838f89b6-0260-4624-a93a-32b23c7baa30
+
 
 ![](images/spinning_deformed_donut.gif)
 
