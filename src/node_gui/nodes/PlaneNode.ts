@@ -43,8 +43,8 @@ export class PlaneNode extends Node implements IGeometryGenerator {
       update,
       5.0
     );
-    // TODO add subdivisions option.
-    this.subdivisionControl = new NumberControl("Subdivisions", 1, update, 1, 1);
+    // TODO should make subidividing more efficient (probably move base construction to GPU)
+    this.subdivisionControl = new NumberControl("Subdivisions", 1, update, 1, 1, 200);
 
     this.geometry = this.generateGeometry();
   }
