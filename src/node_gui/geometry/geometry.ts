@@ -7,6 +7,7 @@ export interface GeometryData {
   indices: Uint32Array; // TODO move to buffer.
   normals?: Float32Array; // TODO move to buffer.
   wireframeIndices?: Uint32Array;
+  wireframeIndexBuffer?: GPUBuffer;
 
   // buffer VertexBuffer.
   // buffer IndexBuffer.

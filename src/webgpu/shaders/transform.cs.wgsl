@@ -22,6 +22,8 @@ struct RotVals {
     sz: f32, cz: f32,
 }
 
+const PI: f32 = 3.141592653589793;
+
 fn compute_rot(rx: f32, ry: f32, rz: f32) -> RotVals {
     return RotVals(
         sin(rx), cos(rx),
@@ -40,7 +42,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let v = curr.position;
 
     let t = transform.translate;
-    let r = transform.rotation;
+    let r = transform.rotation / 180.f * PI;
     let s = transform.scale;
 
     let rot = compute_rot(r.x, r.y, r.z);

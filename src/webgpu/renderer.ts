@@ -165,7 +165,8 @@ export class Renderer {
       );
     }
 
-    if (!this.scene.vertexBuffer || !this.scene.indexBuffer) {
+    if (this.scene.getGeometries().length === 0) {
+    // if (!this.scene.vertexBuffer || !this.scene.indexBuffer) {
       return;
     }
 
@@ -194,18 +195,35 @@ export class Renderer {
 
     passEncoder.setPipeline(currentPipeline);
     passEncoder.setBindGroup(0, this.bindGroup);
-    passEncoder.setVertexBuffer(0, this.scene.vertexBuffer);
-    if (this.wireframeMode && this.scene.wireframeIndexBuffer) {
-      passEncoder.setIndexBuffer(this.scene.wireframeIndexBuffer, "uint32");
-      if (this.scene.wireframeIndexCount !== 0) {
-        passEncoder.drawIndexed(this.scene.wireframeIndexCount);
-      }
-    } else {
-      passEncoder.setIndexBuffer(this.scene.indexBuffer, "uint32");
-      if (this.scene.indexCount !== 0) {
-        passEncoder.drawIndexed(this.scene.indexCount);
+
+    for (const geom of this.scene.getGeometries()) {
+      passEncoder.setVertexBuffer(0, geom.vertexBuffer);
+      if (this.wireframeMode && geom.wireframeIndexBuffer) {
+        passEncoder.setIndexBuffer(geom.wireframeIndexBuffer, "uint32");
+        if (geom.wireframeIndexBuffer.size !== 0) {
+          passEncoder.drawIndexed(geom.wireframeIndexBuffer.size / 4);
+        }
+      } else {
+        passEncoder.setIndexBuffer(geom.indexBuffer, "uint32");
+        if (geom.indexBuffer.size !== 0) {
+          passEncoder.drawIndexed(geom.indexBuffer.size / 4);
+        }
       }
     }
+
+    // TODO change back to single draw per material?
+    // passEncoder.setVertexBuffer(0, this.scene.vertexBuffer);
+    // if (this.wireframeMode && this.scene.wireframeIndexBuffer) {
+    //   passEncoder.setIndexBuffer(this.scene.wireframeIndexBuffer, "uint32");
+    //   if (this.scene.wireframeIndexCount !== 0) {
+    //     passEncoder.drawIndexed(this.scene.wireframeIndexCount);
+    //   }
+    // } else {
+    //   passEncoder.setIndexBuffer(this.scene.indexBuffer, "uint32");
+    //   if (this.scene.indexCount !== 0) {
+    //     passEncoder.drawIndexed(this.scene.indexCount);
+    //   }
+    // }
     passEncoder.end();
 
     this.gpu.device.queue.submit([commandEncoder.finish()]);

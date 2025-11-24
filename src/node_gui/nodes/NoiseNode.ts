@@ -115,6 +115,7 @@ export class NoiseNode
       indices: new Uint32Array(input.indices),
       vertexBuffer: outputVertexBuffer,
       indexBuffer: indexBuffer,
+      wireframeIndexBuffer: input.wireframeIndexBuffer, 
       id: this.id,
       sourceId: input.sourceId ?? input.id,
     };

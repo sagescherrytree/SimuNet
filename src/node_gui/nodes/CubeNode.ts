@@ -159,6 +159,7 @@ export class CubeNode extends Node implements IGeometryGenerator {
       vertexData[8 * i + 6] = finalNormals[i * 3 + 2];
       vertexData[8 * i + 7] = 0;
     }
+    
 
     const vertexBuffer = gpu.device.createBuffer({
       size: Math.max(vertexData.byteLength, 32), // Min size safety
@@ -173,11 +174,18 @@ export class CubeNode extends Node implements IGeometryGenerator {
     });
     gpu.device.queue.writeBuffer(indexBuffer, 0, indexData.buffer);
 
+    const wireframeIndexBuffer = gpu.device.createBuffer({
+      size: Math.max(wireframeIndices.byteLength, 32),
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+    });
+    gpu.device.queue.writeBuffer(wireframeIndexBuffer, 0, wireframeIndices.buffer);
+
     return {
       vertices: new Float32Array(finalVertices),
       indices: new Uint32Array(indices),
       normals: new Float32Array(finalNormals),
       wireframeIndices: wireframeIndices,
+      wireframeIndexBuffer: wireframeIndexBuffer,
       vertexBuffer: vertexBuffer,
       indexBuffer: indexBuffer,
       id: this.id,
