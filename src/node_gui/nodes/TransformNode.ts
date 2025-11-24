@@ -1,4 +1,3 @@
-// src/components/nodes/NodeB.ts
 import { Node } from "./Node";
 import { GeometryData } from "../geometry/geometry";
 import { Vec3Control } from "../controls/Vec3Control";
@@ -69,16 +68,14 @@ export class TransformNode extends Node implements IGeometryModifier {
     //   use copyBufferToBuffer to copy inputGeometry vertex/index buffers directly to output
     //  }
 
-    const transformed = this.transformVertices(
-      input.vertices,
-      this.translation.value,
-      this.rotation.value,
-      this.scale.value
-    );
+    // const transformed = this.transformVertices(
+    //   input.vertices,
+    //   this.translation.value,
+    //   this.rotation.value,
+    //   this.scale.value
+    // );
 
-    // TODO: Pass in vertex + index buffer from primitive node: input.vertexBuffer, input.indexBuffer
-    // NOTE: the division by 3 only applies if verts only contains positions.
-    const vertexCount = input.vertices.length / 3;
+    const vertexCount = input.vertexBuffer!.size / (8 * 4);
 
     // GPU stuffs.
     const gpu = GPUContext.getInstance();
@@ -97,7 +94,6 @@ export class TransformNode extends Node implements IGeometryModifier {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_SRC,
     });
 
-    // TODO: Invoke compute shader.
     this.updateUniformBuffer();
     this.setupComputePipeline(vertexBuffer!, outputVertexBuffer);
 
@@ -113,10 +109,31 @@ export class TransformNode extends Node implements IGeometryModifier {
     pass.end();
     gpu.device.queue.submit([encoder.finish()]);
 
+    // Debug.
+    gpu.device.queue.onSubmittedWorkDone().then(async () => {
+      const readBuffer = gpu.device.createBuffer({
+        size: outputVertexBuffer.size,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+      });
+
+      const enc = gpu.device.createCommandEncoder();
+      enc.copyBufferToBuffer(
+        outputVertexBuffer,
+        0,
+        readBuffer,
+        0,
+        outputVertexBuffer.size
+      );
+      gpu.device.queue.submit([enc.finish()]);
+
+      await readBuffer.mapAsync(GPUMapMode.READ);
+      const gpuVerts = new Float32Array(readBuffer.getMappedRange());
+      console.log("[TransformNode.ts] GPU output vertices:", gpuVerts);
+    });
+
     this.geometry = {
-      vertices: transformed,
+      vertices: new Float32Array(input.vertices),
       indices: new Uint32Array(input.indices),
-      // TODO set vertexBuffer and indexBuffer (eventually, remove .vertices and .indices^)
       vertexBuffer: outputVertexBuffer,
       indexBuffer: indexBuffer,
       id: this.id,
@@ -149,7 +166,6 @@ export class TransformNode extends Node implements IGeometryModifier {
     gpu.device.queue.writeBuffer(this.transformUniformBuffer, 0, data);
   }
 
-  // TODO: create bindgroups and compute pipeline to pass into compute shader.
   // Pass in buffers for input vertices.
   setupComputePipeline(vertexBuffer: GPUBuffer, outputVertexBuffer: GPUBuffer) {
     const gpu = GPUContext.getInstance();

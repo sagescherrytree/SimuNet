@@ -18,7 +18,7 @@ import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { Connection } from "../connections/Connection";
 
 export class GraphEngine {
-  constructor(private editor: NodeEditor<Schemes>) {}
+  constructor(private editor: NodeEditor<Schemes>) { }
 
   async propagate(sourceId: string) {
     const source = this.editor.getNode(sourceId);
@@ -82,6 +82,7 @@ export class GraphEngine {
         case "connectioncreated":
           break;
         case "connectionremove":
+          allConnections = allConnections.filter((conn) => conn.id !== context.data.id);
           break;
         case "nodecreate":
           // if (isGenerator(context.data)) {

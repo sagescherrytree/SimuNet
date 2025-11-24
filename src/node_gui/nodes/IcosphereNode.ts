@@ -159,22 +159,31 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
     const gpu = GPUContext.getInstance();
 
     const vertexData = new Float32Array(
-      transformedVertices.length + transformedNormals.length
+      triIndices.length * 8
     );
-    for (let i = 0; i < transformedVertices.length; ++i) {
-      vertexData[2 * i] = transformedVertices[i];
-      vertexData[2 * i + 1] = transformedNormals[i];
+
+    for (let i = 0; i < transformedVertices.length / 3; i++) {
+      vertexData[8 * i] = transformedVertices[i * 3];
+      vertexData[8 * i + 1] = transformedVertices[i * 3 + 1];
+      vertexData[8 * i + 2] = transformedVertices[i * 3 + 2];
+      vertexData[8 * i + 3] = 0;
+      vertexData[8 * i + 4] = transformedNormals[i * 3];
+      vertexData[8 * i + 5] = transformedNormals[i * 3 + 1];
+      vertexData[8 * i + 6] = transformedNormals[i * 3 + 2];
+      vertexData[8 * i + 7] = 0;
     }
+
+
     const vertexBuffer = gpu.device.createBuffer({
       size: Math.max(vertexData.byteLength, 32), // Min size safety
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
     });
     gpu.device.queue.writeBuffer(vertexBuffer, 0, vertexData.buffer);
 
     const indexData = new Uint32Array(indices);
     const indexBuffer = gpu.device.createBuffer({
       size: Math.max(indexData.byteLength, 32),
-      usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
     });
     gpu.device.queue.writeBuffer(indexBuffer, 0, indexData.buffer);
 

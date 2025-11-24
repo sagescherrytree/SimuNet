@@ -17,8 +17,8 @@ struct Light {
 @binding(2) @group(0) var<uniform> light : Light;
 
 struct VertexIn {
-  @location(0) position : vec3<f32>,
-  @location(1) normal : vec3<f32>
+  @location(0) position : vec4<f32>,
+  @location(1) normal : vec4<f32>
 }
 
 struct VertexOut {
@@ -31,11 +31,11 @@ struct VertexOut {
 fn vs_main(in: VertexIn) -> VertexOut {
   var out : VertexOut;
 
-  let worldPos = model.model * vec4<f32>(in.position, 1.0);
+  let worldPos = model.model * vec4<f32>(in.position.xyz, 1.0);
   out.worldPosition = worldPos.xyz;
 
   out.position = camera.viewProj * worldPos;
-  out.worldNormal = (model.model * vec4<f32>(in.normal, 0.0)).xyz;
+  out.worldNormal = (model.model * vec4<f32>(in.normal.xyz, 0.0)).xyz;
   return out;
 }
 

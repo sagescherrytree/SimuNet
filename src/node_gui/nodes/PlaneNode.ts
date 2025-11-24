@@ -117,23 +117,33 @@ export class PlaneNode extends Node implements IGeometryGenerator {
 
     const gpu = GPUContext.getInstance();
 
-    const vertexData = new Float32Array(transformedVertices.length * 2);
+    // TODO adapt for subdivision options
+    const vertexData = new Float32Array(4 * 8);
     const upVector = [0, 1, 0]; // TODO apply transform
-    for (let i = 0; i < transformedVertices.length; ++i) {
-      vertexData[2 * i] = transformedVertices[i];
-      vertexData[2 * i + 1] = upVector[i % 3];
+
+    for (let i = 0; i < transformedVertices.length / 3; i++) {
+      vertexData[8 * i] = transformedVertices[i * 3];
+      vertexData[8 * i + 1] = transformedVertices[i * 3 + 1];
+      vertexData[8 * i + 2] = transformedVertices[i * 3 + 2];
+      vertexData[8 * i + 3] = 0;
+      vertexData[8 * i + 4] = upVector[0];
+      vertexData[8 * i + 5] = upVector[1];
+      vertexData[8 * i + 6] = upVector[2];
+      vertexData[8 * i + 7] = 0;
     }
+
+
 
     const vertexBuffer = gpu.device.createBuffer({
       size: Math.max(vertexData.byteLength, 32), // Min size safety
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
     });
     gpu.device.queue.writeBuffer(vertexBuffer, 0, vertexData.buffer);
 
     const indexData = new Uint32Array(indices);
     const indexBuffer = gpu.device.createBuffer({
       size: Math.max(indexData.byteLength, 32),
-      usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
     });
     gpu.device.queue.writeBuffer(indexBuffer, 0, indexData.buffer);
 

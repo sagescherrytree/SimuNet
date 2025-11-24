@@ -145,23 +145,31 @@ export class CubeNode extends Node implements IGeometryGenerator {
     const gpu = GPUContext.getInstance();
 
     const vertexData = new Float32Array(
-      finalVertices.length + finalNormals.length
+      vertexCount * 8
     );
-    for (let i = 0; i < finalVertices.length; ++i) {
-      vertexData[2 * i] = finalVertices[i];
-      vertexData[2 * i + 1] = finalNormals[i];
+
+    // TODO does / 3 ever have rounding issues?
+    for (let i = 0; i < finalVertices.length / 3; i++) {
+      vertexData[8 * i] = finalVertices[i * 3];
+      vertexData[8 * i + 1] = finalVertices[i * 3 + 1];
+      vertexData[8 * i + 2] = finalVertices[i * 3 + 2];
+      vertexData[8 * i + 3] = 0;
+      vertexData[8 * i + 4] = finalNormals[i * 3];
+      vertexData[8 * i + 5] = finalNormals[i * 3 + 1];
+      vertexData[8 * i + 6] = finalNormals[i * 3 + 2];
+      vertexData[8 * i + 7] = 0;
     }
 
     const vertexBuffer = gpu.device.createBuffer({
       size: Math.max(vertexData.byteLength, 32), // Min size safety
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
     });
     gpu.device.queue.writeBuffer(vertexBuffer, 0, vertexData.buffer);
 
     const indexData = new Uint32Array(indices);
     const indexBuffer = gpu.device.createBuffer({
       size: Math.max(indexData.byteLength, 32),
-      usage: GPUBufferUsage.INDEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
     });
     gpu.device.queue.writeBuffer(indexBuffer, 0, indexData.buffer);
 

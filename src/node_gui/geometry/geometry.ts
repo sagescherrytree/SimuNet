@@ -153,6 +153,8 @@ export function calculateBounds(vertices: number[]): {
     maxY = -Infinity,
     maxZ = -Infinity;
 
+
+  // TODO GPU-side?
   // Find bounding box
   for (let i = 0; i < vertices.length; i += 3) {
     minX = Math.min(minX, vertices[i]);

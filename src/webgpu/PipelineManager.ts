@@ -17,10 +17,10 @@ export class PipelineManager {
     this.gpu = GPUContext.getInstance();
 
     this.vertexBufferLayout = {
-      arrayStride: 24,
+      arrayStride: 32,
       attributes: [
-        { shaderLocation: 0, offset: 0, format: "float32x3" },
-        { shaderLocation: 1, offset: 12, format: "float32x3" },
+        { shaderLocation: 0, offset: 0, format: "float32x4" },
+        { shaderLocation: 1, offset: 16, format: "float32x4" },
       ],
     };
 
@@ -70,16 +70,14 @@ export class PipelineManager {
   private createPipeline(mode: RenderMode): GPURenderPipeline {
     const shaderCode = mode.shader === 0 ? positionShader : lambertShader;
     const shaderModule = this.gpu.device.createShaderModule({
-      label: `${mode.shader === 0 ? "position" : "lambert"}-${
-        mode.wireframe ? "wireframe" : "lit"
-      }-shader-module`,
+      label: `${mode.shader === 0 ? "position" : "lambert"}-${mode.wireframe ? "wireframe" : "lit"
+        }-shader-module`,
       code: shaderCode,
     });
 
     const pipelineDescriptor: GPURenderPipelineDescriptor = {
-      label: `${mode.shader === 0 ? "Position" : "Lambert"} ${
-        mode.wireframe ? "Wireframe" : "Lit"
-      } Pipeline`,
+      label: `${mode.shader === 0 ? "Position" : "Lambert"} ${mode.wireframe ? "Wireframe" : "Lit"
+        } Pipeline`,
       layout: this.sharedPipelineLayout,
       vertex: {
         module: shaderModule,

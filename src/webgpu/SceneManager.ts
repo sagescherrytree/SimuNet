@@ -72,11 +72,96 @@ export class SceneManager {
       return;
     }
 
+    //Planning note:
+    // I think just need to iterate through the vertex/index buffers, 
+    // get total length, make a buffer of that length, copy data
+
     let totalVertices: number[] = [];
     let totalIndices: number[] = [];
     let totalWireframeIndices: number[] = [];
     let vertexOffset = 0;
 
+    let totalBufferSizes: number[] = geometries.reduce((result, geom) => {
+      if (geom.vertexBuffer && geom.indexBuffer) {
+        result[0] += geom.vertexBuffer.size;
+        result[1] += geom.indexBuffer.size;
+      }
+      return result;
+    }, [0, 0]);
+
+    this.vertexBuffer = this.gpu.device.createBuffer({
+      size: Math.max(totalBufferSizes[0], 32), // Min size safety
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, // TODO change usage back
+    });
+
+    this.indexBuffer = this.gpu.device.createBuffer({
+      size: Math.max(totalBufferSizes[1], 32),
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+    });
+
+    const encoder = this.gpu.device.createCommandEncoder();
+
+    let vertexBufferOffset = 0;
+    let indexBufferOffset = 0;
+    for (const geom of geometries) {
+      if (geom.vertexBuffer && geom.indexBuffer) {
+        encoder.copyBufferToBuffer(geom.vertexBuffer, 0, this.vertexBuffer, vertexBufferOffset, geom.vertexBuffer.size);
+        encoder.copyBufferToBuffer(geom.indexBuffer, 0, this.indexBuffer, indexBufferOffset, geom.indexBuffer.size);
+        vertexBufferOffset += geom.vertexBuffer.size;
+        indexBufferOffset += geom.indexBuffer.size;
+        console.log("wrote geometry:");
+        console.log(geom);
+        console.log("buffers written up to VB: " + vertexBufferOffset + " IB: " + indexBufferOffset);
+      } else {
+        console.log("No buffers found for geometry:");
+        console.log(geom);
+      }
+    }
+
+    this.gpu.device.queue.submit([encoder.finish()]);
+
+    // Debug.
+    this.gpu.device.queue.onSubmittedWorkDone().then(async () => {
+
+      if (geometries.length > 0) {
+        const vertexReadBuffer = this.gpu.device.createBuffer({
+          size: this.vertexBuffer.size,
+          usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+        const indexReadBuffer = this.gpu.device.createBuffer({
+          size: this.indexBuffer.size,
+          usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+
+        const enc = this.gpu.device.createCommandEncoder();
+        enc.copyBufferToBuffer(
+          this.vertexBuffer,
+          0,
+          vertexReadBuffer,
+          0,
+          this.vertexBuffer.size
+        );
+        enc.copyBufferToBuffer(
+          this.indexBuffer,
+          0,
+          indexReadBuffer,
+          0,
+          this.indexBuffer.size
+        );
+        this.gpu.device.queue.submit([enc.finish()]);
+
+        await vertexReadBuffer.mapAsync(GPUMapMode.READ);
+        await indexReadBuffer.mapAsync(GPUMapMode.READ);
+        const gpuVerts = new Float32Array(vertexReadBuffer.getMappedRange());
+        const gpuIndices = new Uint32Array(indexReadBuffer.getMappedRange());
+        console.log("[SceneManager.ts] GPU output vertices:", gpuVerts);
+        console.log("[SceneManager.ts] GPU output indices:", gpuIndices);
+      }
+    });
+
+
+
+    // TODO make wireframe on GPU-side and replace this
     // Flatten all geometries into one batch (Batch Rendering)
     for (const geom of geometries) {
       const vertexCount = geom.vertices.length / 3;
@@ -122,17 +207,17 @@ export class SceneManager {
     // Create Buffers
     // optimization: In a real app, you wouldn't destroy/create every frame,
     // you would create a large buffer and write into it.
-    this.vertexBuffer = this.gpu.device.createBuffer({
-      size: Math.max(vertexData.byteLength, 32), // Min size safety
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-    });
-    this.gpu.device.queue.writeBuffer(this.vertexBuffer, 0, vertexData.buffer);
+    // this.vertexBuffer = this.gpu.device.createBuffer({
+    //   size: Math.max(vertexData.byteLength, 32), // Min size safety
+    //   usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    // });
+    // this.gpu.device.queue.writeBuffer(this.vertexBuffer, 0, vertexData.buffer);
 
-    this.indexBuffer = this.gpu.device.createBuffer({
-      size: Math.max(indexData.byteLength, 32),
-      usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-    });
-    this.gpu.device.queue.writeBuffer(this.indexBuffer, 0, indexData.buffer);
+    // this.indexBuffer = this.gpu.device.createBuffer({
+    //   size: Math.max(indexData.byteLength, 32),
+    //   usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+    // });
+    // this.gpu.device.queue.writeBuffer(this.indexBuffer, 0, indexData.buffer);
 
     this.wireframeIndexBuffer = this.gpu.device.createBuffer({
       size: Math.max(wireframeIndexData.byteLength, 32),

@@ -5,8 +5,8 @@ struct Transformation {
 };
 
 struct VertexIn {
-  position : vec3<f32>,
-  normal : vec3<f32>
+  position : vec4<f32>,
+  normal : vec4<f32>,
 }
 
 // Read in from TransformNode.ts compute pipeline.
@@ -56,6 +56,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     var x3 = x2 * rot.cz - y1 * rot.sz;
     var y3 = x2 * rot.sz + y1 * rot.cz;
 
-    outputVertices[index].position = vec3<f32>(x3 + t.x, y3 + t.y, z2 + t.z);
+    // outputVertices[index].position = curr.position;
+    // outputVertices[index].position = vec3<f32>(v.x, v.y, v.z);
+    outputVertices[index].position = vec4<f32>(x3 + t.x, y3 + t.y, z2 + t.z, v.w);
     outputVertices[index].normal = curr.normal;
 }

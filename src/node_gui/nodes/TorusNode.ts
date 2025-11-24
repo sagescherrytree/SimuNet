@@ -122,6 +122,8 @@ export class TorusNode extends Node implements IGeometryGenerator {
 
     const baseNormals: number[] = [];
 
+    let vertexCount = 0;
+
     for (let i = 0; i <= tubularSegments; i++) {
       const u = (i / tubularSegments) * 2 * Math.PI;
       const cosU = Math.cos(u);
@@ -159,6 +161,7 @@ export class TorusNode extends Node implements IGeometryGenerator {
         const final_z = rot_z + pos.z;
 
         vertices.push(final_x, final_y, final_z);
+        vertexCount += 3;
 
         if (i < tubularSegments && j < radialSegments) {
           const a = i * (radialSegments + 1) + j;
@@ -180,21 +183,27 @@ export class TorusNode extends Node implements IGeometryGenerator {
     const gpu = GPUContext.getInstance();
 
     // TODO transform normals too
-    const vertexData = new Float32Array(vertices.length + baseNormals.length);
-    for (let i = 0; i < vertices.length; ++i) {
-      vertexData[2 * i] = vertices[i];
-      vertexData[2 * i + 1] = baseNormals[i];
+    const vertexData = new Float32Array(vertexCount * 8);
+    for (let i = 0; i < vertices.length / 3; i++) {
+      vertexData[8 * i] = vertices[i * 3];
+      vertexData[8 * i + 1] = vertices[i * 3 + 1];
+      vertexData[8 * i + 2] = vertices[i * 3 + 2];
+      vertexData[8 * i + 3] = 0;
+      vertexData[8 * i + 4] = baseNormals[i * 3];
+      vertexData[8 * i + 5] = baseNormals[i * 3 + 1];
+      vertexData[8 * i + 6] = baseNormals[i * 3 + 2];
+      vertexData[8 * i + 7] = 0;
     }
     const vertexBuffer = gpu.device.createBuffer({
       size: Math.max(vertexData.byteLength, 32), // Min size safety
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
     });
     gpu.device.queue.writeBuffer(vertexBuffer, 0, vertexData.buffer);
 
     const indexData = new Uint32Array(indices);
     const indexBuffer = gpu.device.createBuffer({
       size: Math.max(indexData.byteLength, 32),
-      usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
     });
     gpu.device.queue.writeBuffer(indexBuffer, 0, indexData.buffer);
 
