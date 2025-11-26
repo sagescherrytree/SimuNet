@@ -26,7 +26,7 @@ import { CustomSocket } from "./components/CustomSocket";
 type ContextMenuItem = [string, () => Schemes["Node"]];
 
 function getContextMenuItems() {
-  const { Cube, Icosphere, Noise, Transform, Plane, Torus } = NodeTypes;
+  const { Cube, Icosphere, Noise, Transform, Cloth, Plane, Torus } = NodeTypes;
 
   const primitiveItems: ContextMenuItem[] = [
     ["Cube", Cube],
@@ -38,6 +38,7 @@ function getContextMenuItems() {
   const deformationItems: ContextMenuItem[] = [
     ["Noise", Noise],
     ["Transform", Transform],
+    ["Cloth", Cloth],
   ];
 
   primitiveItems.sort((a, b) => a[0].localeCompare(b[0]));
@@ -140,7 +141,7 @@ export async function createEditor(
 
   return {
     editor,
-    destroy: () => {},
+    destroy: () => { },
     getNodeById,
   };
 }

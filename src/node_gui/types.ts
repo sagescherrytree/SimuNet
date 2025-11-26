@@ -6,6 +6,7 @@ import { CubeNode } from "./nodes/CubeNode";
 import { IcosphereNode } from "./nodes/IcosphereNode";
 import { TransformNode } from "./nodes/TransformNode";
 import { NoiseNode } from "./nodes/NoiseNode";
+import { ClothNode } from "./nodes/ClothNode";
 import {
   IExecutable,
   IGeometryModifier,
@@ -41,6 +42,7 @@ export const NodeTypes = {
   Icosphere: createThematicNode(IcosphereNode),
   Transform: createThematicNode(TransformNode),
   Noise: createThematicNode(NoiseNode),
+  Cloth: createThematicNode(ClothNode),
   Plane: createThematicNode(PlaneNode),
   Torus: createThematicNode(TorusNode),
 };
@@ -60,4 +62,4 @@ export const isGenerator = (n: any): n is IGeometryGenerator =>
 export const isUpdatable = (n: any): n is IUpdatable =>
   n && typeof (n as any).setUpdateCallback === "function";
 
-export { Node, CubeNode, IcosphereNode, TransformNode, NoiseNode };
+export { Node, CubeNode, IcosphereNode, TransformNode, NoiseNode, ClothNode, PlaneNode, TorusNode };
