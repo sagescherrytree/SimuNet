@@ -7,12 +7,72 @@ import { GPUContext } from "../../webgpu/GPUContext";
 // Import cloth compute shader.
 import clothSimComputeShader from '../../webgpu/shaders/clothSim.cs.wgsl';
 
+// Cloth particle struct creation.
+// Refernce from HW 4 Forward rendering camera.ts.
+class ClothParticleCPU {
+    static readonly STRIDE = 56; // must match WGSL Particle struct
+
+    buffer: ArrayBuffer;
+    floatView: Float32Array;
+    uintView: Uint32Array;
+
+    constructor(count: number) {
+        this.buffer = new ArrayBuffer(count * ClothParticleCPU.STRIDE);
+        this.floatView = new Float32Array(this.buffer);
+        this.uintView = new Uint32Array(this.buffer);
+    }
+
+    // Write a particle into the CPU buffer
+    writeParticle(i: number, data: {
+        position: number[],
+        prevPosition: number[],
+        velocity?: number[],
+        mass: number,
+        isFixed: number
+    }) {
+        const base = (ClothParticleCPU.STRIDE / 4) * i;
+
+        // position.xyz, position.w = 0.
+        this.floatView[base + 0] = data.position[0];
+        this.floatView[base + 1] = data.position[1];
+        this.floatView[base + 2] = data.position[2];
+        this.floatView[base + 3] = 0;
+
+        // prevPosition.
+        this.floatView[base + 4] = data.prevPosition[0];
+        this.floatView[base + 5] = data.prevPosition[1];
+        this.floatView[base + 6] = data.prevPosition[2];
+        this.floatView[base + 7] = 0;
+
+        // velocity.
+        const vx = data.velocity ?? [0, 0, 0];
+        this.floatView[base + 8] = vx[0];
+        this.floatView[base + 9] = vx[1];
+        this.floatView[base + 10] = vx[2];
+        this.floatView[base + 11] = 0;
+
+        // mass.
+        this.floatView[base + 12] = data.mass;
+
+        // isFixed.
+        this.uintView[(base + 13)] = data.isFixed;
+
+        // padding, to account for bit size being multiple of 16.
+        this.floatView[base + 14] = 0;
+    }
+}
+
 export class ClothNode
     extends Node
     implements IGeometryModifier {
     public inputGeometry?: GeometryData;
 
     clothSimUniformBuffer?: GPUBuffer;
+
+    // Custom for cloth sim, particle buffer.
+    // Pingpong buffers for passing information.
+    particleBuffer1: GPUBuffer;
+    particleBuffer2: GPUBuffer;
 
     clothSimComputeBindGroupLayout: GPUBindGroupLayout;
     clothSimComputeBindGroup: GPUBindGroup;
@@ -71,6 +131,27 @@ export class ClothNode
         console.log("ClothNode: incoming vertexBuffer", vertexBuffer);
         console.log("ClothNode: incoming vertex buffer size:", vertexBuffer?.size);
 
+        // Fill particle buffers.
+        const particleCount = vertexCount;
+        const cpuParticles = new ClothParticleCPU(particleCount);
+
+        // Still using CPU vertices, TODO change to read from GPU vertex buffer evetually.
+        this.fillParticleBuffer(cpuParticles, input.vertices, vertexCount);
+
+        // Ping-pong GPU buffers.
+        this.particleBuffer1 = gpu.device.createBuffer({
+            size: cpuParticles.buffer.byteLength,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+
+        this.particleBuffer2 = gpu.device.createBuffer({
+            size: cpuParticles.buffer.byteLength,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+
+        // Upload initial data to buffer1
+        gpu.device.queue.writeBuffer(this.particleBuffer1, 0, cpuParticles.buffer);
+
         // Output buffer for transformed vertices.
         const outputVertexBuffer = gpu.device.createBuffer({
             size: input.vertexBuffer!.size,
@@ -114,8 +195,6 @@ export class ClothNode
             console.log("[ClothNode.ts] GPU output vertices:", gpuVerts);
         });
 
-        // const deformed = this.deformVertices(input.vertices);
-
         this.geometry = {
             vertices: new Float32Array(input.vertices),
             indices: new Uint32Array(input.indices),
@@ -129,10 +208,37 @@ export class ClothNode
         return this.geometry;
     }
 
+    // Fill particle buffer.
+    fillParticleBuffer(clothPartBufferCPU: ClothParticleCPU, vertices: Float32Array, vertexCount: number) {
+        const stride = 8; // float count per vertex (vec4 + vec4)
+
+        for (let i = 0; i < vertexCount; i++) {
+            const base = i * stride;
+            const pos = [
+                vertices[base + 0],
+                vertices[base + 1],
+                vertices[base + 2],
+            ];
+
+            clothPartBufferCPU.writeParticle(i, {
+                position: pos,
+                prevPosition: pos,
+                velocity: [0, 0, 0], // initial
+                mass: this.massControl.value,
+                isFixed: this.isEdgePinned(i, vertexCount) ? 1 : 0,
+            });
+        }
+    }
+
+    isEdgePinned(vertexIndex: number, vertexCount: number) {
+        // TODO: Implement pinned edge logic. 
+        return false;
+    }
+
     updateUniformBuffer() {
         const gpu = GPUContext.getInstance();
 
-        // strength, scale, seed, padding
+        // Stiffness, mass, damping, gravity.
         const data = new Float32Array([
             this.stiffnessControl.value,
             this.massControl.value,
@@ -181,12 +287,15 @@ export class ClothNode
 
         this.clothSimComputeBindGroup = gpu.device.createBindGroup({
             layout: this.clothSimComputeBindGroupLayout,
-            entries: [
+            entries: [ // TODO: Need to adjust to particle buffers.
                 { binding: 0, resource: { buffer: vertexBuffer } },
                 { binding: 1, resource: { buffer: outputVertexBuffer } },
                 { binding: 2, resource: { buffer: this.clothSimUniformBuffer! } },
             ]
         });
+
+        // TODO: Transfer positions from particle buffer to outputVertexBuffer.
+        // Do this either in compute shader or on CPU side via copyBuffertoBuffer?
 
         console.log("ClothSimNode: compute shader loaded");
         console.log("ClothSimNode: pipeline created:", this.clothSimComputePipeline);
