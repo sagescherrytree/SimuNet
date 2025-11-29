@@ -23,6 +23,7 @@ export function App() {
     animationFrameId: null,
     editorDestroy: null,
     renderer: null,
+    engine: null,
   });
 
   useEffect(() => {
