@@ -136,6 +136,7 @@ export class GraphEngine {
     //  maybe can export only the trees from base geometries if wanting to ensure can just represent as simple JSON?
     // also makes import order easy to deal with since root onwards makes sure can just gen each when it's loaded I guess
     // or maybe should make connection adding check whether it'll create a loop always and just prevent it if so? no renderable/usable graphs have it
+    // ACTUALLY not an issue with how this is set up now I think
     // TODO
     
     // connections need:
