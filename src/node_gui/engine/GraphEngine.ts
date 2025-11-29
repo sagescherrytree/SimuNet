@@ -13,13 +13,17 @@ import {
   isUpdatable,
   Node,
   NodeTypes,
+  AreaExtra,
 } from "../types";
 import { Schemes } from "../types";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { Connection } from "../connections/Connection";
+import { AreaPlugin } from "rete-area-plugin";
 
 export class GraphEngine {
-  constructor(private editor: NodeEditor<Schemes>) { }
+  constructor(private editor: NodeEditor<Schemes>, private area: AreaPlugin<Schemes, AreaExtra>) { }
+
+  
 
   async propagate(sourceId: string) {
     const source = this.editor.getNode(sourceId);
@@ -171,6 +175,8 @@ export class GraphEngine {
     // console.log(allNodes);
     // console.log(allConnections);
 
+    let nodeViews = this.area.nodeViews;
+    
     const nodeData = [];
     for (const node of allNodes) {
       const outData = {
@@ -181,10 +187,22 @@ export class GraphEngine {
       nodeData.push(outData);
     }
 
+    console.log(nodeViews);
+    const nodePositionData = [];
+    for (const [key, value] of nodeViews) {
+      const pos = value.position;
+      nodePositionData.push({
+        id: key,
+        position: pos
+      });
+    }
+
     const outputObject = {
       nodes: nodeData,
-      connections: allConnections
+      connections: allConnections,
+      nodePositions: nodePositionData
     };
+    
 
     const jsonOutput = JSON.stringify(outputObject);
     console.log(jsonOutput);
@@ -216,7 +234,7 @@ export class GraphEngine {
       console.log("Invalid JSON input: missing connections");
       return;
     }
-    this.editor.clear();
+    await this.editor.clear();
 
     for (const nodeData of inputObject.nodes) {
       let node: Node;
@@ -248,10 +266,19 @@ export class GraphEngine {
       }
       await this.editor.addNode(node);
     }
-    for (const connectionData of inputObject.connections) {
-      await this.editor.addConnection(connectionData);
+
+    if ("connections" in inputObject) {
+      for (const connectionData of inputObject.connections) {
+        await this.editor.addConnection(connectionData);
+      }
     }
 
+    if ("nodePositions" in inputObject) {
+      for (const posData of inputObject.nodePositions) {
+        // shouldn't need an await I think since nothing relies on this being done
+        this.area.translate(posData.id, posData.position); 
+      }
+    }
     // let node = NodeTypes.Cube();
     // let node2 = NodeTypes.Transform();
     // // node.node = (node as Node);

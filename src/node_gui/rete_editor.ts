@@ -64,7 +64,7 @@ export async function createEditor(
   const render = new ReactPlugin<Schemes, AreaExtra>({ createRoot });
   const arrange = new AutoArrangePlugin<Schemes>();
 
-  const engine = new GraphEngine(editor);
+  const engine = new GraphEngine(editor, area);
 
   const contextMenu = new ContextMenuPlugin<Schemes>({
     items: ContextMenuPresets.classic.setup(getContextMenuItems()),
