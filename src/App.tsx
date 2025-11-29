@@ -6,6 +6,7 @@ import { createEditor } from "./node_gui/rete_editor";
 import { DetailsPanel } from "./node_gui/components/DetailsPanel";
 import { Node } from "./node_gui/types";
 import "./style.css";
+import { GraphEngine } from "./node_gui/engine/GraphEngine";
 
 export function App() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -17,6 +18,7 @@ export function App() {
     animationFrameId: number | null;
     editorDestroy: (() => void) | null;
     renderer: Renderer | null;
+    engine: GraphEngine | null;
   }>({
     animationFrameId: null,
     editorDestroy: null,
@@ -78,12 +80,14 @@ export function App() {
         const renderer = new Renderer(sceneManager);
 
         cleanupRef.current.renderer = renderer;
-
+        
         // 3. Initialize Node Editor
-        const { editor, destroy, getNodeById } = await createEditor(
+        const { editor, destroy, getNodeById, engine } = await createEditor(
           reteContainerRef.current!,
           setSelectedNode
         );
+
+        cleanupRef.current.engine = engine;
 
         renderer.onNodeSelected = (nodeId, geometry) => {
           console.log("Selected node from 3D view:", nodeId);
@@ -197,6 +201,88 @@ export function App() {
             overflow: "hidden",
           }}
         />
+
+        {/* TODO where to put */}
+        {/* Graph Settings / Save/Load Toolbar */}
+        <div
+          style={{
+            position: "absolute",
+            top: "10px",
+            right: "10px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+            padding: "8px",
+            backgroundColor: "rgba(34, 34, 34, 0.95)",
+            borderRadius: "6px",
+            zIndex: 100,
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+          }}
+        >
+          <button
+            onClick={() => {
+              if (cleanupRef.current.engine) {
+                cleanupRef.current.engine.exportGraphToJSON();
+              }
+            }}
+            title="Export Graph"
+            style={{
+              padding: "6px",
+              backgroundColor: "#444",
+              color: "#fff",
+              border: "1px solid #666",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "16px",
+              width: "32px",
+              height: "32px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.backgroundColor = "#555")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.backgroundColor = "#444")
+            }
+          >
+            💾
+          </button>
+
+          {/* Wireframe Button */}
+          <button
+            onClick={() => {
+              if (cleanupRef.current.engine) {
+                cleanupRef.current.engine.loadGraphFromJSON(`{"nodes":[{"id":"8c2173541c816fac","label":"CubeNode","controls":{"position":{"id":"82c560d157915799","value":{"x":0,"y":0,"z":0},"stepSize":0.1,"label":"Position"},"rotation":{"id":"fa51406532507f4b","value":{"x":25,"y":0,"z":0},"stepSize":5,"label":"Rotation"},"scale":{"id":"395649c3cea40514","value":{"x":1,"y":1,"z":1},"stepSize":0.1,"label":"Scale"}}},{"id":"948285b8ee0b38b4","label":"TransformNode","controls":{"translation":{"id":"23f2d61202d22216","value":{"x":0,"y":0,"z":0},"stepSize":0.1,"label":"Translation"},"rotation":{"id":"1913ea8f7ad4f6b4","value":{"x":0,"y":-40,"z":0},"stepSize":5,"label":"Rotation"},"scale":{"id":"eea98535747ad273","value":{"x":1,"y":0.5,"z":1},"stepSize":0.1,"label":"Scale"}}}],"connections":[{"id":"0b8a65109c6fe484","source":"8c2173541c816fac","sourceOutput":"geometry","target":"948285b8ee0b38b4","targetInput":"geometry"}]}`);
+              }
+            }}
+            title="Import Graph"
+            style={{
+              padding: "6px",
+              backgroundColor: "#444",
+              color: "#fff",
+              border: "1px solid #666",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "16px",
+              width: "32px",
+              height: "32px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.backgroundColor = "#555")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.backgroundColor = "#444")
+            }
+          >
+            📂
+          </button>
+        </div>
+        
       </div>
 
       {/* Right: WebGPU Canvas */}

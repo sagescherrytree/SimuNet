@@ -143,6 +143,7 @@ export async function createEditor(
     editor,
     destroy: () => { },
     getNodeById,
+    engine
   };
 }
 

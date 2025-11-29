@@ -29,12 +29,14 @@ export abstract class Node
 
   public onUpdate?: () => void;
 
+  public node: Node;
   constructor(name: string) {
     super(name);
     this.geometryBehavior = new GeometryBehavior(this.id);
     this.updateBehavior = new UpdateBehavior();
     this.ioBehavior = new IOBehavior(this);
     this.isRemoved = false;
+    this.node = this;
   }
 
   abstract execute(inputs?: Record<string, any>): Promise<any>;
