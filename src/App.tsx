@@ -278,7 +278,7 @@ export function App() {
               let file = fileInput.files[0];
               const reader = new FileReader();
               reader.onload = (event) => {
-                cleanupRef.current.engine.loadGraphFromJSON(event.target.result);
+                cleanupRef.current.engine.loadGraphFromJSON(event.target.result.toString());
               };
               reader.readAsText(file);
               // cleanupRef.current.engine.loadGraphFromJSON(`{"nodes":[{"id":"8c2173541c816fac","label":"CubeNode","controls":{"position":{"id":"82c560d157915799","value":{"x":0,"y":0,"z":0},"stepSize":0.1,"label":"Position"},"rotation":{"id":"fa51406532507f4b","value":{"x":25,"y":0,"z":0},"stepSize":5,"label":"Rotation"},"scale":{"id":"395649c3cea40514","value":{"x":1,"y":1,"z":1},"stepSize":0.1,"label":"Scale"}}},{"id":"948285b8ee0b38b4","label":"TransformNode","controls":{"translation":{"id":"23f2d61202d22216","value":{"x":0,"y":0,"z":0},"stepSize":0.1,"label":"Translation"},"rotation":{"id":"1913ea8f7ad4f6b4","value":{"x":0,"y":-40,"z":0},"stepSize":5,"label":"Rotation"},"scale":{"id":"eea98535747ad273","value":{"x":1,"y":0.5,"z":1},"stepSize":0.1,"label":"Scale"}}}],"connections":[{"id":"0b8a65109c6fe484","source":"8c2173541c816fac","sourceOutput":"geometry","target":"948285b8ee0b38b4","targetInput":"geometry"}]}`);
