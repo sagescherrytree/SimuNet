@@ -172,9 +172,7 @@ export class GraphEngine {
 
     let allNodes = this.editor.getNodes();
     let allConnections = this.editor.getConnections();
-    // console.log(allNodes);
-    // console.log(allConnections);
-
+    
     let nodeViews = this.area.nodeViews;
     
     const nodeData = [];
@@ -205,13 +203,9 @@ export class GraphEngine {
     
 
     const jsonOutput = JSON.stringify(outputObject);
-    console.log(jsonOutput);
-    // TODO save output to file
     return jsonOutput;
   }
 
-  // TODO need a file select prompt for saving/loading too
-  // TODO need to figure out if there's a way to store placement of nodes, so don't all just stack up in middle
   async loadGraphFromJSON(jsonInput: string) {
 
     let inputObject: any;
@@ -279,15 +273,11 @@ export class GraphEngine {
         this.area.translate(posData.id, posData.position); 
       }
     }
-    // let node = NodeTypes.Cube();
-    // let node2 = NodeTypes.Transform();
-    // // node.node = (node as Node);
-    // await this.editor.addNode(node);
-    // await this.editor.addNode(node2);
-    // let connection = new Connection(node, "geometry", node2, "geometry");
-    // console.log(connection);
-    // console.log("AAHAHAH");
-    // await this.editor.addConnection(connection);
+    
     this.updateAllGeometries(null);
   }
+
+  // TODO: relatedly remove CPU-side vertex/index data that's not needed anymore, causes slowdown
+  // TODO also there's some slowdown on clicking on a different node type it seems? removing the CPU-side vertices/indices arrays seems to speed it up some but still like 100ms delay?
+  //  assume some sort of updating work is happening when doing that even though not necessary
 }

@@ -221,10 +221,27 @@ export function App() {
           }}
         >
           {/* Save Button */}
+          <a id="fileSave" style={{display:"none",}}></a>
           <button
-            onClick={() => {
+            onClick={async () => {
               if (cleanupRef.current.engine) {
-                cleanupRef.current.engine.exportGraphToJSON();
+                const text = cleanupRef.current.engine.exportGraphToJSON();
+
+                if ("showSaveFilePicker" in window && window.showSaveFilePicker instanceof Function) {
+                  const handle = await window.showSaveFilePicker({
+                    suggestedName: "SimuNet_SavedGraph.json",
+                    types: [{description: "JSON Files", accept: {"application/json": [".json"]}}]
+                  })
+                  const writable = await handle.createWritable();
+                  await writable.write(text);
+                  await writable.close();
+                } else {
+                  // Fallback case if file picker doesn't work
+                  const link = document.getElementById('fileSave');
+                  link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+                  link.setAttribute('download', 'SimuNet_SavedGraph.json');
+                  link.click();
+                }
               }
             }}
             title="Export Graph"

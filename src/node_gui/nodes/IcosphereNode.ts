@@ -196,6 +196,7 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
     gpu.device.queue.writeBuffer(wireframeIndexBuffer, 0, wireframeIndices.buffer);
 
 
+    // TODO remove all the CPU-side vertices/indices; slower w/ those being passed around and not needed anymore
     return {
       vertices: new Float32Array(transformedVertices),
       indices,
