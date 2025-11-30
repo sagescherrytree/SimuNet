@@ -280,4 +280,5 @@ export class GraphEngine {
   // TODO: relatedly remove CPU-side vertex/index data that's not needed anymore, causes slowdown
   // TODO also there's some slowdown on clicking on a different node type it seems? removing the CPU-side vertices/indices arrays seems to speed it up some but still like 100ms delay?
   //  assume some sort of updating work is happening when doing that even though not necessary
+  // ALSO TODO I want to try adding perhaps a 'recompute normals' node that runs through all the triangles and sets normals to that of the face (though to make hard edges might not work for all base geometries unless add extra indices?)
 }
