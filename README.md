@@ -109,7 +109,13 @@ https://github.com/user-attachments/assets/838f89b6-0260-4624-a93a-32b23c7baa30
 - [ X ] Basic Color Material
 
 ### Cloth Simulation
+For our cloth simulation, we decided to treat the vertices as interconnected particles forming a grid (for a plane). We use a mass-spring model where the cloth grid is defined by particles connected by springs. Currently, the system uses Structural and Shear springs (neighbors and diagonals) to resist stretching and help maintain its shape.
 
+The primary forces in this simulation are gravity and spring forces (using Hooke's Law). We also utilize Verlet Integration for more stable and efficient particle movement updates, handling the position, velocity, and previous position tracking.
+
+We implemented very basic floor collision, preventing particles from falling below Y=0.
+
+The simulation logic is offloaded to a WebGPU Compute Shader, which processes all of the particles in parallel. Particle data (position, previous position, mass, fixed status) is tightly packed and transferred to the GPU using Storage Buffers. Two GPU buffers are used in a ping-pong exchange to ensure that the compute shader always reads data from the previous time step while writing the results to the current time step buffer. The calculated particle positions are written directly to an Ouput Vertex Buffer for efficient, real-time rendering of the deformed mesh.
 
 <img src="https://github.com/user-attachments/assets/25998f37-67fa-4ece-a47d-8169a42d2a5c" width="500">
 
