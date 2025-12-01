@@ -100,6 +100,8 @@ export class ClothNode
     massControl: NumberControl;
     dampingControl: NumberControl;
     gravityControl: NumberControl;
+
+    private spacing: number = 0.125;
     // TODO: add time step control.
 
     // grid dimensions??
@@ -122,9 +124,9 @@ export class ClothNode
         };
 
         this.stiffnessControl = new NumberControl("Stiffness", 5.0, onChange, 0.1);
-        this.massControl = new NumberControl("Mass", 10.0, onChange, 0.1);
+        this.massControl = new NumberControl("Mass", 0.1, onChange, 0.1);
         this.dampingControl = new NumberControl("Dampening", 0.01, onChange, 0.1);
-        this.gravityControl = new NumberControl("Gravity", 0.0, onChange, 1, 0, 1000);
+        this.gravityControl = new NumberControl("Gravity", 5.0, onChange, 1, 0, 1000);
     }
 
     setInputGeometry(geometry: GeometryData) {
@@ -149,10 +151,19 @@ export class ClothNode
         this.gridWidth = side;
         this.gridHeight = side;
 
-        console.log("Input vertex count:", this.vertexCount);
-        console.log("Grid dimensions:", this.gridWidth, "x", this.gridHeight);
-        console.log("Input vertices length:", input.vertices.length);
-        console.log("Expected vertices:", this.gridWidth * this.gridHeight * 8);
+        const stride = 8;
+        const v0 = [input.vertices[0], input.vertices[1], input.vertices[2]];
+        const v1 = [input.vertices[stride], input.vertices[stride + 1], input.vertices[stride + 2]];
+
+        const dx = v1[0] - v0[0];
+        const dy = v1[1] - v0[1];
+        const dz = v1[2] - v0[2];
+        const actualSpacing = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        console.log("Calculated spacing from vertices:", actualSpacing);
+
+        // Store it so updateUniformBuffer can use it
+        this.spacing = actualSpacing;
 
         const gridSizeBuffer = gpu.device.createBuffer({
             size: 8,
@@ -295,6 +306,7 @@ export class ClothNode
 
     updateUniformBuffer() {
         const gpu = GPUContext.getInstance();
+        const spacing = this.spacing ?? 0.125;
 
         // Stiffness, mass, damping, gravity.
         const data = new Float32Array([
@@ -302,6 +314,7 @@ export class ClothNode
             this.massControl.value,
             this.dampingControl.value,
             this.gravityControl.value,
+            spacing
         ]);
 
         if (!this.clothSimUniformBuffer) {
