@@ -121,12 +121,26 @@ The simulation logic is offloaded to a WebGPU Compute Shader, which processes al
 
 ### Import/Export
 
+The scenes that a user creates can be saved to a JSON file, where the file contains information about all of the nodes used in the graph and what connections exist between those nodes. These can be reloaded in order to continue working on the same graph over multiple sessions. Examples of these files can be found in the [exampleGraphs folder](/exampleGraphs/).
+
 ![](images/exportGraphEx.gif)
 ![](images/importGraphEx.gif)
 
+### Recomputing Normals
+
+We added a node which computes normals based on the normal vector of each triangle in a mesh, allowing normals to be computed based on the geometry after it has been deformed by e.g. a noise node (on their own, such a modification only affects the position of the vertices rather than the normals, hence recomputing the normals allows for lighting matching the resulting geometry).
+
+| <img width="568" height="557" alt="Screen Shot 2025-12-01 at 4 06 05 PM" src="https://github.com/user-attachments/assets/26bd7577-9fa7-41c7-8068-77e9aaf2b2c4" /> | <img width="566" height="564" alt="Screen Shot 2025-12-01 at 4 06 10 PM" src="https://github.com/user-attachments/assets/ad1ed0ba-1f61-4228-974f-c2b8f6fddbd4" /> |
+|:--:|:--:|
+| Modified sphere with original normals | Modified sphere with recomputed normals |
+
+
 ### Basic Color Material
 
+While rendering is not our core focus, we added basic support for varying material properties between objects. Below shows a group of cubes each with different albedo values.
+
 ![](images/cubeDiffMats.png)
+
 
 # Libraries used
 
