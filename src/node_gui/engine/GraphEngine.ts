@@ -246,7 +246,10 @@ export class GraphEngine {
         node = NodeTypes.Torus();
       } else if (nodeData.label == "TransformNode") {
         node = NodeTypes.Transform();
+      } else if (nodeData.label == "RecomputeNormals") {
+        node = NodeTypes.RecomputeNormals();
       }
+      // TODO probably go remove ...Node from all the labels; redundant for user to see
       
       node.id = nodeData.id;
       const nodeControls = node.getEditableControls();

@@ -16,6 +16,7 @@ import {
 } from "./interfaces/NodeCapabilities";
 import { PlaneNode } from "./nodes/PlaneNode";
 import { TorusNode } from "./nodes/TorusNode";
+import { RecomputeNormalsNode } from "./nodes/RecomputeNormalsNode";
 
 export type Schemes = GetSchemes<Node & { node: Node }, Connection<Node, Node>>;
 
@@ -45,6 +46,7 @@ export const NodeTypes = {
   Cloth: createThematicNode(ClothNode),
   Plane: createThematicNode(PlaneNode),
   Torus: createThematicNode(TorusNode),
+  RecomputeNormals: createThematicNode(RecomputeNormalsNode)
 };
 
 export const isExecutable = (n: any): n is IExecutable =>
@@ -62,4 +64,4 @@ export const isGenerator = (n: any): n is IGeometryGenerator =>
 export const isUpdatable = (n: any): n is IUpdatable =>
   n && typeof (n as any).setUpdateCallback === "function";
 
-export { Node, CubeNode, IcosphereNode, TransformNode, NoiseNode, ClothNode, PlaneNode, TorusNode };
+export { Node, CubeNode, IcosphereNode, TransformNode, NoiseNode, ClothNode, PlaneNode, TorusNode, RecomputeNormalsNode };

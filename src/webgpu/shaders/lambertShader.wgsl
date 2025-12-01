@@ -16,6 +16,8 @@ struct Light {
 @binding(1) @group(0) var<uniform> model : Model;
 @binding(2) @group(0) var<uniform> light : Light;
 
+// TODO materials? at least I think should do object color
+
 struct VertexIn {
   @location(0) position : vec4<f32>,
   @location(1) normal : vec4<f32>
@@ -50,7 +52,8 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
 
   let ambientColor = vec3<f32>(1.0, 1.0, 1.0) * light.ambientIntensity;
 
-  let finalColor = ambientColor + diffuseColor;
+  // reducing diffuse intensity some so can better see disturbances in surface (previously often total is >1 so can't see difference)
+  let finalColor = ambientColor + diffuseColor * (1.0 - light.ambientIntensity);
 
   return vec4<f32>(finalColor, 1.0);
 }

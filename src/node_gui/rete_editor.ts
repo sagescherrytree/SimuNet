@@ -26,7 +26,7 @@ import { CustomSocket } from "./components/CustomSocket";
 type ContextMenuItem = [string, () => Schemes["Node"]];
 
 function getContextMenuItems() {
-  const { Cube, Icosphere, Noise, Transform, Cloth, Plane, Torus } = NodeTypes;
+  const { Cube, Icosphere, Noise, Transform, Cloth, Plane, Torus, RecomputeNormals } = NodeTypes;
 
   const primitiveItems: ContextMenuItem[] = [
     ["Cube", Cube],
@@ -39,6 +39,7 @@ function getContextMenuItems() {
     ["Noise", Noise],
     ["Transform", Transform],
     ["Cloth", Cloth],
+    ["Recompute Normals", RecomputeNormals],
   ];
 
   primitiveItems.sort((a, b) => a[0].localeCompare(b[0]));
