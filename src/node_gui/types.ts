@@ -7,6 +7,7 @@ import { IcosphereNode } from "./nodes/IcosphereNode";
 import { TransformNode } from "./nodes/TransformNode";
 import { NoiseNode } from "./nodes/NoiseNode";
 import { ClothNode } from "./nodes/ClothNode";
+import { CopyToPointsNode } from "./nodes/CopyToPointsNode";
 import {
   IExecutable,
   IGeometryModifier,
@@ -44,6 +45,7 @@ export const NodeTypes = {
   Transform: createThematicNode(TransformNode),
   Noise: createThematicNode(NoiseNode),
   Cloth: createThematicNode(ClothNode),
+  CopyToPoints: createThematicNode(CopyToPointsNode),
   Plane: createThematicNode(PlaneNode),
   Torus: createThematicNode(TorusNode),
   RecomputeNormals: createThematicNode(RecomputeNormalsNode)
