@@ -71,8 +71,8 @@ export class RecomputeNormalsNode
     const vertexBuffer = input.vertexBuffer;
     const indexBuffer = input.indexBuffer;
 
-    console.log("TransformNode: incoming vertexBuffer", vertexBuffer);
-    console.log("TransformNode: incoming vertex buffer size:", vertexBuffer?.size);
+    console.log("RecomputeNormals: incoming vertexBuffer", vertexBuffer);
+    console.log("RecomputeNormals: incoming vertex buffer size:", vertexBuffer?.size);
 
     // Output buffer for transformed vertices.
     const outputVertexBuffer = gpu.device.createBuffer({
@@ -128,6 +128,7 @@ export class RecomputeNormalsNode
       wireframeIndexBuffer: input.wireframeIndexBuffer, 
       id: this.id,
       sourceId: input.sourceId ?? input.id,
+      materialBuffer: input.materialBuffer
     };
 
     return this.geometry;

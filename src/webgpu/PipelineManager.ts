@@ -48,10 +48,20 @@ export class PipelineManager {
         },
       ],
     });
+    const materialBindGroupLayout = this.gpu.device.createBindGroupLayout({
+      label: "material-bind-group-layout",
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.FRAGMENT,
+          buffer: { type: "uniform" },
+        },
+      ],
+    });
 
     return this.gpu.device.createPipelineLayout({
       label: "shared-pipeline-layout",
-      bindGroupLayouts: [bindGroupLayout],
+      bindGroupLayouts: [bindGroupLayout, materialBindGroupLayout],
     });
   }
 

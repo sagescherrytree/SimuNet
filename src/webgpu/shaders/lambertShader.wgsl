@@ -16,6 +16,10 @@ struct Light {
 @binding(1) @group(0) var<uniform> model : Model;
 @binding(2) @group(0) var<uniform> light : Light;
 
+struct Material {
+  albedo: vec4<f32>
+}
+@binding(0) @group(1) var<uniform> material: Material;
 // TODO materials? at least I think should do object color
 
 struct VertexIn {
@@ -53,7 +57,8 @@ fn fs_main(in : VertexOut) -> @location(0) vec4<f32> {
   let ambientColor = vec3<f32>(1.0, 1.0, 1.0) * light.ambientIntensity;
 
   // reducing diffuse intensity some so can better see disturbances in surface (previously often total is >1 so can't see difference)
-  let finalColor = ambientColor + diffuseColor * (1.0 - light.ambientIntensity);
+  // IDK best place to use albedo
+  let finalColor = (ambientColor + diffuseColor * (1.0 - light.ambientIntensity)) * material.albedo.xyz;
 
   return vec4<f32>(finalColor, 1.0);
 }

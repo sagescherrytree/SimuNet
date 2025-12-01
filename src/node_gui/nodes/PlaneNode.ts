@@ -189,6 +189,13 @@ export class PlaneNode extends Node implements IGeometryGenerator {
     });
     gpu.device.queue.writeBuffer(wireframeIndexBuffer, 0, wireframeIndices.buffer);
 
+     const materialData = new Float32Array([1.0, 1.0, 1.0, 1.0]);
+     const materialBuffer = gpu.device.createBuffer({
+       size: materialData.byteLength,
+       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+     gpu.device.queue.writeBuffer(materialBuffer, 0, materialData.buffer);
+ 
     return {
       vertices: vertexData, // TODO uhh change this back eventually?
       indices,
@@ -200,6 +207,7 @@ export class PlaneNode extends Node implements IGeometryGenerator {
       sourceId: this.id,
       boundingSphere: bounds.sphere,
       boundingBox: bounds.box,
+      materialBuffer: materialBuffer
     };
   }
 

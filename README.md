@@ -4,6 +4,20 @@ A WebGPU Node Based Procedural Generator focusing on simulations.
 
 [Demo link](https://sagescherrytree.github.io/SimuNet/)
 
+### Instructions
+GUI:
+* The top left section is the Details Panel for each node
+* The bottom left section is where the nodes sit (and can be created)
+* The right section is where the geometry will be rendered
+
+Camera Control
+* To move around, you can hold right click down and use WASDEQ to move around
+* Scroll buttom zooms in and out
+* Middle button pans
+* Right Click rotates
+
+To create a new node, move your mouse into the bottom left section and right click. A node menu should pop up and you can select the nodes created.
+
 ## Concept and Goal
 
 Our concept is very simple; to make a node based procedural tool on WebGPU, because it is simple to access, and runs fast on a GPU. Similar to Houdini, this system would use nodes to spawn geometry, and one can modify them also through node based logic. We propose to use nodes corresponding to compute shaders to act on all the data which is passed through. Parameters, if present, will be exposed via nodes, which is the visual component that the user is able to interact with. WebGPU is also used to render the results of each of the compute shaders, so the user can easily follow what happens in each step of the process, in addition to it being fast as it runs on the GPU. 
@@ -14,9 +28,9 @@ SimuNet will be focused on simulations, as its name implies. We will be focusing
 
 #### Proposed Simulations
 
-- [*] cloth simulation
-- [*] noise based deformation
-- [*] rigidbody
+- [ ] cloth simulation
+- [ ] noise based deformation
+- [ ] rigidbody
 
 We aim to construct the system such that we can easily add in new simulations as compute shaders to modify the input. 
 
@@ -90,8 +104,43 @@ https://github.com/user-attachments/assets/838f89b6-0260-4624-a93a-32b23c7baa30
 
 #### Milestone 3 Goals
 
-- [] Physics simulation nodes.
-- [] Import/export.
+- [X] Cloth Simulation
+- [X] Import/export
+- [X] Basic Color Material
+
+### Cloth Simulation
+For our cloth simulation, we decided to treat the vertices as interconnected particles forming a grid (for a plane). We use a mass-spring model where the cloth grid is defined by particles connected by springs. Currently, the system uses Structural and Shear springs (neighbors and diagonals) to resist stretching and help maintain its shape.
+
+The primary forces in this simulation are gravity and spring forces (using Hooke's Law). We also utilize Verlet Integration for more stable and efficient particle movement updates, handling the position, velocity, and previous position tracking.
+
+We implemented very basic floor collision, preventing particles from falling below Y=0.
+
+The simulation logic is offloaded to a WebGPU Compute Shader, which processes all of the particles in parallel. Particle data (position, previous position, mass, fixed status) is tightly packed and transferred to the GPU using Storage Buffers. Two GPU buffers are used in a ping-pong exchange to ensure that the compute shader always reads data from the previous time step while writing the results to the current time step buffer. The calculated particle positions are written directly to an Ouput Vertex Buffer for efficient, real-time rendering of the deformed mesh.
+
+<img src="https://github.com/user-attachments/assets/25998f37-67fa-4ece-a47d-8169a42d2a5c" width="500">
+
+### Import/Export
+
+The scenes that a user creates can be saved to a JSON file, where the file contains information about all of the nodes used in the graph and what connections exist between those nodes. These can be reloaded in order to continue working on the same graph over multiple sessions. Examples of these files can be found in the [exampleGraphs folder](/exampleGraphs/).
+
+![](images/exportGraphEx.gif)
+![](images/importGraphEx.gif)
+
+### Recomputing Normals
+
+We added a node which computes normals based on the normal vector of each triangle in a mesh, allowing normals to be computed based on the geometry after it has been deformed by e.g. a noise node (on their own, such a modification only affects the position of the vertices rather than the normals, hence recomputing the normals allows for lighting matching the resulting geometry).
+
+| <img width="568" height="557" alt="Screen Shot 2025-12-01 at 4 06 05 PM" src="https://github.com/user-attachments/assets/26bd7577-9fa7-41c7-8068-77e9aaf2b2c4" /> | <img width="566" height="564" alt="Screen Shot 2025-12-01 at 4 06 10 PM" src="https://github.com/user-attachments/assets/ad1ed0ba-1f61-4228-974f-c2b8f6fddbd4" /> |
+|:--:|:--:|
+| Modified sphere with original normals | Modified sphere with recomputed normals |
+
+
+### Basic Color Material
+
+While rendering is not our core focus, we added basic support for varying material properties between objects. Below shows a group of cubes each with different albedo values.
+
+![](images/cubeDiffMats.png)
+
 
 # Libraries used
 
