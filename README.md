@@ -104,9 +104,9 @@ https://github.com/user-attachments/assets/838f89b6-0260-4624-a93a-32b23c7baa30
 
 #### Milestone 3 Goals
 
-- [ X ] Cloth Simulation
-- [ X ] Import/export
-- [ X ] Basic Color Material
+- [X] Cloth Simulation
+- [X] Import/export
+- [X] Basic Color Material
 
 ### Cloth Simulation
 For our cloth simulation, we decided to treat the vertices as interconnected particles forming a grid (for a plane). We use a mass-spring model where the cloth grid is defined by particles connected by springs. Currently, the system uses Structural and Shear springs (neighbors and diagonals) to resist stretching and help maintain its shape.
