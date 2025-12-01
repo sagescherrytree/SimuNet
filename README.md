@@ -145,3 +145,4 @@ While rendering is not our core focus, we added basic support for varying materi
 # Libraries used
 
 - [Rete.js](https://retejs.org/)
+- [Stats.js](https://cdnjs.com/libraries/stats.js/7)
