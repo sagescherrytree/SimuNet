@@ -14,9 +14,9 @@ SimuNet will be focused on simulations, as its name implies. We will be focusing
 
 #### Proposed Simulations
 
-- [*] cloth simulation
-- [*] noise based deformation
-- [*] rigidbody
+- [ ] cloth simulation
+- [ ] noise based deformation
+- [ ] rigidbody
 
 We aim to construct the system such that we can easily add in new simulations as compute shaders to modify the input. 
 
@@ -90,8 +90,23 @@ https://github.com/user-attachments/assets/838f89b6-0260-4624-a93a-32b23c7baa30
 
 #### Milestone 3 Goals
 
-- [] Physics simulation nodes.
-- [] Import/export.
+- [ X ] Cloth Simulation
+- [ X ] Import/export
+- [ X ] Basic Color Material
+
+### Cloth Simulation
+
+
+<img src="https://github.com/user-attachments/assets/25998f37-67fa-4ece-a47d-8169a42d2a5c" width="500">
+
+### Import/Export
+
+![](images/exportGraphEx.gif)
+![](images/importGraphEx.gif)
+
+### Basic Color Material
+
+![](images/cubeDiffMats.png)
 
 # Libraries used
 
