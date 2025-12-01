@@ -248,6 +248,8 @@ export class GraphEngine {
         node = NodeTypes.Transform();
       } else if (nodeData.label == "RecomputeNormals") {
         node = NodeTypes.RecomputeNormals();
+      } else if (nodeData.label == "Material") {
+        node = NodeTypes.Material();
       }
       // TODO probably go remove ...Node from all the labels; redundant for user to see
       

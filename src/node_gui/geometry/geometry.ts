@@ -24,6 +24,7 @@ export interface GeometryData {
     min: [number, number, number];
     max: [number, number, number];
   };
+  materialBuffer?: GPUBuffer
 }
 
 import { Node } from "../types";

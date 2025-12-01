@@ -110,26 +110,26 @@ export class TransformNode extends Node implements IGeometryModifier {
     gpu.device.queue.submit([encoder.finish()]);
 
     // Debug.
-    gpu.device.queue.onSubmittedWorkDone().then(async () => {
-      const readBuffer = gpu.device.createBuffer({
-        size: outputVertexBuffer.size,
-        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-      });
+    // gpu.device.queue.onSubmittedWorkDone().then(async () => {
+    //   const readBuffer = gpu.device.createBuffer({
+    //     size: outputVertexBuffer.size,
+    //     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    //   });
 
-      const enc = gpu.device.createCommandEncoder();
-      enc.copyBufferToBuffer(
-        outputVertexBuffer,
-        0,
-        readBuffer,
-        0,
-        outputVertexBuffer.size
-      );
-      gpu.device.queue.submit([enc.finish()]);
+    //   const enc = gpu.device.createCommandEncoder();
+    //   enc.copyBufferToBuffer(
+    //     outputVertexBuffer,
+    //     0,
+    //     readBuffer,
+    //     0,
+    //     outputVertexBuffer.size
+    //   );
+    //   gpu.device.queue.submit([enc.finish()]);
 
-      await readBuffer.mapAsync(GPUMapMode.READ);
-      const gpuVerts = new Float32Array(readBuffer.getMappedRange());
-      console.log("[TransformNode.ts] GPU output vertices:", gpuVerts);
-    });
+    //   await readBuffer.mapAsync(GPUMapMode.READ);
+    //   const gpuVerts = new Float32Array(readBuffer.getMappedRange());
+    //   console.log("[TransformNode.ts] GPU output vertices:", gpuVerts);
+    // });
 
     this.geometry = {
       vertices: new Float32Array(input.vertices), // TODO can remove from all of these?
@@ -139,6 +139,7 @@ export class TransformNode extends Node implements IGeometryModifier {
       wireframeIndexBuffer: input.wireframeIndexBuffer, // I think doesn't need to copy?
       id: this.id,
       sourceId: input.sourceId ?? input.id,
+      materialBuffer: input.materialBuffer
     };
 
     if (this.geometry.vertices == this.inputGeometry.vertices) {

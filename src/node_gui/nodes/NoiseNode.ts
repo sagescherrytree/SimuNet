@@ -128,6 +128,7 @@ export class NoiseNode
       wireframeIndexBuffer: input.wireframeIndexBuffer, 
       id: this.id,
       sourceId: input.sourceId ?? input.id,
+      materialBuffer: input.materialBuffer
     };
 
     return this.geometry;

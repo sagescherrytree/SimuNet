@@ -196,8 +196,22 @@ export class Renderer {
     passEncoder.setPipeline(currentPipeline);
     passEncoder.setBindGroup(0, this.bindGroup);
 
+    const initialPipeline = this.pipelineManager.getPipeline({
+      shader: this.shaderMode,
+      wireframe: this.wireframeMode,
+    });
+
+    
     for (const geom of this.scene.getGeometries()) {
       passEncoder.setVertexBuffer(0, geom.vertexBuffer);
+      const materialBindGroup = this.gpu.device.createBindGroup({
+        label: "material-bind-group",
+        layout: currentPipeline.getBindGroupLayout(1),
+        entries: [
+          { binding: 0, resource: { buffer: geom.materialBuffer } },
+        ],
+      });
+      passEncoder.setBindGroup(1, materialBindGroup);
       if (this.wireframeMode && geom.wireframeIndexBuffer) {
         passEncoder.setIndexBuffer(geom.wireframeIndexBuffer, "uint32");
         if (geom.wireframeIndexBuffer.size !== 0) {
