@@ -63,6 +63,20 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
 
         // TODO: Reinstantiate compute pipelines for copy to points.
         // Need vertexBuffers for both objects.
+        this.setupComputePipeline(vertexBuffer!, outputVertexBuffer, indexBuffer!);
+
+        // Invoke compute pass.
+        const encoder = gpu.device.createCommandEncoder();
+        const pass = encoder.beginComputePass();
+        pass.setPipeline(this.cpyToPtsComputePipeline);
+        pass.setBindGroup(0, this.cpyToPtsComputeBindGroup);
+
+        // operating per triangle; so vertexCount/3s
+        const workgroups = Math.ceil(indexCount / 3 / this.workgroupSize);
+        pass.dispatchWorkgroups(workgroups);
+
+        pass.end();
+        gpu.device.queue.submit([encoder.finish()]);
 
         this.geometry = {
             vertices: new Float32Array(input.vertices),
