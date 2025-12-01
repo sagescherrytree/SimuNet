@@ -138,7 +138,7 @@ export class PlaneNode extends Node implements IGeometryGenerator {
     const bounds = calculateBounds(transformedVertices);
 
     // Updating indices.
-    const indexArray : number[] = [];
+    const indexArray: number[] = [];
     for (let j = 0; j < gridCount - 1; ++j) {
       for (let i = 0; i < gridCount - 1; ++i) {
         indexArray.push(i + j * gridCount);
@@ -197,7 +197,7 @@ export class PlaneNode extends Node implements IGeometryGenerator {
      gpu.device.queue.writeBuffer(materialBuffer, 0, materialData.buffer);
  
     return {
-      vertices: new Float32Array(transformedVertices),
+      vertices: vertexData, // TODO uhh change this back eventually?
       indices,
       wireframeIndices: wireframeIndices,
       vertexBuffer: vertexBuffer,

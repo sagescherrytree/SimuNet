@@ -59,6 +59,8 @@ struct ClothSimParams {
     mass: f32,
     damping: f32,
     gravity: f32,
+    spacingX: f32,
+    spacingZ: f32
 }
 
 // Each vert can be represented as a particle.
@@ -72,37 +74,47 @@ struct Particle {
     padding2      : f32,        // 4 bytes
 }
 
-struct VertexIn {
+struct VertexOut {
     position : vec4<f32>,
     normal   : vec4<f32>,
 };
 
 // Input from NoiseNode.ts
 @group(0) @binding(0)
-var<storage, read> inputVertices: array<VertexIn>;
+var<storage, read> inputParticles: array<Particle>;
 
 @group(0) @binding(1)
-var<storage, read_write> outputVertices: array<VertexIn>;
-
-// TODO: Particle buffers...
-/**
-@group(0) @binding(0)
-var<storage, read_write> inputParticles: array<Particle>;
-**/
+var<storage, read_write> outputParticles: array<Particle>;
 
 @group(0) @binding(2)
+var<storage, read_write> outputVertices: array<VertexOut>;
+
+@group(0) @binding(3)
 var<uniform> clothParams: ClothSimParams;
 
-// TODO: Pass in time uniform.
+@group(0) @binding(4)
+var<uniform> deltaTime: f32;
 
-fn verletIntegration(p: Particle, deltaTime: f32) -> vec4<f32> {
-    if (p.isFixed == 1u) {
-        return p.position; // Fixed particle does not move.
-    }
-    let acceleration = p.force / p.mass;
-    let newPosition = p.position + (p.position - p.prevPosition) * (1.0 - clothParams.damping) + acceleration * deltaTime * deltaTime;
-    return newPosition;
-}   
+@group(0) @binding(5)
+var<uniform> gridSize: vec2<u32>; // width, height of the cloth grid
+
+
+fn getParticleIndex(x: u32, y: u32, width: u32) -> u32 {
+    return y * width + x;
+}
+
+fn getGridCoords(index: u32, width: u32) -> vec2<u32> {
+    return vec2<u32>(index % width, index / width);
+}
+
+// fn verletIntegration(p: Particle, deltaTime: f32) -> vec4<f32> {
+//     if (p.isFixed == 1u) {
+//         return p.position; // Fixed particle does not move.
+//     }
+//     let acceleration = p.force / p.mass;
+//     let newPosition = p.position + (p.position - p.prevPosition) * (1.0 - clothParams.damping) + acceleration * deltaTime * deltaTime;
+//     return newPosition;
+// }   
 
 // Force calculation, Hooke's Law.
 // P1, P2: positions of the two particles.
@@ -112,6 +124,11 @@ fn verletIntegration(p: Particle, deltaTime: f32) -> vec4<f32> {
 fn computeSpringForce(p1: vec3<f32>, p2: vec3<f32>, restLength: f32, stiffness: f32) -> vec3<f32> {
     let delta = p2 - p1;
     let dist = length(delta);
+
+    if (dist < 0.0001) {
+        return vec3<f32>(0.0);
+    }
+
     let direction = normalize(delta);
     let forceMagnitude = stiffness * (dist - restLength);
     return forceMagnitude * direction;
@@ -121,6 +138,123 @@ fn computeSpringForce(p1: vec3<f32>, p2: vec3<f32>, restLength: f32, stiffness: 
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     // TODO: Implement cloth sim logic here.
     let index = id.x;
-    outputVertices[index].position = inputVertices[index].position;
-    outputVertices[index].normal = inputVertices[index].normal; 
-}
+    let totalParticles = arrayLength(&inputParticles);
+
+    if (index >= totalParticles) {
+        return;
+    }
+
+    let p = inputParticles[index];
+
+    // fixed particles no movey movey
+    if (p.isFixed == 1u) {
+        outputParticles[index] = p;
+        outputVertices[index].position = p.position;
+        outputVertices[index].normal = vec4<f32>(0.0, 1.0, 0.0, 0.0);
+        return;
+    }
+
+    var force = vec3<f32>(0.0, -clothParams.gravity * p.mass, 0.0); // Gravity!
+    // var force = vec3<f32>(0.0, 0.0, 0.0);
+
+    let coords = getGridCoords(index, gridSize.x);
+    let x = coords.x;
+    let y = coords.y;
+
+    // left, right, up, down
+    let neighbors = array<vec2<i32>, 4>(
+        vec2<i32>(-1, 0), vec2<i32>(1, 0),
+        vec2<i32>(0, -1), vec2<i32>(0, 1)
+    );
+
+
+    var restLength = 0.125;
+    
+    for (var i = 0u; i < 4u; i+=1) {
+        let nx = i32(x) + neighbors[i].x;
+        let ny = i32(y) + neighbors[i].y;
+
+        if (neighbors[i].x != 0) {
+            restLength = clothParams.spacingX;
+        } else {
+            restLength = clothParams.spacingZ;
+        }
+        
+        if (nx >= 0 && nx < i32(gridSize.x) && ny >= 0 && ny < i32(gridSize.y)) {
+            let neighborIdx = getParticleIndex(u32(nx), u32(ny), gridSize.x);
+            let neighbor = inputParticles[neighborIdx];
+
+            let springForce = computeSpringForce(
+                p.position.xyz,
+                neighbor.position.xyz,
+                restLength,
+                clothParams.stiffness
+            );
+
+            force += springForce;
+        }
+    }
+
+    // diagonal neighbors
+    let diagonals = array<vec2<i32>, 4> (
+        vec2<i32>(-1, -1),
+        vec2<i32>(1, -1),
+        vec2<i32>(-1, 1),
+        vec2<i32>(1, 1)
+    );
+
+    let diagRestLength = sqrt(clothParams.spacingX * clothParams.spacingX + clothParams.spacingZ * clothParams.spacingZ);
+
+    for (var i = 0u; i < 4u; i += 1) {
+        let nx = i32(x) + diagonals[i].x;
+        let ny = i32(y) + diagonals[i].y;
+
+        if (nx >= 0 && nx < i32(gridSize.x) && ny >= 0 && ny < i32(gridSize.y)) {
+            let neighborIdx = getParticleIndex(u32(nx), u32(ny), gridSize.x);
+            let neighbor = inputParticles[neighborIdx];
+            
+            let springForce = computeSpringForce(
+                p.position.xyz,
+                neighbor.position.xyz,
+                diagRestLength,
+                clothParams.stiffness * 0.5 // these springs are weaker
+            );
+
+            force += springForce;
+        }
+    }
+    
+    // Verlet calcuation LOL
+    let acceleration = force / clothParams.mass;
+    let dampingFactor = 1.0 - clothParams.damping;
+    let position = p.position.xyz + (p.position.xyz - p.prevPosition.xyz) * dampingFactor + acceleration * deltaTime * deltaTime;
+    
+    var finalPos = position;
+
+    if (finalPos.y < 0.0) {
+        finalPos.y = 0.0;
+    }
+
+    var outParticle = p;
+    outParticle.prevPosition = p.position;
+    outParticle.position = vec4<f32>(finalPos, 1.0);
+
+    outputParticles[index] = outParticle;
+
+    var normal = vec3<f32>(0.0, 1.0, 0.0);
+    
+    if (x > 0u && x < gridSize.x - 1u && y > 0u && y < gridSize.y - 1u) {
+        let right = inputParticles[getParticleIndex(x + 1u, y, gridSize.x)].position.xyz;
+        let left = inputParticles[getParticleIndex(x - 1u, y, gridSize.x)].position.xyz;
+        let up = inputParticles[getParticleIndex(x, y - 1u, gridSize.x)].position.xyz;
+        let down = inputParticles[getParticleIndex(x, y + 1u, gridSize.x)].position.xyz;
+        
+        let tangent1 = normalize(right - left);
+        let tangent2 = normalize(down - up);
+        normal = normalize(cross(tangent1, tangent2));
+    }
+    
+    outputVertices[index].position = vec4<f32>(finalPos, 1.0);
+    //outputVertices[index].position = p.position;
+    outputVertices[index].normal = vec4<f32>(normal, 0.0);
+} 

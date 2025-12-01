@@ -22,6 +22,7 @@ import { Node } from "./types";
 import { CustomNode } from "./components/CustomNode";
 import { CustomConnection } from "./components/CustomConnection";
 import { CustomSocket } from "./components/CustomSocket";
+import { Renderer } from "../webgpu/renderer";
 
 type ContextMenuItem = [string, () => Schemes["Node"]];
 
@@ -58,7 +59,8 @@ export const connectionMap = new Map<string, Set<string>>();
 
 export async function createEditor(
   container: HTMLElement,
-  onNodeSelected: (node: Node | null) => void
+  onNodeSelected: (node: Node | null) => void,
+  renderer: Renderer
 ) {
   const editor = new NodeEditor<Schemes>();
   const area = new AreaPlugin<Schemes, AreaExtra>(container);
@@ -120,6 +122,12 @@ export async function createEditor(
       case "nodecreate":
         await engine.onNodeCreated(context.data);
         engine.updateAllGeometries(context);
+
+        const node = context.data;
+        if (typeof node.updateSim === "function" && typeof node.dispatchSim === "function") {
+          renderer.registerSimNode(node);
+          console.log(`Registered ${node.label} for GPU simulation`);
+        }
         break;
       case "connectioncreated":
         await engine.onConnectionCreated(context.data);
@@ -128,6 +136,14 @@ export async function createEditor(
       case "connectionremove":
       case "noderemove":
         engine.updateAllGeometries(context);
+
+        if (context.type === "noderemove") {
+          const node = context.data;
+          if (typeof node.updateSim === "function" && typeof node.dispatchSim === "function") {
+            renderer.unregisterSimNode(node);
+            console.log(`Unregistered ${node.label} from GPU simulation`);
+          }
+        }
         break;
     }
 

@@ -4,6 +4,7 @@ import { SceneManager } from "./SceneManager";
 import { PipelineManager } from "./PipelineManager";
 import { GeometryData } from "../node_gui/geometry/geometry";
 import { vec3 } from "wgpu-matrix";
+import { Node } from "../node_gui/nodes/Node";
 
 export class Renderer {
   private gpu: GPUContext;
@@ -28,11 +29,19 @@ export class Renderer {
   private shaderMode: 0 | 1 = 1;
   private wireframeMode = false;
 
+  private simNodes: Node[] = [];
+
+  // Time.
+  private prevTime: number = 0;
+  private frameRequestId: number;
+
   constructor(sceneManager: SceneManager) {
     this.gpu = GPUContext.getInstance();
     this.scene = sceneManager;
     this.camera = new Camera();
     this.pipelineManager = new PipelineManager();
+
+    this.frameRequestId = requestAnimationFrame((t) => this.onFrame(t));
 
     this.setupObjectSelection();
 
@@ -73,6 +82,17 @@ export class Renderer {
 
     this.gpu.addResizeCallback(() => this.createDepthTexture());
     this.createDepthTexture();
+  }
+
+  // Register/unregister simulation nodes
+  public registerSimNode(node: Node) {
+    if (!this.simNodes.includes(node)) {
+      this.simNodes.push(node);
+    }
+  }
+  public unregisterSimNode(node: Node) {
+    const idx = this.simNodes.indexOf(node);
+    if (idx >= 0) this.simNodes.splice(idx, 1);
   }
 
   private setupObjectSelection() {
@@ -146,6 +166,57 @@ export class Renderer {
     this.depthView = this.depthTexture.createView();
   }
 
+  stop(): void {
+    cancelAnimationFrame(this.frameRequestId);
+  }
+
+  private onFrame(time: number) {
+    if (this.prevTime === 0) {
+      this.prevTime = time;
+    }
+    const deltaTime = time - this.prevTime;
+    this.prevTime = time;
+
+    this.camera.onFrame(deltaTime);
+
+    if (this.simNodes.length > 0) {
+      const gpu = this.gpu;
+      const encoder = gpu.device.createCommandEncoder();
+
+      for (const node of this.simNodes) {
+        if (node.updateSim) {
+          try {
+            node.updateSim(deltaTime);
+          } catch (e) {
+            console.warn("Renderer: error in node.updateSim()", e);
+          }
+        }
+      }
+
+      for (const node of this.simNodes) {
+        if (node.dispatchSim) {
+          try {
+            const pass = encoder.beginComputePass();
+            // Node uses provided GPUComputePassEncoder to bind pipeline + dispatch
+            node.dispatchSim(pass);
+            pass.end();
+          } catch (e) {
+            console.warn("Renderer: error in node.dispatchSim()", e);
+          }
+        }
+      }
+
+      // Submit simulation compute commands
+      gpu.device.queue.submit([encoder.finish()]);
+    }
+
+    // 2) Then draw the scene (unchanged)
+    this.draw();
+
+    // Queue next frame
+    this.frameRequestId = requestAnimationFrame((t) => this.onFrame(t));
+  }
+
   public startLoop() {
     const frame = () => {
       this.draw();
@@ -155,6 +226,7 @@ export class Renderer {
   }
 
   private draw() {
+    // Call onFrame here?
     this.camera.onFrame(16);
 
     if (this.shaderMode != 0) {
