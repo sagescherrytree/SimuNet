@@ -59,7 +59,8 @@ struct ClothSimParams {
     mass: f32,
     damping: f32,
     gravity: f32,
-    spacing: f32,
+    spacingX: f32,
+    spacingZ: f32
 }
 
 // Each vert can be represented as a particle.
@@ -165,12 +166,19 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         vec2<i32>(-1, 0), vec2<i32>(1, 0),
         vec2<i32>(0, -1), vec2<i32>(0, 1)
     );
-    
-    let restLength = clothParams.spacing;
+
+
+    var restLength = 0.125;
     
     for (var i = 0u; i < 4u; i+=1) {
         let nx = i32(x) + neighbors[i].x;
         let ny = i32(y) + neighbors[i].y;
+
+        if (neighbors[i].x != 0) {
+            restLength = clothParams.spacingX;
+        } else {
+            restLength = clothParams.spacingZ;
+        }
         
         if (nx >= 0 && nx < i32(gridSize.x) && ny >= 0 && ny < i32(gridSize.y)) {
             let neighborIdx = getParticleIndex(u32(nx), u32(ny), gridSize.x);
@@ -195,7 +203,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         vec2<i32>(1, 1)
     );
 
-    let diagRestLength = sqrt(2.0) * restLength;
+    let diagRestLength = sqrt(clothParams.spacingX * clothParams.spacingX + clothParams.spacingZ * clothParams.spacingZ);
 
     for (var i = 0u; i < 4u; i += 1) {
         let nx = i32(x) + diagonals[i].x;

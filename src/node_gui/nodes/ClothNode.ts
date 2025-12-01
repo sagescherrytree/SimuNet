@@ -101,7 +101,8 @@ export class ClothNode
     dampingControl: NumberControl;
     gravityControl: NumberControl;
 
-    private spacing: number = 0.125;
+    private spacingX: number = 0.125;
+    private spacingZ: number = 0.125;
     // TODO: add time step control.
 
     // grid dimensions??
@@ -142,28 +143,31 @@ export class ClothNode
         const gpu = GPUContext.getInstance();
 
         this.vertexCount = input.vertices.length / 8; // 8 floats per vertex
-        const side = Math.round(Math.sqrt(this.vertexCount));
-
-        if (side * side !== this.vertexCount) {
-            console.error("ERROR: Non-square grid LOL");
-        }
-
-        this.gridWidth = side;
-        this.gridHeight = side;
 
         const stride = 8;
-        const v0 = [input.vertices[0], input.vertices[1], input.vertices[2]];
-        const v1 = [input.vertices[stride], input.vertices[stride + 1], input.vertices[stride + 2]];
 
-        const dx = v1[0] - v0[0];
-        const dy = v1[1] - v0[1];
-        const dz = v1[2] - v0[2];
-        const actualSpacing = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        const uniqueX = new Set<number>();
+        const uniqueZ = new Set<number>();
 
-        console.log("Calculated spacing from vertices:", actualSpacing);
+        for (let i = 0; i < this.vertexCount; ++i) {
+            const x = Math.round(input.vertices[i * stride] * 1000) / 1000;
+            const z = Math.round(input.vertices[i * stride + 2] * 1000) / 1000;
+            uniqueX.add(x);
+            uniqueZ.add(z);
+        }
 
-        // Store it so updateUniformBuffer can use it
-        this.spacing = actualSpacing;
+        this.gridWidth = uniqueX.size;
+        this.gridHeight = uniqueZ.size;
+
+        console.log("grid dim: ", this.gridWidth, "x", this.gridHeight);
+
+        const sortedX = Array.from(uniqueX).sort((a, b) => a - b);
+        const sortedZ = Array.from(uniqueZ).sort((a, b) => a - b);
+
+        this.spacingX = sortedX[0];
+        this.spacingZ = sortedZ[0];
+
+        console.log("spacing: ", this.spacingX, "x", this.spacingZ);
 
         const gridSizeBuffer = gpu.device.createBuffer({
             size: 8,
@@ -306,7 +310,8 @@ export class ClothNode
 
     updateUniformBuffer() {
         const gpu = GPUContext.getInstance();
-        const spacing = this.spacing ?? 0.125;
+        const spacingX = this.spacingX ?? 0.125;
+        const spacingZ = this.spacingZ ?? 0.125;
 
         // Stiffness, mass, damping, gravity.
         const data = new Float32Array([
@@ -314,7 +319,8 @@ export class ClothNode
             this.massControl.value,
             this.dampingControl.value,
             this.gravityControl.value,
-            spacing
+            spacingX,
+            spacingZ
         ]);
 
         if (!this.clothSimUniformBuffer) {
@@ -360,9 +366,6 @@ export class ClothNode
         });
 
         this.gridSizeBuffer = gridSizeBuffer;
-
-        // TODO: Transfer positions from particle buffer to outputVertexBuffer.
-        // Do this either in compute shader or on CPU side via copyBuffertoBuffer?
 
         console.log("ClothSimNode: compute shader loaded");
         console.log("ClothSimNode: pipeline created:", this.clothSimComputePipeline);
