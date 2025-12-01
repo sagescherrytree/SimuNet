@@ -1,4 +1,3 @@
-// src/components/nodes/NodeA.ts
 import { ClassicPreset } from "rete";
 import {
   IExecutable,
@@ -12,8 +11,7 @@ import { GeometryData } from "../geometry/geometry";
 
 export abstract class Node
   extends ClassicPreset.Node
-  implements IExecutable, IUpdatable, IControllable
-{
+  implements IExecutable, IUpdatable, IControllable {
   height = 100;
   width = 200;
 
@@ -58,4 +56,9 @@ export abstract class Node
       this.updateBehavior.triggerUpdate();
     }
   }
+
+  // Simulation methods for sim nodes.
+  // Do not know if this be the best method, but mark simulation nodes to be updated by renderer?
+  public updateSim?(deltaTime: number): void;
+  public dispatchSim?(pass: GPUComputePassEncoder): void;
 }

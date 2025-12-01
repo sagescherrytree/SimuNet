@@ -81,11 +81,12 @@ export function App() {
         const renderer = new Renderer(sceneManager);
 
         cleanupRef.current.renderer = renderer;
-        
+
         // 3. Initialize Node Editor
         const { editor, destroy, getNodeById, engine } = await createEditor(
           reteContainerRef.current!,
-          setSelectedNode
+          setSelectedNode,
+          renderer
         );
 
         cleanupRef.current.engine = engine;
@@ -221,7 +222,7 @@ export function App() {
           }}
         >
           {/* Save Button */}
-          <a id="fileSave" style={{display:"none",}}></a>
+          <a id="fileSave" style={{ display: "none", }}></a>
           <button
             onClick={async () => {
               if (cleanupRef.current.engine) {
@@ -230,7 +231,7 @@ export function App() {
                 if ("showSaveFilePicker" in window && window.showSaveFilePicker instanceof Function) {
                   const handle = await window.showSaveFilePicker({
                     suggestedName: "SimuNet_SavedGraph.json",
-                    types: [{description: "JSON Files", accept: {"application/json": [".json"]}}]
+                    types: [{ description: "JSON Files", accept: { "application/json": [".json"] } }]
                   })
                   const writable = await handle.createWritable();
                   await writable.write(text);
@@ -271,18 +272,18 @@ export function App() {
 
           {/* Load Button */}
           <input type="file" id="fileInput" accept=".json"
-          style={{display:"none",}}
-          onChange={function() {
-            let fileInput = document.getElementById("fileInput") as HTMLInputElement;
-            if (cleanupRef.current.engine && fileInput.files.length > 0) {
-              let file = fileInput.files[0];
-              const reader = new FileReader();
-              reader.onload = (event) => {
-                cleanupRef.current.engine.loadGraphFromJSON(event.target.result.toString());
-              };
-              reader.readAsText(file);
-            }
-          }}
+            style={{ display: "none", }}
+            onChange={function () {
+              let fileInput = document.getElementById("fileInput") as HTMLInputElement;
+              if (cleanupRef.current.engine && fileInput.files.length > 0) {
+                let file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                  cleanupRef.current.engine.loadGraphFromJSON(event.target.result.toString());
+                };
+                reader.readAsText(file);
+              }
+            }}
           />
           <button
             onClick={() => {
@@ -313,7 +314,7 @@ export function App() {
             📂
           </button>
         </div>
-        
+
       </div>
 
       {/* Right: WebGPU Canvas */}

@@ -6,11 +6,13 @@ import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { GPUContext } from "../../webgpu/GPUContext";
 // Import cloth compute shader.
 import clothSimComputeShader from '../../webgpu/shaders/clothSim.cs.wgsl';
+// Maybe we can change this to be more efficient structurally, but for now, call renderer.
+import { Renderer } from "../../webgpu/renderer";
 
 // Cloth particle struct creation.
 // Refernce from HW 4 Forward rendering camera.ts.
 class ClothParticleCPU {
-    static readonly STRIDE = 56; // must match WGSL Particle struct
+    static readonly STRIDE = 64; // must match WGSL Particle struct
 
     buffer: ArrayBuffer;
     floatView: Float32Array;
@@ -74,6 +76,18 @@ export class ClothNode
     particleBuffer1: GPUBuffer;
     particleBuffer2: GPUBuffer;
 
+    private currentReadBuffer: GPUBuffer;
+    private currentWriteBuffer: GPUBuffer;
+
+    private outputVertexBuffer: GPUBuffer;
+
+    // Time uniform buffer in local cloth node.
+    // Should we change this? Should geometry carry time uniform buffer?
+    timeUniformBuffer: GPUBuffer;
+
+    // Vertex count to pass into renderer.
+    private vertexCount: number = 0;
+
     clothSimComputeBindGroupLayout: GPUBindGroupLayout;
     clothSimComputeBindGroup: GPUBindGroup;
     clothSimComputePipeline: GPUComputePipeline;
@@ -88,6 +102,12 @@ export class ClothNode
     gravityControl: NumberControl;
     // TODO: add time step control.
 
+    // grid dimensions??
+    gridHeight: number;
+    gridWidth: number;
+
+    gridSizeBuffer: GPUBuffer;
+
     constructor() {
         super("ClothNode");
 
@@ -101,10 +121,10 @@ export class ClothNode
             this.updateBehavior.triggerUpdate();
         };
 
-        this.stiffnessControl = new NumberControl("Stiffness", 0.5, onChange, 0.1);
-        this.massControl = new NumberControl("Mass", 0.5, onChange, 0.1);
-        this.dampingControl = new NumberControl("Dampening", 1.0, onChange, 0.1);
-        this.gravityControl = new NumberControl("Gravity", 0, onChange, 1, 0, 1000);
+        this.stiffnessControl = new NumberControl("Stiffness", 5.0, onChange, 0.1);
+        this.massControl = new NumberControl("Mass", 10.0, onChange, 0.1);
+        this.dampingControl = new NumberControl("Dampening", 0.01, onChange, 0.1);
+        this.gravityControl = new NumberControl("Gravity", 0.0, onChange, 1, 0, 1000);
     }
 
     setInputGeometry(geometry: GeometryData) {
@@ -113,15 +133,36 @@ export class ClothNode
     }
 
     // Need another input for second geom.
-
     applyModification(input: GeometryData): GeometryData | undefined {
         if (!input) return;
 
-        const stride = 8 * 4; // 32 bytes to fit vec4 padding.
-        const vertexCount = input.vertexBuffer!.size / stride;
-
         // GPU stuffs.
         const gpu = GPUContext.getInstance();
+
+        this.vertexCount = input.vertices.length / 8; // 8 floats per vertex
+        const side = Math.round(Math.sqrt(this.vertexCount));
+
+        if (side * side !== this.vertexCount) {
+            console.error("ERROR: Non-square grid LOL");
+        }
+
+        this.gridWidth = side;
+        this.gridHeight = side;
+
+        console.log("Input vertex count:", this.vertexCount);
+        console.log("Grid dimensions:", this.gridWidth, "x", this.gridHeight);
+        console.log("Input vertices length:", input.vertices.length);
+        console.log("Expected vertices:", this.gridWidth * this.gridHeight * 8);
+
+        const gridSizeBuffer = gpu.device.createBuffer({
+            size: 8,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+
+        gpu.device.queue.writeBuffer(
+            gridSizeBuffer, 0, new Uint32Array([this.gridWidth, this.gridHeight])
+        );
+
 
         // Set up buffers.
         // Input buffers for verts and indices.
@@ -131,12 +172,19 @@ export class ClothNode
         console.log("ClothNode: incoming vertexBuffer", vertexBuffer);
         console.log("ClothNode: incoming vertex buffer size:", vertexBuffer?.size);
 
+        // Instantiate time uniform buffer.
+        this.timeUniformBuffer = gpu.device.createBuffer({
+            label: "time uniform",
+            size: 4,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+
         // Fill particle buffers.
-        const particleCount = vertexCount;
+        const particleCount = this.vertexCount;
         const cpuParticles = new ClothParticleCPU(particleCount);
 
         // Still using CPU vertices, TODO change to read from GPU vertex buffer evetually.
-        this.fillParticleBuffer(cpuParticles, input.vertices, vertexCount);
+        this.fillParticleBuffer(cpuParticles, input.vertices, this.vertexCount);
 
         // Ping-pong GPU buffers.
         this.particleBuffer1 = gpu.device.createBuffer({
@@ -151,42 +199,43 @@ export class ClothNode
 
         // Upload initial data to buffer1
         gpu.device.queue.writeBuffer(this.particleBuffer1, 0, cpuParticles.buffer);
+        gpu.device.queue.writeBuffer(this.particleBuffer2, 0, cpuParticles.buffer);
+
+        this.currentReadBuffer = this.particleBuffer1;
+        this.currentWriteBuffer = this.particleBuffer2;
+
 
         // Output buffer for transformed vertices.
-        const outputVertexBuffer = gpu.device.createBuffer({
-            size: input.vertexBuffer!.size,
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_SRC,
-        });
+        if (!this.outputVertexBuffer || this.outputVertexBuffer.size !== input.vertexBuffer!.size) {
+            this.outputVertexBuffer = gpu.device.createBuffer({
+                label: "Cloth Sim Output Vertex Buffer",
+                size: input.vertexBuffer!.size,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_SRC,
+            });
+        }
 
         this.updateUniformBuffer();
-        this.setupComputePipeline(vertexBuffer!, outputVertexBuffer);
+        this.setupComputePipeline(gridSizeBuffer);
 
         // Invoke compute pass.
-        const encoder = gpu.device.createCommandEncoder();
-        const pass = encoder.beginComputePass();
-        pass.setPipeline(this.clothSimComputePipeline);
-        pass.setBindGroup(0, this.clothSimComputeBindGroup);
-
-        const workgroups = Math.ceil(vertexCount / this.workgroupSize);
-        pass.dispatchWorkgroups(workgroups);
-
-        pass.end();
-        gpu.device.queue.submit([encoder.finish()]);
+        // TODO: Update per frame for time uniform.
+        // Change to invoking renderer to dispatch compute pass?
+        // Done via updateSim and dispatchSim methods.
 
         // Debug.
         gpu.device.queue.onSubmittedWorkDone().then(async () => {
             const readBuffer = gpu.device.createBuffer({
-                size: outputVertexBuffer.size,
+                size: this.outputVertexBuffer.size,
                 usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
             });
 
             const enc = gpu.device.createCommandEncoder();
             enc.copyBufferToBuffer(
-                outputVertexBuffer,
+                this.outputVertexBuffer,
                 0,
                 readBuffer,
                 0,
-                outputVertexBuffer.size
+                this.outputVertexBuffer.size
             );
             gpu.device.queue.submit([enc.finish()]);
 
@@ -198,7 +247,7 @@ export class ClothNode
         this.geometry = {
             vertices: new Float32Array(input.vertices),
             indices: new Uint32Array(input.indices),
-            vertexBuffer: outputVertexBuffer,
+            vertexBuffer: this.outputVertexBuffer,
             indexBuffer: indexBuffer,
             wireframeIndexBuffer: input.wireframeIndexBuffer,
             id: this.id,
@@ -220,12 +269,21 @@ export class ClothNode
                 vertices[base + 2],
             ];
 
+            if (i < 5) {
+                console.log(`Particle ${i} initial pos:`, pos);
+            }
+
+            const gridX = i % this.gridWidth;
+            const gridY = Math.floor(i / this.gridWidth);
+
+            const isFixed = (gridY === 0) ? 1 : 0; // this just pins the top edge ahahahahahahahaha
+
             clothPartBufferCPU.writeParticle(i, {
                 position: pos,
                 prevPosition: pos,
                 velocity: [0, 0, 0], // initial
                 mass: this.massControl.value,
-                isFixed: this.isEdgePinned(i, vertexCount) ? 1 : 0,
+                isFixed: isFixed,
             });
         }
     }
@@ -257,15 +315,18 @@ export class ClothNode
     }
 
     // Pass in buffers for input vertices.
-    setupComputePipeline(vertexBuffer: GPUBuffer, outputVertexBuffer: GPUBuffer) {
+    setupComputePipeline(gridSizeBuffer: GPUBuffer) {
         const gpu = GPUContext.getInstance();
 
         this.clothSimComputeBindGroupLayout = gpu.device.createBindGroupLayout({
             label: "cloth sim compute BGL",
             entries: [
-                { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
-                { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
-                { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+                { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // input particles
+                { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } }, // output particles
+                { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } }, // output vertices
+                { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } }, // cloth params
+                { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } }, // delta time
+                { binding: 5, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } }, // grid size
             ]
         });
 
@@ -285,21 +346,61 @@ export class ClothNode
             compute: { module: shaderModule, entryPoint: "main" },
         });
 
-        this.clothSimComputeBindGroup = gpu.device.createBindGroup({
-            layout: this.clothSimComputeBindGroupLayout,
-            entries: [ // TODO: Need to adjust to particle buffers.
-                { binding: 0, resource: { buffer: vertexBuffer } },
-                { binding: 1, resource: { buffer: outputVertexBuffer } },
-                { binding: 2, resource: { buffer: this.clothSimUniformBuffer! } },
-            ]
-        });
+        this.gridSizeBuffer = gridSizeBuffer;
 
         // TODO: Transfer positions from particle buffer to outputVertexBuffer.
         // Do this either in compute shader or on CPU side via copyBuffertoBuffer?
 
         console.log("ClothSimNode: compute shader loaded");
         console.log("ClothSimNode: pipeline created:", this.clothSimComputePipeline);
-        console.log("ClothSimNode: bind group:", this.clothSimComputeBindGroup);
+    }
+
+    // LOOKAT: Implement updateSim and dispatchSim methods from renderer.ts.
+    public updateSim(deltaTime: number) {
+        if (!this.timeUniformBuffer) return;
+
+        this.updateUniformBuffer();
+
+        // write deltaTime into uniform buffer (we use a Float32Array, buffer padded to 16 bytes)
+        // const f32 = new Float32Array([deltaTime, 0, 0, 0]);
+        // const gpu = GPUContext.getInstance();
+        // gpu.device.queue.writeBuffer(this.timeUniformBuffer, 0, f32.buffer);
+
+        // Updating delta time... converting ms to seconds
+        const dtSeconds = Math.min(deltaTime / 1000.0, 0.016);
+        const gpu = GPUContext.getInstance();
+        gpu.device.queue.writeBuffer(this.timeUniformBuffer, 0, new Float32Array([dtSeconds]));
+    }
+
+    public dispatchSim(pass: GPUComputePassEncoder) {
+        if (!this.clothSimComputePipeline || !this.outputVertexBuffer) {
+            console.log("ERROR: Compute resources not initialized.")
+            return;
+        }
+
+        console.log("Dispatching cloth sim...");
+
+        const gpu = GPUContext.getInstance();
+
+        const bindGroup = gpu.device.createBindGroup({
+            layout: this.clothSimComputeBindGroupLayout,
+            entries: [
+                { binding: 0, resource: { buffer: this.currentReadBuffer } },
+                { binding: 1, resource: { buffer: this.currentWriteBuffer } },
+                { binding: 2, resource: { buffer: this.outputVertexBuffer } },
+                { binding: 3, resource: { buffer: this.clothSimUniformBuffer } },
+                { binding: 4, resource: { buffer: this.timeUniformBuffer } },
+                { binding: 5, resource: { buffer: this.gridSizeBuffer } }
+            ]
+        })
+
+        pass.setPipeline(this.clothSimComputePipeline);
+        pass.setBindGroup(0, bindGroup);
+
+        const workgroups = Math.ceil(this.vertexCount / this.workgroupSize);
+        pass.dispatchWorkgroups(workgroups);
+
+        [this.currentReadBuffer, this.currentWriteBuffer] = [this.currentWriteBuffer, this.currentReadBuffer];
     }
 
     async execute(inputs?: Record<string, any>) {
