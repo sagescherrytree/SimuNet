@@ -5,6 +5,7 @@ import { PipelineManager } from "./PipelineManager";
 import { GeometryData } from "../node_gui/geometry/geometry";
 import { vec3 } from "wgpu-matrix";
 import { Node } from "../node_gui/nodes/Node";
+import Stats from 'stats.js';
 
 export class Renderer {
   private gpu: GPUContext;
@@ -34,6 +35,7 @@ export class Renderer {
   // Time.
   private prevTime: number = 0;
   private frameRequestId: number;
+  protected stats: Stats;
 
   constructor(sceneManager: SceneManager) {
     this.gpu = GPUContext.getInstance();
@@ -82,6 +84,11 @@ export class Renderer {
 
     this.gpu.addResizeCallback(() => this.createDepthTexture());
     this.createDepthTexture();
+
+    // Start stats reading.
+    this.stats = new Stats();
+    this.stats.showPanel(0); // 0 = FPS
+    document.body.appendChild(this.stats.dom);
   }
 
   // Register/unregister simulation nodes
@@ -193,6 +200,8 @@ export class Renderer {
         }
       }
 
+      this.stats.begin();
+
       for (const node of this.simNodes) {
         if (node.dispatchSim) {
           try {
@@ -208,6 +217,8 @@ export class Renderer {
 
       // Submit simulation compute commands
       gpu.device.queue.submit([encoder.finish()]);
+
+      this.stats.end();
     }
 
     // 2) Then draw the scene (unchanged)

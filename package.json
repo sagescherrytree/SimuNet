@@ -30,6 +30,7 @@
     "rete-context-menu-plugin": "^2.0.6",
     "rete-react-plugin": "^2.1.0",
     "rete-render-utils": "^2.0.3",
+    "stats.js": "^0.17.0",
     "styled-components": "^6.1.19",
     "tweakpane": "^3.1.8",
     "tweakpane-plugin-file-import": "^0.2.0",

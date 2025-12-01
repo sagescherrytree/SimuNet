@@ -23,7 +23,7 @@ import { AreaPlugin } from "rete-area-plugin";
 export class GraphEngine {
   constructor(private editor: NodeEditor<Schemes>, private area: AreaPlugin<Schemes, AreaExtra>) { }
 
-  
+
 
   async propagate(sourceId: string) {
     const source = this.editor.getNode(sourceId);
@@ -142,7 +142,7 @@ export class GraphEngine {
     // or maybe should make connection adding check whether it'll create a loop always and just prevent it if so? no renderable/usable graphs have it
     // ACTUALLY not an issue with how this is set up now I think
     // TODO
-    
+
     // connections need:
     /* e.g.:
     id: "18af055ebd5dae67"
@@ -172,9 +172,9 @@ export class GraphEngine {
 
     let allNodes = this.editor.getNodes();
     let allConnections = this.editor.getConnections();
-    
+
     let nodeViews = this.area.nodeViews;
-    
+
     const nodeData = [];
     for (const node of allNodes) {
       const outData = {
@@ -200,7 +200,7 @@ export class GraphEngine {
       connections: allConnections,
       nodePositions: nodePositionData
     };
-    
+
 
     const jsonOutput = JSON.stringify(outputObject);
     return jsonOutput;
@@ -219,7 +219,7 @@ export class GraphEngine {
       }
       return;
     }
-    
+
     if (!("nodes" in inputObject)) {
       console.log("Invalid JSON input: missing nodes");
       return;
@@ -234,6 +234,8 @@ export class GraphEngine {
       let node: Node;
       if (nodeData.label == "ClothNode") {
         node = NodeTypes.Cloth();
+      } else if (nodeData.label == "CopyToPoints") {
+        node = NodeTypes.CopyToPoints();
       } else if (nodeData.label == "CubeNode") {
         node = NodeTypes.Cube();
       } else if (nodeData.label == "IcosphereNode") {
@@ -252,7 +254,7 @@ export class GraphEngine {
         node = NodeTypes.Material();
       }
       // TODO probably go remove ...Node from all the labels; redundant for user to see
-      
+
       node.id = nodeData.id;
       const nodeControls = node.getEditableControls();
       for (const key in nodeData.controls) {
@@ -275,10 +277,10 @@ export class GraphEngine {
     if ("nodePositions" in inputObject) {
       for (const posData of inputObject.nodePositions) {
         // shouldn't need an await I think since nothing relies on this being done
-        this.area.translate(posData.id, posData.position); 
+        this.area.translate(posData.id, posData.position);
       }
     }
-    
+
     this.updateAllGeometries(null);
   }
 

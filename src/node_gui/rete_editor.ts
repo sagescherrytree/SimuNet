@@ -27,7 +27,7 @@ import { Renderer } from "../webgpu/renderer";
 type ContextMenuItem = [string, () => Schemes["Node"]];
 
 function getContextMenuItems() {
-  const { Cube, Icosphere, Noise, Transform, Cloth, Plane, Torus, RecomputeNormals, Material } = NodeTypes;
+  const { Cube, Icosphere, Noise, Transform, Cloth, Plane, Torus, RecomputeNormals, CopyToPoints, Material } = NodeTypes;
 
   const primitiveItems: ContextMenuItem[] = [
     ["Cube", Cube],
@@ -40,6 +40,7 @@ function getContextMenuItems() {
     ["Noise", Noise],
     ["Transform", Transform],
     ["Cloth", Cloth],
+    ["Copy to Points", CopyToPoints],
     ["Recompute Normals", RecomputeNormals],
     ["Material", Material],
   ];
