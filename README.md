@@ -2,6 +2,8 @@
 
 A WebGPU Node Based Procedural Generator focusing on simulations.
 
+<img width="1914" height="1086" alt="team-11" src="https://github.com/user-attachments/assets/3e793ac0-32bb-4e27-b5e8-b5e42f7f1375" />
+
 [Demo link](https://sagescherrytree.github.io/SimuNet/)
 
 ### Instructions
