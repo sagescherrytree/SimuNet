@@ -23,7 +23,6 @@ import { AreaPlugin } from "rete-area-plugin";
 export class GraphEngine {
   constructor(private editor: NodeEditor<Schemes>, private area: AreaPlugin<Schemes, AreaExtra>) { }
 
-  // TODO: Update logic to handle multiple node inputs.
 
   async propagate(sourceId: string) {
     const source = this.editor.getNode(sourceId);
@@ -41,6 +40,7 @@ export class GraphEngine {
       if (!target) continue;
 
       if (isCombiner(target)) {
+        // using Combiner as label for any multi-input node at the moment
         const index = this.getInputIndex(conn.targetInput);
         target.setInputGeometry(geometry, index);
         console.log(`Flow: ${source.label} -> ${target.label} Input #${index}`);
@@ -256,7 +256,6 @@ export class GraphEngine {
       } else if (nodeData.label == "Material") {
         node = NodeTypes.Material();
       }
-      // TODO probably go remove ...Node from all the labels; redundant for user to see
 
       node.id = nodeData.id;
       const nodeControls = node.getEditableControls();
