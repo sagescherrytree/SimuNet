@@ -126,7 +126,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     };
 
     this.stiffnessControl = new NumberControl("Stiffness", 5.0, onChange, 0.1);
-    this.massControl = new NumberControl("Mass", 0.1, onChange, 0.1);
+    this.massControl = new NumberControl("Mass", 1.0, onChange, 0.1);
     this.dampingControl = new NumberControl("Dampening", 0.01, onChange, 0.1);
     this.gravityControl = new NumberControl(
       "Gravity",
@@ -150,6 +150,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     // GPU stuffs.
     const gpu = GPUContext.getInstance();
 
+    // TODO remove once moved to GPU
     this.vertexCount = input.vertices.length / 8; // 8 floats per vertex
 
     const stride = 8;
@@ -164,6 +165,21 @@ export class ClothNode extends Node implements IGeometryModifier {
 
     const precisionFactor = 1000;
 
+    //PLAN FOR CLOTH SETUP ON GPU:
+    // 1: compute shader for each triangle (set of 3 indices) make 6 springs (each direction separately) set in buffer of array<Spring>
+    //    makeSprings.cs.wgsl
+    // 2: sort that array<Spring> by the index of the first spring, probably using a library
+    // 3: compute shader for each vertex: set up particle data for that vertex in array<Particle>
+    //    makeParticles.cs.wgsl
+    // 4: compute shader for each spring: using atomics for firstSpringIdx and springCount, set those in the particle that has the first index in this spring
+    //    addSpringToParticles.cs.wgsl
+    //   IDK if fine to then use atomics when accessing these in clothSim.cs.wgsl itself but I think should be; otherwise has another pass that writes the result of the atomics to normal u32s
+    // then run cloth sim
+    //  in order to access neighbors iterate over [firstSpringIdx, firstSpringIdx+springCount) and that gives the other vertex index and rest length
+
+    // TODO make compute pipeline to call those, add library for sort
+
+    // TODO move to GPU
     for (let i = 0; i < this.vertexCount; ++i) {
       const x = input.vertices[i * stride];
       const z = input.vertices[i * stride + 2];
@@ -229,6 +245,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     const cpuParticles = new ClothParticleCPU(particleCount);
 
     // Still using CPU vertices, TODO change to read from GPU vertex buffer evetually.
+    // TODO move to GPU
     this.fillParticleBuffer(cpuParticles, input.vertices, this.vertexCount);
 
     // Ping-pong GPU buffers.
@@ -480,7 +497,8 @@ export class ClothNode extends Node implements IGeometryModifier {
     pass.setPipeline(this.clothSimComputePipeline);
     pass.setBindGroup(0, bindGroup);
 
-    const workgroups = Math.ceil(this.vertexCount / this.workgroupSize);
+    const particleCount = this.currentReadBuffer.size / 64;
+    const workgroups = Math.ceil(particleCount / this.workgroupSize);
     pass.dispatchWorkgroups(workgroups);
 
     [this.currentReadBuffer, this.currentWriteBuffer] = [

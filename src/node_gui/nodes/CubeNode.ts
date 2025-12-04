@@ -123,7 +123,7 @@ export class CubeNode extends Node implements IGeometryGenerator {
       for (const index of quadTriangles) {
         const V = V_face[index];
 
-        const [x, y, z] = this.transfromVertices(
+        const [x, y, z] = this.transformVertices(
           V,
           translation,
           rotation,
@@ -144,9 +144,7 @@ export class CubeNode extends Node implements IGeometryGenerator {
 
     const gpu = GPUContext.getInstance();
 
-    const vertexData = new Float32Array(
-      vertexCount * 8
-    );
+    const vertexData = new Float32Array(vertexCount * 8);
 
     // TODO does / 3 ever have rounding issues?
     for (let i = 0; i < finalVertices.length / 3; i++) {
@@ -159,27 +157,41 @@ export class CubeNode extends Node implements IGeometryGenerator {
       vertexData[8 * i + 6] = finalNormals[i * 3 + 2];
       vertexData[8 * i + 7] = 0;
     }
-    
 
     const vertexBuffer = gpu.device.createBuffer({
       size: Math.max(vertexData.byteLength, 32), // Min size safety
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+      usage:
+        GPUBufferUsage.VERTEX |
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_SRC |
+        GPUBufferUsage.COPY_DST,
     });
     gpu.device.queue.writeBuffer(vertexBuffer, 0, vertexData.buffer);
 
     const indexData = new Uint32Array(indices);
     const indexBuffer = gpu.device.createBuffer({
       size: Math.max(indexData.byteLength, 32),
-      usage: GPUBufferUsage.INDEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+      usage:
+        GPUBufferUsage.INDEX |
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_SRC |
+        GPUBufferUsage.COPY_DST,
     });
     gpu.device.queue.writeBuffer(indexBuffer, 0, indexData.buffer);
 
     const wireframeIndexBuffer = gpu.device.createBuffer({
       size: Math.max(wireframeIndices.byteLength, 32),
-      usage: GPUBufferUsage.INDEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+      usage:
+        GPUBufferUsage.INDEX |
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_SRC |
+        GPUBufferUsage.COPY_DST,
     });
-    gpu.device.queue.writeBuffer(wireframeIndexBuffer, 0, wireframeIndices.buffer);
-
+    gpu.device.queue.writeBuffer(
+      wireframeIndexBuffer,
+      0,
+      wireframeIndices.buffer
+    );
 
     const materialData = new Float32Array([1.0, 1.0, 1.0, 1.0]);
     const materialBuffer = gpu.device.createBuffer({
@@ -196,11 +208,11 @@ export class CubeNode extends Node implements IGeometryGenerator {
       sourceId: this.id,
       boundingSphere: bounds.sphere,
       boundingBox: bounds.box,
-      materialBuffer: materialBuffer
+      materialBuffer: materialBuffer,
     };
   }
 
-  private transfromVertices(
+  private transformVertices(
     V: number[],
     translation: Vec3,
     rotation: Vec3,

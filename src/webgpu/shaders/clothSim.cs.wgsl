@@ -70,9 +70,20 @@ struct Particle {
     velocity      : vec4<f32>,  // 16 bytes
     mass          : f32,        // 4 bytes
     isFixed       : u32,        // 4 bytes
-    padding       : f32,        // 4 bytes
-    padding2      : f32,        // 4 bytes
+    // padding       : f32,        // 4 bytes
+    // padding2      : f32,        // 4 bytes
+    firstSpringIdx: atomic<u32>, // TODO make atomic?
+    springCount: atomic<u32>, 
 }
+
+// TODO want to be able to go particle pair to rest length
+
+struct Spring {
+    particleIdx0: u32,
+    particleIdx1: u32,
+    restLength: f32,  
+}
+
 
 struct VertexOut {
     position : vec4<f32>,
@@ -82,6 +93,7 @@ struct VertexOut {
 // Input from NoiseNode.ts
 @group(0) @binding(0)
 var<storage, read> inputParticles: array<Particle>;
+
 
 @group(0) @binding(1)
 var<storage, read_write> outputParticles: array<Particle>;
@@ -98,6 +110,8 @@ var<uniform> deltaTime: f32;
 @group(0) @binding(5)
 var<uniform> gridSize: vec2<u32>; // width, height of the cloth grid
 
+@group(0) @binding(6)
+var<storage, read> inputSprings: array<Spring>;
 
 fn getParticleIndex(x: u32, y: u32, width: u32) -> u32 {
     return y * width + x;
