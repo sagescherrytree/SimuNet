@@ -40,18 +40,21 @@ export class GraphEngine {
       const target = this.editor.getNode(conn.target);
       if (!target) continue;
 
-      if (isModifier(target)) {
+      if (isCombiner(target)) {
+        const index = this.getInputIndex(conn.targetInput);
+        target.setInputGeometry(geometry, index);
+        console.log(`Flow: ${source.label} -> ${target.label} Input #${index}`);
+        // target.setInputGeometry(index, geometry);
+        
+        // if (isExecutable(target)) {
+        //   console.log("executing:");
+        //   console.log(target);
+        //   await target.execute();
+        // }
+        // } else {
+      } else if (isModifier(target)) {
         target.setInputGeometry(geometry);
         console.log(`Flow: ${source.label} -> ${target.label}`);
-      } else if (isCombiner(target)) {
-        const index = this.getInputIndex(conn.targetInput);
-        // target.setInputGeometry(index, geometry);
-
-        if (isExecutable(target)) {
-          console.log("executing:");
-          console.log(target);
-          await target.execute();
-        }
       }
       await this.propagate(target.id); // TODO is await needed?
     }
@@ -262,9 +265,10 @@ export class GraphEngine {
         console.log(nodeData.controls[key]);
         nodeControls[key].value = nodeData.controls[key].value;
       }
-      if (isExecutable(node)) {
-        node.execute();
-      }
+      // TODO I think redundant with updateAllGeometries later?
+      // if (isExecutable(node)) {
+      //   node.execute();
+      // }
       await this.editor.addNode(node);
     }
 

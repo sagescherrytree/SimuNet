@@ -60,7 +60,7 @@ export const isModifier = (n: any): n is IGeometryModifier =>
   n && typeof (n as any).applyModification === "function";
 
 export const isCombiner = (n: any): n is IGeometryCombiner =>
-  n && typeof (n as any).combineGeometries === "function";
+  n && typeof (n as any).applyModificationMultiple === "function";
 
 export const isGenerator = (n: any): n is IGeometryGenerator =>
   n && typeof (n as any).generateGeometry === "function";

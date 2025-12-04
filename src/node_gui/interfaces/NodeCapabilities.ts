@@ -11,11 +11,9 @@ export interface IGeometryGenerator {
 
 export interface IGeometryModifier {
   applyModification?(input: GeometryData): GeometryData | undefined;
-  applyModificationMultiple?(input1: GeometryData, input2: GeometryData): GeometryData | undefined;
   inputGeometry?: GeometryData;
-  inputGeometry2?: GeometryData;
-  setInputGeometry(geometry: GeometryData): void;
-  setInputGeometryMult?(geometry1: GeometryData, geometry2: GeometryData): void;
+  setInputGeometry(geometry: GeometryData, index?: number): void;
+  // setInputGeometryMult?(geometry1: GeometryData, geometry2: GeometryData): void;
 }
 
 export interface IVertexDeformer {
@@ -26,8 +24,10 @@ export interface IAttributeCalculator {
   calculateAttributes(geometry: GeometryData): any;
 }
 
-export interface IGeometryCombiner {
-  combineGeometries(geometries: GeometryData[]): GeometryData;
+export interface IGeometryCombiner extends IGeometryModifier {
+  // combineGeometries(geometries: GeometryData[]): GeometryData;
+  applyModificationMultiple?(inputs: GeometryData[]): GeometryData | undefined;
+  inputGeometries?: GeometryData[];
 }
 
 export interface IUpdatable {

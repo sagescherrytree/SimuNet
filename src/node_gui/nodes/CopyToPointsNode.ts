@@ -7,8 +7,10 @@ import copyToPointsComputeShader from '../../webgpu/shaders/copyToPoints.cs.wgsl
 
 
 export class CopyToPointsNode extends Node implements IGeometryModifier {
-    public inputGeometry?: GeometryData;
-    public inputGeometry2?: GeometryData;
+    // public inputGeometry?: GeometryData;
+    // public inputGeometry2?: GeometryData;
+    public inputGeometries?: GeometryData[];
+    private numInputs = 2;
 
     cpyToPtsUniformBuffer?: GPUBuffer;
 
@@ -26,28 +28,39 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
 
         this.ioBehavior.addMultipleInputs(2);
         this.ioBehavior.addGeometryOutput();
+        this.inputGeometries = [];
 
         const onChange = () => {
-            if (this.inputGeometry) {
-                this.applyModificationMultiple(this.inputGeometry, this.inputGeometry2);
-            }
+            // Don't need check I think since checking within applyModificationMultiple: if (this.inputGeometries) {
+            this.applyModificationMultiple(this.inputGeometries);
             this.updateBehavior.triggerUpdate();
         };
     }
 
-    setInputGeometry(geometry: GeometryData) {
-        this.inputGeometry = geometry;
-        this.applyModificationMultiple(this.inputGeometry, this.inputGeometry2);
+    setInputGeometry(geometry: GeometryData, index: number = 0) {
+        this.inputGeometries[index] = geometry;
+        console.log(this);
+        this.applyModificationMultiple(this.inputGeometries);
     }
 
-    setInputGeometryMult(geometry1: GeometryData, geometry2: GeometryData) {
-        this.inputGeometry = geometry1;
-        this.inputGeometry2 = geometry2;
-        this.applyModificationMultiple(this.inputGeometry, this.inputGeometry2);
-    }
+    // setInputGeometryMult(geometry1: GeometryData, geometry2: GeometryData) {
+    //     this.inputGeometry = geometry1;
+    //     this.inputGeometry2 = geometry2;
+    //     this.applyModificationMultiple(this.inputGeometries);
+    // }
 
-    applyModificationMultiple(input: GeometryData, input2: GeometryData): GeometryData | undefined {
-        if (!input) return;
+    applyModificationMultiple(inputs: GeometryData[]): GeometryData | undefined {
+
+        for (let i = 0; i < this.numInputs; ++i) {
+            if (!inputs[i]) {
+                return;
+            }
+        }
+    // applyModificationMultiple(input: GeometryData, input2: GeometryData): GeometryData | undefined {
+        // if (!input || !input2) return;
+
+        const input = inputs[0];
+        const input2 = inputs[1];
 
         // TODO: change logic for accounting for multiple vertex buffers.
         const stride = 8 * 4; // 32 bytes to fit vec4 padding.
@@ -168,8 +181,9 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
         console.log("CopyToPointsNode: bind group:", this.cpyToPtsComputeBindGroup);
     }
 
+    // TODO I think maybe we ought to get rid of executes? I'm not sure we actually really use them for anything outside of node calling own execute in order to call their own applyModification when we could just call applyModification directly
     async execute(inputs?: Record<string, any>) {
-        const geom = inputs?.geometry?.[0] as GeometryData;
+        const geom = inputs?.geometry0?.[0] as GeometryData;
         const geom2 = inputs?.geometry1?.[0] as GeometryData;
         if (!geom) {
             console.warn("CopyToPointsNode: No input geometry");
@@ -181,7 +195,7 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
             return;
         }
 
-        this.geometry = this.applyModificationMultiple(geom, geom2);
+        this.geometry = this.applyModificationMultiple([geom, geom2]);
         return { geometry: this.geometry };
     }
 
