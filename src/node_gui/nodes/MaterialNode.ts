@@ -132,8 +132,6 @@ export class MaterialNode
      gpu.device.queue.writeBuffer(materialBuffer, 0, materialData.buffer);
  
     this.geometry = {
-      vertices: new Float32Array(input.vertices),
-      indices: new Uint32Array(input.indices),
       vertexBuffer: vertexBuffer,
       indexBuffer: indexBuffer,
       wireframeIndexBuffer: input.wireframeIndexBuffer, 

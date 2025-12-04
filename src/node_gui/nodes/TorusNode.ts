@@ -18,7 +18,7 @@ export class TorusNode extends Node implements IGeometryGenerator {
   rotationControl: Vec3Control;
 
   constructor() {
-    super("TorusNode");
+    super("Torus");
 
     this.ioBehavior.addGeometryOutput();
 
@@ -221,9 +221,6 @@ export class TorusNode extends Node implements IGeometryGenerator {
      gpu.device.queue.writeBuffer(materialBuffer, 0, materialData.buffer);
  
     return {
-      vertices: new Float32Array(vertices),
-      indices: new Uint32Array(indices),
-      wireframeIndices: wireframeIndices,
       vertexBuffer: vertexBuffer,
       indexBuffer: indexBuffer,
       wireframeIndexBuffer: wireframeIndexBuffer,

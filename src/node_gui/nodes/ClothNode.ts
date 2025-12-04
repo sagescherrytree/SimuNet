@@ -113,7 +113,7 @@ export class ClothNode extends Node implements IGeometryModifier {
   gridSizeBuffer: GPUBuffer;
 
   constructor() {
-    super("ClothNode");
+    super("Cloth");
 
     this.ioBehavior.addGeometryInput();
     this.ioBehavior.addGeometryOutput();
@@ -295,8 +295,8 @@ export class ClothNode extends Node implements IGeometryModifier {
     });
 
     this.geometry = {
-      vertices: new Float32Array(input.vertices),
-      indices: new Uint32Array(input.indices),
+      // vertices: new Float32Array(input.vertices),
+      // indices: new Uint32Array(input.indices),
       vertexBuffer: this.outputVertexBuffer,
       indexBuffer: indexBuffer,
       wireframeIndexBuffer: input.wireframeIndexBuffer,

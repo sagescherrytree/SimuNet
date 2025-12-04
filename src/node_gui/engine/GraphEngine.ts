@@ -235,21 +235,21 @@ export class GraphEngine {
 
     for (const nodeData of inputObject.nodes) {
       let node: Node;
-      if (nodeData.label == "ClothNode") {
+      if (nodeData.label == "Cloth") {
         node = NodeTypes.Cloth();
       } else if (nodeData.label == "CopyToPoints") {
         node = NodeTypes.CopyToPoints();
-      } else if (nodeData.label == "CubeNode") {
+      } else if (nodeData.label == "Cube") {
         node = NodeTypes.Cube();
-      } else if (nodeData.label == "IcosphereNode") {
+      } else if (nodeData.label == "Icosphere") {
         node = NodeTypes.Icosphere();
-      } else if (nodeData.label == "NoiseNode") {
+      } else if (nodeData.label == "Noise") {
         node = NodeTypes.Noise();
-      } else if (nodeData.label == "PlaneNode") {
+      } else if (nodeData.label == "Plane") {
         node = NodeTypes.Plane();
-      } else if (nodeData.label == "TorusNode") {
+      } else if (nodeData.label == "Torus") {
         node = NodeTypes.Torus();
-      } else if (nodeData.label == "TransformNode") {
+      } else if (nodeData.label == "Transform") {
         node = NodeTypes.Transform();
       } else if (nodeData.label == "RecomputeNormals") {
         node = NodeTypes.RecomputeNormals();
@@ -265,10 +265,12 @@ export class GraphEngine {
         console.log(nodeData.controls[key]);
         nodeControls[key].value = nodeData.controls[key].value;
       }
-      // TODO I think redundant with updateAllGeometries later?
-      // if (isExecutable(node)) {
-      //   node.execute();
-      // }
+      // TODO I think redundant with connections being later?
+      //  Ah I guess not totally; removing causes some weirdness in loading clothSimBaseTest and NoiseChainTest.
+      //  Still the execute functions are weird. I think can get rid of the input things from them since never called with an argument I think; probably some way we could easily restructure not to have those functions at all but probably fine as it is
+      if (isExecutable(node)) {
+        node.execute();
+      }
       await this.editor.addNode(node);
     }
 

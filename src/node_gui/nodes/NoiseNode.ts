@@ -2,7 +2,6 @@ import { Node } from "./Node";
 import { GeometryData, removeGeometry } from "../geometry/geometry";
 import { NumberControl } from "../controls/NumberControl";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
-import { IVertexDeformer } from "../interfaces/NodeCapabilities";
 import { GPUContext } from "../../webgpu/GPUContext";
 // Import noise compute shader.
 import noiseComputeShader from '../../webgpu/shaders/noise.cs.wgsl';
@@ -11,7 +10,7 @@ import worleyNoiseComputeShader from '../../webgpu/shaders/worleyNoise.cs.wgsl';
 
 export class NoiseNode
   extends Node
-  implements IGeometryModifier, IVertexDeformer {
+  implements IGeometryModifier {
   public inputGeometry?: GeometryData;
 
   deformationUniformBuffer?: GPUBuffer;
@@ -32,7 +31,7 @@ export class NoiseNode
   modificationStyleControl: NumberControl;
   
   constructor() {
-    super("NoiseNode");
+    super("Noise");
 
     this.ioBehavior.addGeometryInput();
     this.ioBehavior.addGeometryOutput();
@@ -121,8 +120,6 @@ export class NoiseNode
     // const deformed = this.deformVertices(input.vertices);
 
     this.geometry = {
-      vertices: new Float32Array(input.vertices),
-      indices: new Uint32Array(input.indices),
       vertexBuffer: outputVertexBuffer,
       indexBuffer: indexBuffer,
       wireframeIndexBuffer: input.wireframeIndexBuffer, 
@@ -213,31 +210,31 @@ export class NoiseNode
   }
 
 
-  deformVertices(vertices: Float32Array): Float32Array {
-    const deformed = new Float32Array(vertices.length);
-    const strength = this.strengthControl.value ?? 0.5;
-    const scale = this.scaleControl.value ?? 1.0;
-    const seed = this.seedControl.value ?? 0;
+  // deformVertices(vertices: Float32Array): Float32Array {
+  //   const deformed = new Float32Array(vertices.length);
+  //   const strength = this.strengthControl.value ?? 0.5;
+  //   const scale = this.scaleControl.value ?? 1.0;
+  //   const seed = this.seedControl.value ?? 0;
 
-    for (let i = 0; i < vertices.length; i += 3) {
-      const x = vertices[i];
-      const y = vertices[i + 1];
-      const z = vertices[i + 2];
+  //   for (let i = 0; i < vertices.length; i += 3) {
+  //     const x = vertices[i];
+  //     const y = vertices[i + 1];
+  //     const z = vertices[i + 2];
 
-      const noise = this.simpleNoise(x * scale + seed, y * scale, z * scale);
+  //     const noise = this.simpleNoise(x * scale + seed, y * scale, z * scale);
 
-      const len = Math.sqrt(x * x + y * y + z * z) || 1;
-      const nx = x / len,
-        ny = y / len,
-        nz = z / len;
+  //     const len = Math.sqrt(x * x + y * y + z * z) || 1;
+  //     const nx = x / len,
+  //       ny = y / len,
+  //       nz = z / len;
 
-      deformed[i] = x + nx * noise * strength;
-      deformed[i + 1] = y + ny * noise * strength;
-      deformed[i + 2] = z + nz * noise * strength;
-    }
+  //     deformed[i] = x + nx * noise * strength;
+  //     deformed[i + 1] = y + ny * noise * strength;
+  //     deformed[i + 2] = z + nz * noise * strength;
+  //   }
 
-    return deformed;
-  }
+  //   return deformed;
+  // }
 
   private simpleNoise(x: number, y: number, z: number): number {
     return Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 0.5 + 0.5;

@@ -3,16 +3,12 @@ import { GPUContext } from "../../webgpu/GPUContext";
 
 // Place arrays into a buffer.
 export interface GeometryData {
-  vertices: Float32Array; // TODO move these to GPU <- will no longer use these, delete later
-  indices: Uint32Array; // TODO move to buffer.
-  normals?: Float32Array; // TODO move to buffer.
-  wireframeIndices?: Uint32Array;
-  wireframeIndexBuffer?: GPUBuffer;
-
+  vertices?: Float32Array; //TODO DELETE
   // buffer VertexBuffer.
   // buffer IndexBuffer.
   vertexBuffer?: GPUBuffer; // vertex positions + normal
   indexBuffer?: GPUBuffer; // Indices.
+  wireframeIndexBuffer?: GPUBuffer;
 
   id: string;
   sourceId?: string;
@@ -97,13 +93,6 @@ export function onGeometryRemoved(geomCallBack: GeometryRemoveCallback) {
   removeSubscribers.push(geomCallBack);
 }
 
-export function updateGeometry(id: string, newVertices: Float32Array) {
-  const geom = geometries.find((g) => g.id === id);
-  if (!geom) return;
-
-  geom.vertices = newVertices;
-  addSubscribers.forEach((cb) => cb(geom)); // triggers renderer update
-}
 
 export function generateWireframeIndices(
   triangleIndices: Uint32Array

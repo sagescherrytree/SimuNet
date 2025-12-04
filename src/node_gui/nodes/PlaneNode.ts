@@ -19,7 +19,7 @@ export class PlaneNode extends Node implements IGeometryGenerator {
   subdivisionControl: NumberControl;
 
   constructor() {
-    super("PlaneNode");
+    super("Plane");
 
     this.ioBehavior.addGeometryOutput();
 
@@ -111,6 +111,7 @@ export class PlaneNode extends Node implements IGeometryGenerator {
     const vertexCount = gridCount * gridCount;
 
     // Add subdivide logic on CPU.
+    // TODO GPU-side subdivide?
     const transformedVertices: number[] = [];
 
     // Add vertices based on w2/subdivisions, h2/subdivisions.
@@ -197,9 +198,7 @@ export class PlaneNode extends Node implements IGeometryGenerator {
      gpu.device.queue.writeBuffer(materialBuffer, 0, materialData.buffer);
  
     return {
-      vertices: vertexData, // TODO uhh change this back eventually?
-      indices,
-      wireframeIndices: wireframeIndices,
+      vertices: vertexData, // TODO DELETE
       vertexBuffer: vertexBuffer,
       indexBuffer: indexBuffer,
       wireframeIndexBuffer: wireframeIndexBuffer,

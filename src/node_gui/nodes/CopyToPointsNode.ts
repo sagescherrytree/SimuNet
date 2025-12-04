@@ -119,8 +119,6 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
         gpu.device.queue.submit([encoder.finish()]);
 
         this.geometry = {
-            vertices: new Float32Array(input.vertices),
-            indices: new Uint32Array(input.indices),
             vertexBuffer: outputVertexBuffer,
             indexBuffer: outputIndexBuffer,
             wireframeIndexBuffer: input.wireframeIndexBuffer,

@@ -16,7 +16,7 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
   scaleControl: Vec3Control;
 
   constructor() {
-    super("IcosphereNode");
+    super("Icosphere");
 
     this.ioBehavior.addGeometryOutput();
 
@@ -205,9 +205,6 @@ export class IcosphereNode extends Node implements IGeometryGenerator {
 
     // TODO remove all the CPU-side vertices/indices; slower w/ those being passed around and not needed anymore
     return {
-      vertices: new Float32Array(transformedVertices),
-      indices,
-      wireframeIndices: wireframeIndices,
       wireframeIndexBuffer: wireframeIndexBuffer,
       vertexBuffer: vertexBuffer,
       indexBuffer: indexBuffer,

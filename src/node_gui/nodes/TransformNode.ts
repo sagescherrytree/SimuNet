@@ -24,7 +24,7 @@ export class TransformNode extends Node implements IGeometryModifier {
   workgroupSize = 64;
 
   constructor() {
-    super("TransformNode");
+    super("Transform");
 
     this.ioBehavior.addGeometryInput();
     this.ioBehavior.addGeometryOutput();
@@ -132,8 +132,6 @@ export class TransformNode extends Node implements IGeometryModifier {
     // });
 
     this.geometry = {
-      vertices: new Float32Array(input.vertices), // TODO can remove from all of these?
-      indices: new Uint32Array(input.indices),
       vertexBuffer: outputVertexBuffer,
       indexBuffer: indexBuffer,
       wireframeIndexBuffer: input.wireframeIndexBuffer, // I think doesn't need to copy?
@@ -142,11 +140,11 @@ export class TransformNode extends Node implements IGeometryModifier {
       materialBuffer: input.materialBuffer
     };
 
-    if (this.geometry.vertices == this.inputGeometry.vertices) {
-      console.warn(
-        "TransformNode: Input geometry and output using same vertex array"
-      );
-    }
+    // if (this.geometry.vertices == this.inputGeometry.vertices) {
+    //   console.warn(
+    //     "TransformNode: Input geometry and output using same vertex array"
+    //   );
+    // }
 
     return this.geometry;
   }

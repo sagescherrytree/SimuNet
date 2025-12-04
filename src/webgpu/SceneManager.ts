@@ -32,6 +32,7 @@ export class SceneManager {
     this.rebuildBuffers();
   }
 
+  // TODO now UNUSED I THINK can perhaps delete
   // Fallback function in case there are no wireframes in the geometry node itself
   // Done so that wireframes aren't regenerated on each scene rebuild, only when geometry actually changes
   private generateWireframeIndices(triangleIndices: Uint32Array): Uint32Array {

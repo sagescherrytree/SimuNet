@@ -118,11 +118,7 @@ export class RecomputeNormalsNode
     //   console.log("[RecomputeNormalsNode.ts] GPU output vertices:", gpuVerts);
     // });
 
-    // const deformed = this.deformVertices(input.vertices);
-
     this.geometry = {
-      vertices: new Float32Array(input.vertices),
-      indices: new Uint32Array(input.indices),
       vertexBuffer: outputVertexBuffer,
       indexBuffer: indexBuffer,
       wireframeIndexBuffer: input.wireframeIndexBuffer, 

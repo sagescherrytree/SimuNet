@@ -14,7 +14,7 @@ export class CubeNode extends Node implements IGeometryGenerator {
   scaleControl: Vec3Control;
 
   constructor() {
-    super("CubeNode");
+    super("Cube");
 
     this.ioBehavior.addGeometryOutput();
 
@@ -189,10 +189,6 @@ export class CubeNode extends Node implements IGeometryGenerator {
     gpu.device.queue.writeBuffer(materialBuffer, 0, materialData.buffer);
 
     return {
-      vertices: new Float32Array(finalVertices),
-      indices: new Uint32Array(indices),
-      normals: new Float32Array(finalNormals),
-      wireframeIndices: wireframeIndices,
       wireframeIndexBuffer: wireframeIndexBuffer,
       vertexBuffer: vertexBuffer,
       indexBuffer: indexBuffer,
