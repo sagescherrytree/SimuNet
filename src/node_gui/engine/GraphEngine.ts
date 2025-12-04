@@ -23,7 +23,7 @@ import { AreaPlugin } from "rete-area-plugin";
 export class GraphEngine {
   constructor(private editor: NodeEditor<Schemes>, private area: AreaPlugin<Schemes, AreaExtra>) { }
 
-
+  // TODO: Update logic to handle multiple node inputs.
 
   async propagate(sourceId: string) {
     const source = this.editor.getNode(sourceId);

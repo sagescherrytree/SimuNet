@@ -10,9 +10,12 @@ export interface IGeometryGenerator {
 }
 
 export interface IGeometryModifier {
-  applyModification(input: GeometryData): GeometryData | undefined;
+  applyModification?(input: GeometryData): GeometryData | undefined;
+  applyModificationMultiple?(input1: GeometryData, input2: GeometryData): GeometryData | undefined;
   inputGeometry?: GeometryData;
+  inputGeometry2?: GeometryData;
   setInputGeometry(geometry: GeometryData): void;
+  setInputGeometryMult?(geometry1: GeometryData, geometry2: GeometryData): void;
 }
 
 export interface IVertexDeformer {
