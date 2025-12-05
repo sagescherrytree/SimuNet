@@ -50,7 +50,7 @@ fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
 
     // Copy all source vertices, translated to point location
     // Note: we are not scaling/rotating here; just translate by point position.
-    for (var i = 0u; i < 4u; i += 1) {
+    for (var i = 0u; i < params.srcVertexCount; i += 1) {
         if (i >= params.srcVertexCount) { break; }
         let srcVertex : VertexIn = srcVertices[i];
         var outVertex : VertexIn;
@@ -60,7 +60,7 @@ fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
     }
 
     // Copy indices, with vertex offset for this block
-    for (var i = 0u; i < 4u; i += 1) {
+    for (var i = 0u; i < params.srcIndexCount; i += 1) {
         if (i >= params.srcIndexCount) { break; }
         let srcIndex : u32 = srcIndices[i];
         // outIndices inside this point's index block
