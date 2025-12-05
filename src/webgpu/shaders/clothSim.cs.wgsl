@@ -171,6 +171,19 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     var force = vec3<f32>(0.0, -clothParams.gravity * p.mass, 0.0); // Gravity!
     // var force = vec3<f32>(0.0, 0.0, 0.0);
 
+    // TODO once GPU-side setup is done:
+    // for (var i = p.firstSpringIndex; i < p.firstSpringIndex + p.springCount; i++) {
+    // inputParticles[inputSprings[i].particleIdx1]....
+    // ...
+    //}
+    // TODO thinking on collisions
+    //  working w/ particles as spheres (w/ some fixed radius for all of them), does it make more sense to test against set of triangles or figure out how to convert volume of shape into a set of particles (like not just points at vertices, space-filling)
+    //  I think latter is probably a generally better approach but former is simpler implementation-wise?
+    //   not very efficient but:
+    //   make the node take in a second input for the geometry we want to collide against
+    //   in this, have a loop that goes over all the triangles in that and checks for sphere-triangle intersection
+    //    then I guess if it does intersect apply force (along the normal vector of the triangle? in sphere-triangle intersect finding nearest point to sphere center, so push along vector from that point to sphere center)
+
     let coords = getGridCoords(index, gridSize.x);
     let x = coords.x;
     let y = coords.y;
