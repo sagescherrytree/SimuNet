@@ -2,7 +2,7 @@ import { Camera } from "./stage/camera";
 import { GPUContext } from "./GPUContext";
 import { SceneManager } from "./SceneManager";
 import { PipelineManager } from "./PipelineManager";
-import { GeometryData } from "../node_gui/geometry/geometry";
+import { GeometryData, nodesForGeometries } from "../node_gui/geometry/geometry";
 import { vec3 } from "wgpu-matrix";
 import { Node } from "../node_gui/nodes/Node";
 import Stats from 'stats.js';
@@ -203,7 +203,8 @@ export class Renderer {
       this.stats.begin();
 
       for (const node of this.simNodes) {
-        if (node.dispatchSim) {
+        if (node.dispatchSim && node.outputEnabled && nodesForGeometries.includes(node)) {
+          // TODO either should only update sim when it's being directly output (what I changed it to rn) OR should have it propagate to its children when it updates
           try {
             const pass = encoder.beginComputePass();
             // Node uses provided GPUComputePassEncoder to bind pipeline + dispatch

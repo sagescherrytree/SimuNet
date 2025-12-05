@@ -21,8 +21,6 @@ export abstract class Node
 
   public geometry?: GeometryData;
 
-  public isRemoved: boolean;
-
   public outputEnabled: boolean = true;
 
   public onUpdate?: () => void;
@@ -33,7 +31,6 @@ export abstract class Node
     this.geometryBehavior = new GeometryBehavior(this.id);
     this.updateBehavior = new UpdateBehavior();
     this.ioBehavior = new IOBehavior(this);
-    this.isRemoved = false;
     this.node = this;
   }
 

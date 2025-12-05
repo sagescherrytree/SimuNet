@@ -131,13 +131,6 @@ export class GraphEngine {
   }
 
 
-  async saveFile() {
-
-  }
-
-  async loadFile() {
-    // window.showOpenFilePicker();
-  }
   exportGraphToJSON() {
     // planning
     //  maybe can export only the trees from base geometries if wanting to ensure can just represent as simple JSON?
