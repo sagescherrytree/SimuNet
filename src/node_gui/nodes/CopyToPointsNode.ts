@@ -14,8 +14,10 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
 
     cpyToPtsUniformBuffer?: GPUBuffer;
 
-    vertexCount1 = 0;
-    vertexCount2 = 0;
+    vertexCountSrc = 0;
+    vertexCountTgt = 0;
+    indexCountSrc = 0;
+    stride = 32;
 
     cpyToPtsComputeBindGroupLayout: GPUBindGroupLayout;
     cpyToPtsComputeBindGroup: GPUBindGroup;
@@ -56,54 +58,55 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
                 return;
             }
         }
-    // applyModificationMultiple(input: GeometryData, input2: GeometryData): GeometryData | undefined {
+        // applyModificationMultiple(input: GeometryData, input2: GeometryData): GeometryData | undefined {
         // if (!input || !input2) return;
 
-        const input = inputs[0];
-        const input2 = inputs[1];
+        const src = inputs[0]; // Source (geom to be copied)
+        const tgt = inputs[1]; // Target (points to be copied to)
+
+        if (!src.vertexBuffer || !src.indexBuffer || !tgt.vertexBuffer) {
+            console.warn("CopyToPointsNode: missing buffers!");
+            return;
+        }
 
         // TODO: change logic for accounting for multiple vertex buffers.
-        const stride = 8 * 4; // 32 bytes to fit vec4 padding.
-        this.vertexCount1 = input.vertexBuffer!.size / stride;
-        this.vertexCount2 = input2.vertexBuffer!.size / stride;
-
-        const totalVertCount = this.vertexCount1 + this.vertexCount2;
-        const indexCount = input.indexBuffer!.size / 4; // integers = 4 bytes
-
-        // Test combiend vertex count buffers.
-        console.log("Total vertex counts of both geoms: ", totalVertCount);
+        this.vertexCountSrc = src.vertexBuffer!.size / this.stride;
+        this.indexCountSrc = src.indexBuffer!.size / 4;
+        this.vertexCountTgt = tgt.vertexBuffer!.size / this.stride;
 
         // GPU stuffs.
         const gpu = GPUContext.getInstance();
 
-        // Set up buffers. Pass in two vert buffers.
-        const vertexBuffer1 = input.vertexBuffer;
-        const vertexBuffer2 = input2.vertexBuffer;
-        const indexBuffer1 = input.indexBuffer;
-        const indexBuffer2 = input2.indexBuffer;
+        if (this.vertexCountSrc === 0 || this.indexCountSrc === 0 || this.vertexCountTgt === 0) {
+            console.warn("CopyToPointsNode: zero-sized input(s)");
+            return;
+        }
 
-        console.log("CopyToPointsNode: incoming vertexBuffer 1", vertexBuffer1);
-        console.log("CopyToPointsNode: incoming vertex buffer size:", vertexBuffer1?.size);
-        console.log("CopyToPointsNode: incoming vertexBuffer 2", vertexBuffer2);
-        console.log("CopyToPointsNode: incoming vertex buffer size:", vertexBuffer2?.size);
+        // Compute output sizes (duplicating source per point).
+        const outVertexCount = this.vertexCountSrc * this.vertexCountTgt;
+        const outIndexCount = this.indexCountSrc * this.vertexCountTgt;
+
+        const outVertexSize = outVertexCount * this.stride;
+        const outIndexSize = outIndexCount * 4;
 
         // Output buffer for transformed vertices.
         // This outputVertexBuffer should hold all vertices of the geometries that are copied to points.
         const outputVertexBuffer = gpu.device.createBuffer({
-            size: input.vertexBuffer!.size,
+            size: outVertexSize,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_SRC,
         });
 
         // Output buffer for new indices.
         // This outputVertexBuffer should hold newly calculated indices of the geometries that are copied to points.
         const outputIndexBuffer = gpu.device.createBuffer({
-            size: input.vertexBuffer!.size,
+            size: outIndexSize,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_SRC,
         });
 
         // TODO: Reinstantiate compute pipelines for copy to points.
         // Need vertexBuffers for both objects.
-        this.setupComputePipeline(vertexBuffer1!, vertexBuffer2!, indexBuffer1!, indexBuffer2!, outputVertexBuffer, outputIndexBuffer);
+        this.updateUniformBuffer();
+        this.setupComputePipeline(src.vertexBuffer!, src.indexBuffer!, tgt.vertexBuffer!, outputVertexBuffer, outputIndexBuffer, this.cpyToPtsUniformBuffer);
 
         // Invoke compute pass.
         const encoder = gpu.device.createCommandEncoder();
@@ -112,7 +115,7 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
         pass.setBindGroup(0, this.cpyToPtsComputeBindGroup);
 
         // operating per triangle; so vertexCount/3s
-        const workgroups = Math.ceil(indexCount / 3 / this.workgroupSize);
+        const workgroups = Math.ceil(this.vertexCountTgt / 3 / this.workgroupSize);
         pass.dispatchWorkgroups(workgroups);
 
         pass.end();
@@ -121,27 +124,46 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
         this.geometry = {
             vertexBuffer: outputVertexBuffer,
             indexBuffer: outputIndexBuffer,
-            wireframeIndexBuffer: input.wireframeIndexBuffer,
+            wireframeIndexBuffer: src.wireframeIndexBuffer,
             id: this.id,
-            sourceId: input.sourceId ?? input.id,
+            sourceId: src.sourceId ?? src.id,
+            materialBuffer: src.materialBuffer
         };
 
         return this.geometry;
     }
 
+    // Create uniform buffer with counts and stride (4 x u32 => 16 bytes).
+    // Layout: [this.vertexCountSrc, this.indexCountSrc, this.vertexCountTgt, stride].
+    updateUniformBuffer() {
+        const gpu = GPUContext.getInstance();
+
+        // strength, scale, seed, padding
+        const data = new Uint32Array([this.vertexCountSrc, this.indexCountSrc, this.vertexCountTgt, this.stride]);
+
+        if (!this.cpyToPtsUniformBuffer) {
+            this.cpyToPtsUniformBuffer = gpu.device.createBuffer({
+                size: data.byteLength,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            });
+        }
+
+        gpu.device.queue.writeBuffer(this.cpyToPtsUniformBuffer, 0, data);
+    }
+
     // Pass in buffers for input vertices.
-    setupComputePipeline(vertexBuffer1: GPUBuffer, vertexBuffer2: GPUBuffer, indexBuffer1: GPUBuffer, indexBuffer2: GPUBuffer, outputVertexBuffer: GPUBuffer, outputIndexBuffer: GPUBuffer) {
+    setupComputePipeline(srcVertexBuffer: GPUBuffer, srcIndexBuffer: GPUBuffer, tgtVertexBuffer: GPUBuffer, outputVertexBuffer: GPUBuffer, outputIndexBuffer: GPUBuffer, cpyToPtsUniBuffer: GPUBuffer) {
         const gpu = GPUContext.getInstance();
 
         this.cpyToPtsComputeBindGroupLayout = gpu.device.createBindGroupLayout({
             label: "copy to points compute BGL",
             entries: [
-                { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
-                { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
-                { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
-                { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
-                { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
-                { binding: 5, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+                { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // src vertices
+                { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // src indices
+                { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // target vertices
+                { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } }, // out vertices
+                { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } }, // out indices
+                { binding: 5, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } }, // counts
             ]
         });
 
@@ -165,12 +187,12 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
         this.cpyToPtsComputeBindGroup = gpu.device.createBindGroup({
             layout: this.cpyToPtsComputeBindGroupLayout,
             entries: [
-                { binding: 0, resource: { buffer: vertexBuffer1 } },
-                { binding: 1, resource: { buffer: vertexBuffer2 } },
-                { binding: 2, resource: { buffer: outputVertexBuffer } },
-                { binding: 3, resource: { buffer: indexBuffer1 } },
-                { binding: 4, resource: { buffer: indexBuffer2 } },
-                { binding: 5, resource: { buffer: outputIndexBuffer } },
+                { binding: 0, resource: { buffer: srcVertexBuffer } },
+                { binding: 1, resource: { buffer: srcIndexBuffer } },
+                { binding: 2, resource: { buffer: tgtVertexBuffer } },
+                { binding: 3, resource: { buffer: outputVertexBuffer } },
+                { binding: 4, resource: { buffer: outputIndexBuffer } },
+                { binding: 5, resource: { buffer: cpyToPtsUniBuffer } },
             ]
         });
 
