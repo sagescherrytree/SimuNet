@@ -174,6 +174,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     // 4: compute shader for each spring: using atomics for firstSpringIdx and springCount, set those in the particle that has the first index in this spring
     //    addSpringToParticles.cs.wgsl
     //   IDK if fine to then use atomics when accessing these in clothSim.cs.wgsl itself but I think should be; otherwise has another pass that writes the result of the atomics to normal u32s
+    // TODO I think actually need a 5th step: make version of particle w/o atomics, since want to not use atomics in clothSim.cs.wgsl. Or can the value just be reused from buffer? 
     // then run cloth sim
     //  in order to access neighbors iterate over [firstSpringIdx, firstSpringIdx+springCount) and that gives the other vertex index and rest length
 

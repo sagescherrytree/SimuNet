@@ -72,8 +72,8 @@ struct Particle {
     isFixed       : u32,        // 4 bytes
     // padding       : f32,        // 4 bytes
     // padding2      : f32,        // 4 bytes
-    firstSpringIdx: atomic<u32>, // TODO make atomic?
-    springCount: atomic<u32>, 
+    firstSpringIdx: u32, 
+    springCount: u32, 
 }
 
 // TODO want to be able to go particle pair to rest length
@@ -92,8 +92,9 @@ struct VertexOut {
 
 // Input from NoiseNode.ts
 @group(0) @binding(0)
-var<storage, read> inputParticles: array<Particle>;
-
+var<storage, read> inputParticles: array<Particle>; 
+// TODO should probably make convert to non-atomic values before this so don't need to make read_write (atomic always needs to be read_write) but not sure it matters (probably faster if just read)
+// AH: need to make not atomic to make outputParticles constructible
 
 @group(0) @binding(1)
 var<storage, read_write> outputParticles: array<Particle>;
@@ -158,21 +159,21 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
 
-    let p = inputParticles[index];
+    let p = &inputParticles[index];
 
     // fixed particles no movey movey
-    if (p.isFixed == 1u) {
-        outputParticles[index] = p;
-        outputVertices[index].position = p.position;
+    if ((*p).isFixed == 1u) {
+        outputParticles[index] = *p;
+        outputVertices[index].position = (*p).position;
         outputVertices[index].normal = vec4<f32>(0.0, 1.0, 0.0, 0.0);
         return;
     }
 
-    var force = vec3<f32>(0.0, -clothParams.gravity * p.mass, 0.0); // Gravity!
+    var force = vec3<f32>(0.0, -clothParams.gravity * (*p).mass, 0.0); // Gravity!
     // var force = vec3<f32>(0.0, 0.0, 0.0);
 
     // TODO once GPU-side setup is done:
-    // for (var i = p.firstSpringIndex; i < p.firstSpringIndex + p.springCount; i++) {
+    // for (var i = p.firstSpringIdx; i < p.firstSpringIdx + p.springCount; i++) {
     // inputParticles[inputSprings[i].particleIdx1]....
     // ...
     //}
@@ -212,7 +213,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
             let neighbor = inputParticles[neighborIdx];
 
             let springForce = computeSpringForce(
-                p.position.xyz,
+                (*p).position.xyz,
                 neighbor.position.xyz,
                 restLength,
                 clothParams.stiffness
@@ -241,7 +242,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
             let neighbor = inputParticles[neighborIdx];
             
             let springForce = computeSpringForce(
-                p.position.xyz,
+                (*p).position.xyz,
                 neighbor.position.xyz,
                 diagRestLength,
                 clothParams.stiffness * 0.5 // these springs are weaker
@@ -254,7 +255,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     // Verlet calcuation LOL
     let acceleration = force / clothParams.mass;
     let dampingFactor = 1.0 - clothParams.damping;
-    let position = p.position.xyz + (p.position.xyz - p.prevPosition.xyz) * dampingFactor + acceleration * deltaTime * deltaTime;
+    let position = (*p).position.xyz + ((*p).position.xyz - (*p).prevPosition.xyz) * dampingFactor + acceleration * deltaTime * deltaTime;
     
     var finalPos = position;
 
@@ -262,8 +263,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         finalPos.y = 0.0;
     }
 
-    var outParticle = p;
-    outParticle.prevPosition = p.position;
+    var outParticle = (*p);
+    outParticle.prevPosition = (*p).position;
     outParticle.position = vec4<f32>(finalPos, 1.0);
 
     outputParticles[index] = outParticle;
