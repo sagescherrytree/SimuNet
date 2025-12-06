@@ -198,7 +198,6 @@ export class PlaneNode extends Node implements IGeometryGenerator {
      gpu.device.queue.writeBuffer(materialBuffer, 0, materialData.buffer);
  
     return {
-      vertices: vertexData, // TODO DELETE
       vertexBuffer: vertexBuffer,
       indexBuffer: indexBuffer,
       wireframeIndexBuffer: wireframeIndexBuffer,

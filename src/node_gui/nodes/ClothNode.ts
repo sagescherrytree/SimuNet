@@ -603,8 +603,6 @@ export class ClothNode extends Node implements IGeometryModifier {
     });
 
     this.geometry = {
-      // vertices: new Float32Array(input.vertices),
-      // indices: new Uint32Array(input.indices),
       vertexBuffer: this.outputVertexBuffer,
       indexBuffer: indexBuffer,
       wireframeIndexBuffer: input.wireframeIndexBuffer,
