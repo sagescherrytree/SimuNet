@@ -156,7 +156,6 @@ export class ClothNode extends Node implements IGeometryModifier {
     const gpu = GPUContext.getInstance();
 
     // TODO remove once moved to GPU
-    this.vertexCount = input.vertices.length / 8; // 8 floats per vertex
 
     const stride = 8;
 
@@ -533,14 +532,6 @@ export class ClothNode extends Node implements IGeometryModifier {
       size: 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
-
-    // Fill particle buffers.
-    const particleCount = this.vertexCount;
-    const cpuParticles = new ClothParticleCPU(particleCount);
-
-    // Still using CPU vertices, TODO change to read from GPU vertex buffer evetually.
-    // TODO move to GPU
-    // this.fillParticleBuffer(cpuParticles, input.vertices, this.vertexCount);
 
     // Ping-pong GPU buffers.
     this.particleBuffer1 = outputParticleBuffer
