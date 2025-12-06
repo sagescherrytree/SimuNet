@@ -92,6 +92,8 @@ fn computeSpringForce(p1: vec3<f32>, p2: vec3<f32>, restLength: f32, stiffness: 
     return forceMagnitude * direction;
 }
 
+// TODO add sphereTriangleCollision
+
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     // TODO: Implement cloth sim logic here.
@@ -132,6 +134,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         force += springForce;
     }
     
+    // TODO iterate through geometry to collide with
     // TODO thinking on collisions
     //  working w/ particles as spheres (w/ some fixed radius for all of them), does it make more sense to test against set of triangles or figure out how to convert volume of shape into a set of particles (like not just points at vertices, space-filling)
     //  I think latter is probably a generally better approach but former is simpler implementation-wise?
