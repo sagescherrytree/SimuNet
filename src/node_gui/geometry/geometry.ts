@@ -9,6 +9,8 @@ export interface GeometryData {
   vertexBuffer?: GPUBuffer; // vertex positions + normal
   indexBuffer?: GPUBuffer; // Indices.
   wireframeIndexBuffer?: GPUBuffer;
+  pointAttributeBuffer?: GPUBuffer;
+  pointAttributeStride?: number;
 
   id: string;
   sourceId?: string;

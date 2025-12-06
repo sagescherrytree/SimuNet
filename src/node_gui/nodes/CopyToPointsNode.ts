@@ -105,6 +105,7 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
 
         // TODO: Reinstantiate compute pipelines for copy to points.
         // Need vertexBuffers for both objects.
+        // TODO: Update wireframe buffers for CpyToPts logic.
         this.updateUniformBuffer();
         this.setupComputePipeline(src.vertexBuffer!, src.indexBuffer!, tgt.vertexBuffer!, outputVertexBuffer, outputIndexBuffer, this.cpyToPtsUniformBuffer);
 
