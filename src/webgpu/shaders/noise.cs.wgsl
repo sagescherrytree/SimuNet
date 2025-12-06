@@ -21,7 +21,6 @@ var<storage, read_write> outputVertices: array<VertexIn>;
 var<uniform> deformation: Deformation;
 
 fn simpleNoise(x: f32, y: f32, z: f32) -> f32 {
-    // return sin(x * 12.9898 + y * 78.233 + z * 37.719) * 0.5 + 0.5;
     return fract(
                 sin(
                         dot(vec3f(x,y,z), vec3f(127.1f, 311.7f, 191.999f))

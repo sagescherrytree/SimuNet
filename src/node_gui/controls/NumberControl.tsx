@@ -58,7 +58,7 @@ export function NumberControlComponent({
         style={{
           fontSize: "14px",
           color: "#ccc",
-          width: "6rem",
+          width: "8rem",
           flexShrink: 0,
         }}
       >

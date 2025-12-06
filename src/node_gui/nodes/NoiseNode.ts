@@ -4,13 +4,12 @@ import { NumberControl } from "../controls/NumberControl";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { GPUContext } from "../../webgpu/GPUContext";
 // Import noise compute shader.
-import noiseComputeShader from '../../webgpu/shaders/noise.cs.wgsl';
-import fbmNoiseComputeShader from '../../webgpu/shaders/fbmNoise.cs.wgsl';
-import worleyNoiseComputeShader from '../../webgpu/shaders/worleyNoise.cs.wgsl';
+import noiseComputeShader from "../../webgpu/shaders/noise.cs.wgsl";
+import fbmNoiseComputeShader from "../../webgpu/shaders/fbmNoise.cs.wgsl";
+import worleyNoiseComputeShader from "../../webgpu/shaders/worleyNoise.cs.wgsl";
+import { DropdownControl } from "../controls/DropdownControl";
 
-export class NoiseNode
-  extends Node
-  implements IGeometryModifier {
+export class NoiseNode extends Node implements IGeometryModifier {
   public inputGeometry?: GeometryData;
 
   deformationUniformBuffer?: GPUBuffer;
@@ -27,9 +26,9 @@ export class NoiseNode
   seedControl: NumberControl;
 
   // TODO better control--dropdown? need to setup
-  noiseStyleControl: NumberControl;
-  modificationStyleControl: NumberControl;
-  
+  noiseStyleControl: DropdownControl;
+  modificationStyleControl: DropdownControl;
+
   constructor() {
     super("Noise");
 
@@ -46,10 +45,21 @@ export class NoiseNode
     this.strengthControl = new NumberControl("Strength", 0.5, onChange, 0.1);
     this.scaleControl = new NumberControl("Scale", 1.0, onChange, 0.1);
     this.seedControl = new NumberControl("Seed", 0, onChange, 1, 0, 1000);
-    this.noiseStyleControl = new NumberControl("Noise Type", 0, onChange, 1, 0, 2);
-    this.modificationStyleControl = new NumberControl("Transformation Type", 0, onChange, 1, 0, 1);
-    
+    this.noiseStyleControl = new DropdownControl("Noise Type", 0, onChange, [
+      { value: 0, label: "Basic Noise" },
+      { value: 1, label: "Worley Noise" },
+      { value: 2, label: "FBM Noise" },
+    ]);
 
+    this.modificationStyleControl = new DropdownControl(
+      "Transform Type",
+      0,
+      onChange,
+      [
+        { value: 0, label: "Radial Displacement" },
+        { value: 1, label: "Vertical Displacement" },
+      ]
+    );
   }
 
   setInputGeometry(geometry: GeometryData) {
@@ -72,12 +82,18 @@ export class NoiseNode
     const indexBuffer = input.indexBuffer;
 
     console.log("TransformNode: incoming vertexBuffer", vertexBuffer);
-    console.log("TransformNode: incoming vertex buffer size:", vertexBuffer?.size);
+    console.log(
+      "TransformNode: incoming vertex buffer size:",
+      vertexBuffer?.size
+    );
 
     // Output buffer for transformed vertices.
     const outputVertexBuffer = gpu.device.createBuffer({
       size: input.vertexBuffer!.size,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_SRC,
+      usage:
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.VERTEX |
+        GPUBufferUsage.COPY_SRC,
     });
 
     this.updateUniformBuffer();
@@ -122,10 +138,10 @@ export class NoiseNode
     this.geometry = {
       vertexBuffer: outputVertexBuffer,
       indexBuffer: indexBuffer,
-      wireframeIndexBuffer: input.wireframeIndexBuffer, 
+      wireframeIndexBuffer: input.wireframeIndexBuffer,
       id: this.id,
       sourceId: input.sourceId ?? input.id,
-      materialBuffer: input.materialBuffer
+      materialBuffer: input.materialBuffer,
     };
 
     return this.geometry;
@@ -139,7 +155,7 @@ export class NoiseNode
       this.strengthControl.value,
       this.scaleControl.value,
       this.seedControl.value,
-      this.modificationStyleControl.value,
+      Number(this.modificationStyleControl.value),
     ]);
 
     if (!this.deformationUniformBuffer) {
@@ -159,10 +175,22 @@ export class NoiseNode
     this.deformationComputeBindGroupLayout = gpu.device.createBindGroupLayout({
       label: "noise deformation compute BGL",
       entries: [
-        { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
-        { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
-        { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
-      ]
+        {
+          binding: 0,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "read-only-storage" },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "storage" },
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "uniform" },
+        },
+      ],
     });
 
     let shaderModule;
@@ -186,7 +214,7 @@ export class NoiseNode
 
     const pipelineLayout = gpu.device.createPipelineLayout({
       label: "noise deformation compute layout",
-      bindGroupLayouts: [this.deformationComputeBindGroupLayout]
+      bindGroupLayouts: [this.deformationComputeBindGroupLayout],
     });
 
     this.deformationComputePipeline = gpu.device.createComputePipeline({
@@ -201,43 +229,15 @@ export class NoiseNode
         { binding: 0, resource: { buffer: vertexBuffer } },
         { binding: 1, resource: { buffer: outputVertexBuffer } },
         { binding: 2, resource: { buffer: this.deformationUniformBuffer! } },
-      ]
+      ],
     });
 
     console.log("NoiseNode: compute shader loaded");
-    console.log("NoiseNode: pipeline created:", this.deformationComputePipeline);
+    console.log(
+      "NoiseNode: pipeline created:",
+      this.deformationComputePipeline
+    );
     console.log("NoiseNode: bind group:", this.deformationComputeBindGroup);
-  }
-
-
-  // deformVertices(vertices: Float32Array): Float32Array {
-  //   const deformed = new Float32Array(vertices.length);
-  //   const strength = this.strengthControl.value ?? 0.5;
-  //   const scale = this.scaleControl.value ?? 1.0;
-  //   const seed = this.seedControl.value ?? 0;
-
-  //   for (let i = 0; i < vertices.length; i += 3) {
-  //     const x = vertices[i];
-  //     const y = vertices[i + 1];
-  //     const z = vertices[i + 2];
-
-  //     const noise = this.simpleNoise(x * scale + seed, y * scale, z * scale);
-
-  //     const len = Math.sqrt(x * x + y * y + z * z) || 1;
-  //     const nx = x / len,
-  //       ny = y / len,
-  //       nz = z / len;
-
-  //     deformed[i] = x + nx * noise * strength;
-  //     deformed[i + 1] = y + ny * noise * strength;
-  //     deformed[i + 2] = z + nz * noise * strength;
-  //   }
-
-  //   return deformed;
-  // }
-
-  private simpleNoise(x: number, y: number, z: number): number {
-    return Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 0.5 + 0.5;
   }
 
   async execute(inputs?: Record<string, any>) {

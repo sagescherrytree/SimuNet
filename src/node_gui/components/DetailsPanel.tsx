@@ -6,6 +6,10 @@ import {
 } from "../controls/NumberControl";
 import { Vec3Control, Vec3ControlComponent } from "../controls/Vec3Control";
 import { ClassicPreset } from "rete";
+import {
+  DropdownControl,
+  DropdownControlComponent,
+} from "../controls/DropdownControl";
 
 const panelStyle: React.CSSProperties = {
   width: "90%",
@@ -63,6 +67,14 @@ export function DetailsPanel({ node }: DetailsPanelProps) {
       return (
         <div key={key} style={controlContainerStyle}>
           <Vec3ControlComponent data={control} />
+        </div>
+      );
+    }
+
+    if (control instanceof DropdownControl) {
+      return (
+        <div key={key} style={controlContainerStyle}>
+          <DropdownControlComponent data={control} />
         </div>
       );
     }
