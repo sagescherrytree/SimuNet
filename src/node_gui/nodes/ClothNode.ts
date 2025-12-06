@@ -12,6 +12,7 @@ import makeParticlesComputeShader from "../../webgpu/shaders/makeParticles.cs.wg
 import addSpringsToParticlesComputeShader from "../../webgpu/shaders/addSpringsToParticles.cs.wgsl";
 // Maybe we can change this to be more efficient structurally, but for now, call renderer.
 import { Renderer } from "../../webgpu/renderer";
+import { RadixSortKernel } from "webgpu-radix-sort";
 
 // Cloth particle struct creation.
 // Refernce from HW 4 Forward rendering camera.ts.
@@ -178,14 +179,14 @@ export class ClothNode extends Node implements IGeometryModifier {
     // 4: compute shader for each spring: using atomics for firstSpringIdx and springCount, set those in the particle that has the first index in this spring
     //    addSpringsToParticles.cs.wgsl
     //   IDK if fine to then use atomics when accessing these in clothSim.cs.wgsl itself but I think should be; otherwise has another pass that writes the result of the atomics to normal u32s
-    // TODO I think actually need a 5th step: make version of particle w/o atomics, since want to not use atomics in clothSim.cs.wgsl. Or can the value just be reused from buffer? 
+    // TODO I think actually need a 5th step: make version of particle w/o atomics, since want to not use atomics in clothSim.cs.wgsl. Or can the value just be reused from buffer?
     //    I don't know if just can pass data directly or if it's stored in different format; so if just these first 4 steps don't work might need to do that
     // then run cloth sim
     //  in order to access neighbors iterate over [firstSpringIdx, firstSpringIdx+springCount) and that gives the other vertex index and rest length
 
     // TODO make compute pipeline to call those, add library for sort
 
-    // Set up buffers. 
+    // Set up buffers.
     // Input buffers for verts and indices.
     const vertexBuffer = input.vertexBuffer;
     const indexBuffer = input.indexBuffer;
@@ -193,13 +194,14 @@ export class ClothNode extends Node implements IGeometryModifier {
     console.log("ClothNode: incoming vertexBuffer", vertexBuffer);
     console.log("ClothNode: incoming vertex buffer size:", vertexBuffer?.size);
 
-
     // TODO: rn this section contains the setup for the makeSprings (step 1) above; then need to do sorting, then same thing for 3 (makeParticles) and 4 (addSpringsToParticles)
     // SPRING SETUP SECTION
     const vertexStride = 8 * 4; // 32 bytes to fit vec4 padding.
     const vertexCount = input.vertexBuffer!.size / vertexStride;
     const indexCount = input.indexBuffer!.size / 4; // integers = 4 bytes
     const springStride = 4 * 4; // 16 bytes for spring with padding.
+    const triangleCount = indexCount / 3;
+    const maxSpringCount = triangleCount * 6;
 
     // Output buffer for created springs.
     const outputSpringBuffer = gpu.device.createBuffer({
@@ -211,11 +213,23 @@ export class ClothNode extends Node implements IGeometryModifier {
     let makeSpringsComputeBindGroupLayout = gpu.device.createBindGroupLayout({
       label: "make springs compute BGL",
       entries: [
-        { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
-        { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
-        { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+        {
+          binding: 0,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "read-only-storage" },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "read-only-storage" },
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "storage" },
+        },
         // { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
-      ]
+      ],
     });
 
     let shaderModule = gpu.device.createShaderModule({
@@ -223,10 +237,9 @@ export class ClothNode extends Node implements IGeometryModifier {
       code: makeSpringsComputeShader,
     });
 
-
     const pipelineLayout = gpu.device.createPipelineLayout({
       label: "make springs compute layout",
-      bindGroupLayouts: [makeSpringsComputeBindGroupLayout]
+      bindGroupLayouts: [makeSpringsComputeBindGroupLayout],
     });
 
     let makeSpringsComputePipeline = gpu.device.createComputePipeline({
@@ -242,7 +255,7 @@ export class ClothNode extends Node implements IGeometryModifier {
         { binding: 1, resource: { buffer: indexBuffer } },
         { binding: 2, resource: { buffer: outputSpringBuffer } },
         // { binding: 2, resource: { buffer: this.deformationUniformBuffer! } },
-      ]
+      ],
     });
 
     // Invoke compute pass.
@@ -258,14 +271,35 @@ export class ClothNode extends Node implements IGeometryModifier {
     pass.end();
     gpu.device.queue.submit([encoder.finish()]);
 
-
-
     // TODO need to do other passes and use output from this and such
 
     // TODO Sort springs by particleIdx0
+    const radixSort = new RadixSortKernel(gpu.device);
+
+    const keyBuffer = gpu.device.createBuffer({
+      size: maxSpringCount * 4,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      label: "Sort Keys",
+    });
+
+    const extractKeys = gpu.device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "read-only-storage" },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "storage" },
+        },
+      ],
+    });
+
     // TODO makeParticles
     // TODO addSpringsToParticles
-  
+
     // SPRING SETUP SECTION END
 
     // TODO move to GPU
@@ -314,7 +348,6 @@ export class ClothNode extends Node implements IGeometryModifier {
       new Uint32Array([this.gridWidth, this.gridHeight])
     );
 
-   
     // Instantiate time uniform buffer.
     this.timeUniformBuffer = gpu.device.createBuffer({
       label: "time uniform",
