@@ -176,7 +176,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     // 3: compute shader for each vertex: set up particle data for that vertex in array<Particle>
     //    makeParticles.cs.wgsl
     // 4: compute shader for each spring: using atomics for firstSpringIdx and springCount, set those in the particle that has the first index in this spring
-    //    addSpringToParticles.cs.wgsl
+    //    addSpringsToParticles.cs.wgsl
     //   IDK if fine to then use atomics when accessing these in clothSim.cs.wgsl itself but I think should be; otherwise has another pass that writes the result of the atomics to normal u32s
     // TODO I think actually need a 5th step: make version of particle w/o atomics, since want to not use atomics in clothSim.cs.wgsl. Or can the value just be reused from buffer? 
     //    I don't know if just can pass data directly or if it's stored in different format; so if just these first 4 steps don't work might need to do that
@@ -194,7 +194,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     console.log("ClothNode: incoming vertex buffer size:", vertexBuffer?.size);
 
 
-    // TODO: rn this section contains the setup for the makeSprings (step 1) above; then need to do sorting, then same thing for 3 (makeParticles) and 4 (addSpringToParticles)
+    // TODO: rn this section contains the setup for the makeSprings (step 1) above; then need to do sorting, then same thing for 3 (makeParticles) and 4 (addSpringsToParticles)
     // SPRING SETUP SECTION
     const vertexStride = 8 * 4; // 32 bytes to fit vec4 padding.
     const vertexCount = input.vertexBuffer!.size / vertexStride;
@@ -264,7 +264,7 @@ export class ClothNode extends Node implements IGeometryModifier {
 
     // TODO Sort springs by particleIdx0
     // TODO makeParticles
-    // TODO addSpringToParticles
+    // TODO addSpringsToParticles
   
     // SPRING SETUP SECTION END
 
