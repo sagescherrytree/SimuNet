@@ -150,9 +150,13 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let position = (*p).position.xyz + ((*p).position.xyz - (*p).prevPosition.xyz) * dampingFactor + acceleration * deltaTime * deltaTime;
     
     var finalPos = position;
+    var prevPos = (*p).position;
 
     if (finalPos.y < 0.0) {
         finalPos.y = 0.0;
+        let prevVel = (*p).position.xyz - (*p).prevPosition.xyz;
+        let dampedVel = prevVel * 0.3; // Friction coefficient!
+        prevPos = vec4<f32>(finalPos - dampedVel, 1.0);
     }
 
     var outParticle = (*p);

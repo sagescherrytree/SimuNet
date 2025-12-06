@@ -134,7 +134,14 @@ export class ClothNode extends Node implements IGeometryModifier {
 
     this.stiffnessControl = new NumberControl("Stiffness", 5.0, onChange, 0.1);
     this.massControl = new NumberControl("Mass", 1.0, onChange, 0.1);
-    this.dampingControl = new NumberControl("Dampening", 0.01, onChange, 0.1);
+    this.dampingControl = new NumberControl(
+      "Dampening",
+      0.5,
+      onChange,
+      0.01,
+      0.0,
+      0.99
+    );
     this.gravityControl = new NumberControl(
       "Gravity",
       5.0,
