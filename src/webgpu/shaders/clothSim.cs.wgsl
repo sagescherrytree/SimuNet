@@ -82,6 +82,7 @@ struct Spring {
     particleIdx0: u32,
     particleIdx1: u32,
     restLength: f32,  
+    padding: f32,
 }
 
 

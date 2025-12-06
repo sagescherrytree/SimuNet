@@ -3,6 +3,7 @@ struct Spring {
     particleIdx0: u32,
     particleIdx1: u32,
     restLength: f32,  
+    padding: f32,// TODO does this need padding?
 }
 
 struct VertexIn {
@@ -16,7 +17,7 @@ var<storage, read> inputVertices: array<VertexIn>;
 @group(0) @binding(1)
 var<storage, read> inputIndices: array<u32>;
 @group(0) @binding(2)
-var<storage, write> outputSprings: array<Spring>;
+var<storage, read_write> outputSprings: array<Spring>;
 
 
 
@@ -39,14 +40,14 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     // TODO figure out how to handle getting both directions of edges of plane to have springs
     outputSprings[i0].particleIdx0 = i0;
     outputSprings[i0].particleIdx1 = i1;
-    outputSprings[i0].restLength = (v1.position.xyz - v0.position.xyz).length();
+    outputSprings[i0].restLength = length(v1.position.xyz - v0.position.xyz);
 
     outputSprings[i1].particleIdx0 = i1;
     outputSprings[i1].particleIdx1 = i2;
-    outputSprings[i1].restLength = (v2.position.xyz - v1.position.xyz).length();
+    outputSprings[i1].restLength = length(v2.position.xyz - v1.position.xyz);
 
     outputSprings[i2].particleIdx0 = i2; 
     outputSprings[i2].particleIdx1 = i0;
-    outputSprings[i1].restLength = (v0.position.xyz - v2.position.xyz).length();
+    outputSprings[i1].restLength = length(v0.position.xyz - v2.position.xyz);
 
 }

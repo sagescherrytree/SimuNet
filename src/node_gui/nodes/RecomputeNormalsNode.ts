@@ -89,7 +89,7 @@ export class RecomputeNormalsNode
     pass.setPipeline(this.deformationComputePipeline);
     pass.setBindGroup(0, this.deformationComputeBindGroup);
 
-    // operating per triangle; so vertexCount/3s
+    // operating per triangle; so indexCount/3s
     const workgroups = Math.ceil(indexCount / 3 / this.workgroupSize);
     pass.dispatchWorkgroups(workgroups);
 
