@@ -57,7 +57,9 @@ export class NoiseNode extends Node implements IGeometryModifier {
       onChange,
       [
         { value: 0, label: "Radial Displacement" },
-        { value: 1, label: "Vertical Displacement" },
+        { value: 1, label: "Y Displacement" },
+        { value: 2, label: "X Displacement" },
+        { value: 3, label: "Z Displacement" },
       ]
     );
   }

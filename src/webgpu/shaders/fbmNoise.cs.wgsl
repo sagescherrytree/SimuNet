@@ -88,14 +88,20 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let dir = pos / len;
 
     // Offset direction = normalized position
-    if (deformation.modificationType == 0.f) {
+    if (deformation.modificationType == 0.f) { // radial
         let offset = dir * noise * deformation.strength;
         let newPos = pos + offset;
-        // Write back
         outputVertices[index].position = vec4<f32>(newPos, 1.0);
-
-    } else {
+    } else if (deformation.modificationType == 1.f){ // y displacement
         let offset = vec3f(0.f,1.f,0.f) * noise * deformation.strength;
+        let newPos = pos + offset;
+        outputVertices[index].position = vec4<f32>(newPos, 1.0);
+    } else if (deformation.modificationType == 2.f) { // x displacement
+        let offset = vec3f(1.f, 0.f, 0.f) * noise * deformation.strength;
+        let newPos = pos + offset;
+        outputVertices[index].position = vec4<f32>(newPos, 1.0);
+    } else { // z displacement
+        let offset = vec3f(0.f, 0.f, 1.f) * noise * deformation.strength;
         let newPos = pos + offset;
         outputVertices[index].position = vec4<f32>(newPos, 1.0);
     }
