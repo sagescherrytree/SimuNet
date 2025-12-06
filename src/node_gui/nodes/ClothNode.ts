@@ -115,8 +115,6 @@ export class ClothNode extends Node implements IGeometryModifier {
   gridHeight: number;
   gridWidth: number;
 
-  gridSizeBuffer: GPUBuffer;
-
   springBuffer: GPUBuffer;
 
   constructor() {
@@ -529,51 +527,6 @@ export class ClothNode extends Node implements IGeometryModifier {
 
     
     // TODO move to GPU
-    for (let i = 0; i < this.vertexCount; ++i) {
-      const x = input.vertices[i * stride];
-      const z = input.vertices[i * stride + 2];
-
-      const roundedX = Math.round(x * precisionFactor) / precisionFactor;
-      const roundedZ = Math.round(z * precisionFactor) / precisionFactor;
-
-      uniqueX.add(roundedX);
-      uniqueZ.add(roundedZ);
-
-      minX = Math.min(minX, x);
-      maxX = Math.max(maxX, x);
-      minZ = Math.min(minZ, z);
-      maxZ = Math.max(maxZ, z);
-    }
-
-    this.gridWidth = uniqueX.size;
-    this.gridHeight = uniqueZ.size;
-
-    console.log("Grid Dimensions: ", this.gridWidth, "x", this.gridHeight);
-
-    this.spacingX = 0.125;
-    this.spacingZ = 0.125;
-
-    if (this.gridWidth > 1) {
-      this.spacingX = (maxX - minX) / (this.gridWidth - 1);
-    }
-
-    if (this.gridHeight > 1) {
-      this.spacingZ = (maxZ - minZ) / (this.gridHeight - 1);
-    }
-
-    console.log("spacing: ", this.spacingX, "x", this.spacingZ);
-
-    const gridSizeBuffer = gpu.device.createBuffer({
-      size: 8,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-
-    gpu.device.queue.writeBuffer(
-      gridSizeBuffer,
-      0,
-      new Uint32Array([this.gridWidth, this.gridHeight])
-    );
-
     // Instantiate time uniform buffer.
     this.timeUniformBuffer = gpu.device.createBuffer({
       label: "time uniform",
@@ -629,7 +582,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     }
 
     
-    this.setupComputePipeline(gridSizeBuffer);
+    this.setupComputePipeline();
 
     // Invoke compute pass.
     // TODO: Update per frame for time uniform.
@@ -734,7 +687,7 @@ export class ClothNode extends Node implements IGeometryModifier {
   }
 
   // Pass in buffers for input vertices.
-  setupComputePipeline(gridSizeBuffer: GPUBuffer) {
+  setupComputePipeline() {
     const gpu = GPUContext.getInstance();
 
     this.clothSimComputeBindGroupLayout = gpu.device.createBindGroupLayout({
@@ -768,12 +721,7 @@ export class ClothNode extends Node implements IGeometryModifier {
         {
           binding: 5,
           visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "uniform" },
-        }, // grid size
-        {
-          binding: 6,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "storage" },
+          buffer: { type: "read-only-storage" },
         }, // input springs
       ],
     });
@@ -794,7 +742,6 @@ export class ClothNode extends Node implements IGeometryModifier {
       compute: { module: shaderModule, entryPoint: "main" },
     });
 
-    this.gridSizeBuffer = gridSizeBuffer;
 
     console.log("ClothSimNode: compute shader loaded");
     console.log(
@@ -840,8 +787,7 @@ export class ClothNode extends Node implements IGeometryModifier {
         { binding: 2, resource: { buffer: this.outputVertexBuffer } },
         { binding: 3, resource: { buffer: this.clothSimUniformBuffer } },
         { binding: 4, resource: { buffer: this.timeUniformBuffer } },
-        { binding: 5, resource: { buffer: this.gridSizeBuffer } },
-        { binding: 6, resource: { buffer: this.springBuffer } },
+        { binding: 5, resource: { buffer: this.springBuffer } },
       ],
     });
 

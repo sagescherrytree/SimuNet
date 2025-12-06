@@ -54,10 +54,7 @@ var<uniform> clothParams: ClothSimParams;
 @group(0) @binding(4)
 var<uniform> deltaTime: f32;
 
-@group(0) @binding(5) // TODO remove
-var<uniform> gridSize: vec2<u32>; // width, height of the cloth grid
-
-@group(0) @binding(6)
+@group(0) @binding(5)
 var<storage, read> inputSprings: array<Spring>;
 
 fn getParticleIndex(x: u32, y: u32, width: u32) -> u32 {
@@ -119,10 +116,22 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     // var force = vec3<f32>(0.0, 0.0, 0.0);
 
     // TODO once GPU-side setup is done:
-    // for (var i = p.firstSpringIdx; i < p.firstSpringIdx + p.springCount; i++) {
-    // inputParticles[inputSprings[i].particleIdx1]....
-    // ...
-    //}
+    for (var i = (*p).firstSpringIdx; i < (*p).firstSpringIdx + (*p).springCount; i++) {
+        let otherParticleIdx = inputSprings[i].particleIdx1;
+        let restLength = inputSprings[i].restLength;
+
+        let neighbor = &inputParticles[otherParticleIdx];
+
+        let springForce = computeSpringForce(
+            (*p).position.xyz,
+            (*neighbor).position.xyz,
+            restLength,
+            clothParams.stiffness
+        );
+
+        force += springForce;
+    }
+    
     // TODO thinking on collisions
     //  working w/ particles as spheres (w/ some fixed radius for all of them), does it make more sense to test against set of triangles or figure out how to convert volume of shape into a set of particles (like not just points at vertices, space-filling)
     //  I think latter is probably a generally better approach but former is simpler implementation-wise?
@@ -130,73 +139,6 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     //   make the node take in a second input for the geometry we want to collide against
     //   in this, have a loop that goes over all the triangles in that and checks for sphere-triangle intersection
     //    then I guess if it does intersect apply force (along the normal vector of the triangle? in sphere-triangle intersect finding nearest point to sphere center, so push along vector from that point to sphere center)
-
-    let coords = getGridCoords(index, gridSize.x);
-    let x = coords.x;
-    let y = coords.y;
-
-    // left, right, up, down
-    let neighbors = array<vec2<i32>, 4>(
-        vec2<i32>(-1, 0), vec2<i32>(1, 0),
-        vec2<i32>(0, -1), vec2<i32>(0, 1)
-    );
-
-
-    var restLength = 0.125;
-    
-    for (var i = 0u; i < 4u; i+=1) {
-        let nx = i32(x) + neighbors[i].x;
-        let ny = i32(y) + neighbors[i].y;
-
-        if (neighbors[i].x != 0) {
-            restLength = clothParams.spacingX;
-        } else {
-            restLength = clothParams.spacingZ;
-        }
-        
-        if (nx >= 0 && nx < i32(gridSize.x) && ny >= 0 && ny < i32(gridSize.y)) {
-            let neighborIdx = getParticleIndex(u32(nx), u32(ny), gridSize.x);
-            let neighbor = inputParticles[neighborIdx];
-
-            let springForce = computeSpringForce(
-                (*p).position.xyz,
-                neighbor.position.xyz,
-                restLength,
-                clothParams.stiffness
-            );
-
-            force += springForce;
-        }
-    }
-
-    // diagonal neighbors
-    let diagonals = array<vec2<i32>, 4> (
-        vec2<i32>(-1, -1),
-        vec2<i32>(1, -1),
-        vec2<i32>(-1, 1),
-        vec2<i32>(1, 1)
-    );
-
-    let diagRestLength = sqrt(clothParams.spacingX * clothParams.spacingX + clothParams.spacingZ * clothParams.spacingZ);
-
-    for (var i = 0u; i < 4u; i += 1) {
-        let nx = i32(x) + diagonals[i].x;
-        let ny = i32(y) + diagonals[i].y;
-
-        if (nx >= 0 && nx < i32(gridSize.x) && ny >= 0 && ny < i32(gridSize.y)) {
-            let neighborIdx = getParticleIndex(u32(nx), u32(ny), gridSize.x);
-            let neighbor = inputParticles[neighborIdx];
-            
-            let springForce = computeSpringForce(
-                (*p).position.xyz,
-                neighbor.position.xyz,
-                diagRestLength,
-                clothParams.stiffness * 0.5 // these springs are weaker
-            );
-
-            force += springForce;
-        }
-    }
     
     // Verlet calcuation LOL
     let acceleration = force / clothParams.mass;
@@ -216,17 +158,18 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     outputParticles[index] = outParticle;
 
     var normal = vec3<f32>(0.0, 1.0, 0.0);
+    // TODO maybe can just not calculate normal here and make have to use the recalculate normal node? or can use the particles pointed to by springs to do same as before
     
-    if (x > 0u && x < gridSize.x - 1u && y > 0u && y < gridSize.y - 1u) {
-        let right = inputParticles[getParticleIndex(x + 1u, y, gridSize.x)].position.xyz;
-        let left = inputParticles[getParticleIndex(x - 1u, y, gridSize.x)].position.xyz;
-        let up = inputParticles[getParticleIndex(x, y - 1u, gridSize.x)].position.xyz;
-        let down = inputParticles[getParticleIndex(x, y + 1u, gridSize.x)].position.xyz;
+    // if (x > 0u && x < gridSize.x - 1u && y > 0u && y < gridSize.y - 1u) {
+    //     let right = inputParticles[getParticleIndex(x + 1u, y, gridSize.x)].position.xyz;
+    //     let left = inputParticles[getParticleIndex(x - 1u, y, gridSize.x)].position.xyz;
+    //     let up = inputParticles[getParticleIndex(x, y - 1u, gridSize.x)].position.xyz;
+    //     let down = inputParticles[getParticleIndex(x, y + 1u, gridSize.x)].position.xyz;
         
-        let tangent1 = normalize(right - left);
-        let tangent2 = normalize(down - up);
-        normal = normalize(cross(tangent1, tangent2));
-    }
+    //     let tangent1 = normalize(right - left);
+    //     let tangent2 = normalize(down - up);
+    //     normal = normalize(cross(tangent1, tangent2));
+    // }
     
     outputVertices[index].position = vec4<f32>(finalPos, 1.0);
     //outputVertices[index].position = p.position;
