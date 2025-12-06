@@ -5,7 +5,8 @@ struct ClothSimParams {
     damping: f32,
     gravity: f32,
     spacingX: f32,
-    spacingZ: f32
+    spacingZ: f32,
+    pinningMode: f32
 }
 
 // Each vert can be represented as a particle.

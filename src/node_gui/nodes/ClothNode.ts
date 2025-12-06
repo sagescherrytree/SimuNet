@@ -13,6 +13,7 @@ import addSpringsToParticlesComputeShader from "../../webgpu/shaders/addSpringsT
 // Maybe we can change this to be more efficient structurally, but for now, call renderer.
 import { Renderer } from "../../webgpu/renderer";
 import { RadixSortKernel } from "webgpu-radix-sort";
+import { DropdownControl } from "../controls/DropdownControl";
 
 // Cloth particle struct creation.
 // Refernce from HW 4 Forward rendering camera.ts.
@@ -106,6 +107,7 @@ export class ClothNode extends Node implements IGeometryModifier {
   massControl: NumberControl;
   dampingControl: NumberControl;
   gravityControl: NumberControl;
+  pinningModeControl: DropdownControl;
 
   private spacingX: number = 0.125;
   private spacingZ: number = 0.125;
@@ -141,6 +143,15 @@ export class ClothNode extends Node implements IGeometryModifier {
       0,
       1000
     );
+
+    this.pinningModeControl = new DropdownControl("Pinning Mode", 0, onChange, [
+      { value: 0, label: "Top Edge" },
+      { value: 1, label: "Top Corners" },
+      { value: 2, label: "All Edges" },
+      { value: 3, label: "Top & Bottom Edges" },
+      { value: 4, label: "Four Corners" },
+      { value: 5, label: "None" },
+    ]);
   }
 
   setInputGeometry(geometry: GeometryData) {
@@ -184,7 +195,6 @@ export class ClothNode extends Node implements IGeometryModifier {
     // then run cloth sim
     //  in order to access neighbors iterate over [firstSpringIdx, firstSpringIdx+springCount) and that gives the other vertex index and rest length
 
-
     // Set up buffers.
     // Input buffers for verts and indices.
     const vertexBuffer = input.vertexBuffer;
@@ -202,7 +212,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     const springStride = 4 * 4; // 16 bytes for spring with padding.
     const triangleCount = indexCount / 3;
     const maxSpringCount = triangleCount * 3;
-    
+
     // start makeSprings
 
     // Output buffer for created springs. <-- split into several buffers
@@ -212,21 +222,33 @@ export class ClothNode extends Node implements IGeometryModifier {
     //   usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, // TODO not sure usages right
     // });
     const outputSpringFirstParticleIndicesBuffer = gpu.device.createBuffer({
-      size: input.indexBuffer!.size, 
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, // TODO remove copy_src when done debugging
+      size: input.indexBuffer!.size,
+      usage:
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_DST |
+        GPUBufferUsage.COPY_SRC, // TODO remove copy_src when done debugging
     });
     const outputSpringSecondParticleIndicesBuffer = gpu.device.createBuffer({
-      size: input.indexBuffer!.size, 
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, // TODO remove copy_src when done debugging
+      size: input.indexBuffer!.size,
+      usage:
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_DST |
+        GPUBufferUsage.COPY_SRC, // TODO remove copy_src when done debugging
     });
     const outputSpringRestLengthBuffer = gpu.device.createBuffer({
-      size: input.indexBuffer!.size, 
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, // TODO remove copy_src when done debugging
+      size: input.indexBuffer!.size,
+      usage:
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_DST |
+        GPUBufferUsage.COPY_SRC, // TODO remove copy_src when done debugging
     });
 
     const copySpringFirstParticleIndicesBuffer = gpu.device.createBuffer({
-      size: input.indexBuffer!.size, 
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, // TODO remove copy_src when done debugging
+      size: input.indexBuffer!.size,
+      usage:
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_DST |
+        GPUBufferUsage.COPY_SRC, // TODO remove copy_src when done debugging
     });
 
     // set up compute pipeline
@@ -287,9 +309,18 @@ export class ClothNode extends Node implements IGeometryModifier {
       entries: [
         { binding: 0, resource: { buffer: vertexBuffer } },
         { binding: 1, resource: { buffer: indexBuffer } },
-        { binding: 2, resource: { buffer: outputSpringFirstParticleIndicesBuffer } },
-        { binding: 3, resource: { buffer: copySpringFirstParticleIndicesBuffer } },
-        { binding: 4, resource: { buffer: outputSpringSecondParticleIndicesBuffer } },
+        {
+          binding: 2,
+          resource: { buffer: outputSpringFirstParticleIndicesBuffer },
+        },
+        {
+          binding: 3,
+          resource: { buffer: copySpringFirstParticleIndicesBuffer },
+        },
+        {
+          binding: 4,
+          resource: { buffer: outputSpringSecondParticleIndicesBuffer },
+        },
         { binding: 5, resource: { buffer: outputSpringRestLengthBuffer } },
       ],
     });
@@ -301,59 +332,50 @@ export class ClothNode extends Node implements IGeometryModifier {
     pass.setBindGroup(0, makeSpringsComputeBindGroup);
 
     // operating per triangle; so indexCount/3s
-    const makeSpringsWorkgroups = Math.ceil(indexCount / 3 / this.workgroupSize);
+    const makeSpringsWorkgroups = Math.ceil(
+      indexCount / 3 / this.workgroupSize
+    );
     pass.dispatchWorkgroups(makeSpringsWorkgroups);
 
     // pass.end();
     // gpu.device.queue.submit([encoder.finish()]);
 
-
-    
     // encoder.copyBufferToBuffer(outputSpringFirstParticleIndicesBuffer, 0, copySpringFirstParticleIndicesBuffer, 0, outputSpringSecondParticleIndicesBuffer.size);
-    
-
 
     // Sort springs by particleIdx0
     const radixSortKernel = new RadixSortKernel({
-      device: gpu.device,                   // GPUDevice to use
-      keys: outputSpringFirstParticleIndicesBuffer,                 // GPUBuffer containing the keys to sort
-      values: outputSpringSecondParticleIndicesBuffer,             // (optional) GPUBuffer containing the associated values
-      count: outputSpringFirstParticleIndicesBuffer.size / 4,               // Number of elements to sort
-      check_order: false,               // Whether to check if the input is already sorted to exit early
-      bit_count: 32,                    // Number of bits per element. Must be a multiple of 4 (default: 32)
+      device: gpu.device, // GPUDevice to use
+      keys: outputSpringFirstParticleIndicesBuffer, // GPUBuffer containing the keys to sort
+      values: outputSpringSecondParticleIndicesBuffer, // (optional) GPUBuffer containing the associated values
+      count: outputSpringFirstParticleIndicesBuffer.size / 4, // Number of elements to sort
+      check_order: false, // Whether to check if the input is already sorted to exit early
+      bit_count: 32, // Number of bits per element. Must be a multiple of 4 (default: 32)
       workgroup_size: { x: 16, y: 16 }, // Workgroup size in x and y dimensions. (x * y) must be a power of two
     });
 
     radixSortKernel.dispatch(pass); // Sort keysBuffer and valuesBuffer in-place on the GPU
 
-
     const radixSortKernel2 = new RadixSortKernel({
-      device: gpu.device,                   // GPUDevice to use
-      keys: copySpringFirstParticleIndicesBuffer,                 // GPUBuffer containing the keys to sort
-      values: outputSpringRestLengthBuffer,             // (optional) GPUBuffer containing the associated values
-      count: copySpringFirstParticleIndicesBuffer.size / 4,               // Number of elements to sort
-      check_order: false,               // Whether to check if the input is already sorted to exit early
-      bit_count: 32,                    // Number of bits per element. Must be a multiple of 4 (default: 32)
+      device: gpu.device, // GPUDevice to use
+      keys: copySpringFirstParticleIndicesBuffer, // GPUBuffer containing the keys to sort
+      values: outputSpringRestLengthBuffer, // (optional) GPUBuffer containing the associated values
+      count: copySpringFirstParticleIndicesBuffer.size / 4, // Number of elements to sort
+      check_order: false, // Whether to check if the input is already sorted to exit early
+      bit_count: 32, // Number of bits per element. Must be a multiple of 4 (default: 32)
       workgroup_size: { x: 16, y: 16 }, // Workgroup size in x and y dimensions. (x * y) must be a power of two
     });
 
     radixSortKernel2.dispatch(pass); // Sort keysBuffer and valuesBuffer in-place on the GPU
 
-
-
-
-
-
-
-
     // start makeParticles
     this.updateUniformBuffer();
 
-
-
     const outputParticleBuffer = gpu.device.createBuffer({
-      size: vertexCount * 64, 
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, // TODO remove COPY_SRC if not needed after debug
+      size: vertexCount * 64,
+      usage:
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_DST |
+        GPUBufferUsage.COPY_SRC, // TODO remove COPY_SRC if not needed after debug
     });
 
     // set up compute pipeline
@@ -403,97 +425,102 @@ export class ClothNode extends Node implements IGeometryModifier {
       ],
     });
 
-
     pass.setPipeline(makeParticlesComputePipeline);
     pass.setBindGroup(0, makeParticlesComputeBindGroup);
 
-
     const makeParticlesWorkgroups = Math.ceil(vertexCount / this.workgroupSize);
     pass.dispatchWorkgroups(makeParticlesWorkgroups);
-  
-    
-    
-    
-    
+
     // start addSpringsToParticles
 
-
     this.springBuffer = gpu.device.createBuffer({
-      size: maxSpringCount * 16, 
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, // TODO remove COPY_SRC if not needed after debug
+      size: maxSpringCount * 16,
+      usage:
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_DST |
+        GPUBufferUsage.COPY_SRC, // TODO remove COPY_SRC if not needed after debug
     });
 
     // set up compute pipeline
-    let addSpringsToParticlesComputeBindGroupLayout = gpu.device.createBindGroupLayout({
-      label: "add springs to particles compute BGL",
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "read-only-storage" },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "read-only-storage" },
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "read-only-storage" },
-        },
-        {
-          binding: 3,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "storage" },
-        },
-        {
-          binding: 4,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "storage" },
-        },
-      ],
-    });
+    let addSpringsToParticlesComputeBindGroupLayout =
+      gpu.device.createBindGroupLayout({
+        label: "add springs to particles compute BGL",
+        entries: [
+          {
+            binding: 0,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "read-only-storage" },
+          },
+          {
+            binding: 1,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "read-only-storage" },
+          },
+          {
+            binding: 2,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "read-only-storage" },
+          },
+          {
+            binding: 3,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "storage" },
+          },
+          {
+            binding: 4,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "storage" },
+          },
+        ],
+      });
 
     let addSpringsToParticlesShaderModule = gpu.device.createShaderModule({
       label: "add springs to particles compute shader",
       code: addSpringsToParticlesComputeShader,
     });
 
-    const addSpringsToParticlesPipelineLayout = gpu.device.createPipelineLayout({
-      label: "add springs to particles compute layout",
-      bindGroupLayouts: [addSpringsToParticlesComputeBindGroupLayout],
-    });
+    const addSpringsToParticlesPipelineLayout = gpu.device.createPipelineLayout(
+      {
+        label: "add springs to particles compute layout",
+        bindGroupLayouts: [addSpringsToParticlesComputeBindGroupLayout],
+      }
+    );
 
-    let addSpringsToParticlesComputePipeline = gpu.device.createComputePipeline({
-      label: "add springs to particles compute pipeline",
-      layout: addSpringsToParticlesPipelineLayout,
-      compute: { module: addSpringsToParticlesShaderModule, entryPoint: "main" },
-    });
+    let addSpringsToParticlesComputePipeline = gpu.device.createComputePipeline(
+      {
+        label: "add springs to particles compute pipeline",
+        layout: addSpringsToParticlesPipelineLayout,
+        compute: {
+          module: addSpringsToParticlesShaderModule,
+          entryPoint: "main",
+        },
+      }
+    );
 
     let addSpringsToParticlesComputeBindGroup = gpu.device.createBindGroup({
       layout: addSpringsToParticlesComputeBindGroupLayout,
       entries: [
-        { binding: 0, resource: { buffer: outputSpringFirstParticleIndicesBuffer } },
-        { binding: 1, resource: { buffer: outputSpringSecondParticleIndicesBuffer } },
+        {
+          binding: 0,
+          resource: { buffer: outputSpringFirstParticleIndicesBuffer },
+        },
+        {
+          binding: 1,
+          resource: { buffer: outputSpringSecondParticleIndicesBuffer },
+        },
         { binding: 2, resource: { buffer: outputSpringRestLengthBuffer } },
         { binding: 3, resource: { buffer: outputParticleBuffer } },
         { binding: 4, resource: { buffer: this.springBuffer } },
       ],
     });
 
-
     pass.setPipeline(addSpringsToParticlesComputePipeline);
     pass.setBindGroup(0, addSpringsToParticlesComputeBindGroup);
 
-
-    const addSpringsToParticlesWorkgroups = Math.ceil(maxSpringCount / this.workgroupSize);
+    const addSpringsToParticlesWorkgroups = Math.ceil(
+      maxSpringCount / this.workgroupSize
+    );
     pass.dispatchWorkgroups(addSpringsToParticlesWorkgroups);
-  
-    
-    
-    
-    
 
     pass.end();
     gpu.device.queue.submit([encoder.finish()]);
@@ -519,12 +546,9 @@ export class ClothNode extends Node implements IGeometryModifier {
     //   const gpuSprings = new Uint32Array(readBuffer.getMappedRange());
     //   console.log("[ClothNode.ts] Output particles:", gpuSprings);
     // });
-        
+
     // SPRING SETUP SECTION END
 
-
-
-    
     // TODO move to GPU
     // Instantiate time uniform buffer.
     this.timeUniformBuffer = gpu.device.createBuffer({
@@ -534,7 +558,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     });
 
     // Ping-pong GPU buffers.
-    this.particleBuffer1 = outputParticleBuffer
+    this.particleBuffer1 = outputParticleBuffer;
 
     this.particleBuffer2 = gpu.device.createBuffer({
       size: outputParticleBuffer.size,
@@ -572,7 +596,6 @@ export class ClothNode extends Node implements IGeometryModifier {
       });
     }
 
-    
     this.setupComputePipeline();
 
     // Invoke compute pass.
@@ -663,6 +686,7 @@ export class ClothNode extends Node implements IGeometryModifier {
       this.gravityControl.value,
       spacingX,
       spacingZ,
+      Number(this.pinningModeControl.value),
     ]);
 
     if (!this.clothSimUniformBuffer) {
@@ -730,7 +754,6 @@ export class ClothNode extends Node implements IGeometryModifier {
       layout: pipelineLayout,
       compute: { module: shaderModule, entryPoint: "main" },
     });
-
 
     console.log("ClothSimNode: compute shader loaded");
     console.log(
@@ -810,6 +833,7 @@ export class ClothNode extends Node implements IGeometryModifier {
       mass: this.massControl,
       damping: this.dampingControl,
       gravity: this.gravityControl,
+      pinningMode: this.pinningModeControl,
     };
   }
 }
