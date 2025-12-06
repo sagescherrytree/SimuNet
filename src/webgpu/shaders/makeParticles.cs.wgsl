@@ -14,13 +14,21 @@ struct VertexIn {
     normal   : vec4<f32>,
 };
 
+struct ClothSimParams {
+    stiffness: f32,
+    mass: f32,
+    damping: f32,
+    gravity: f32,
+    spacingX: f32,
+    spacingZ: f32
+}
 
 @group(0) @binding(0)
 var<storage, read> inputVertices: array<VertexIn>;
 @group(0) @binding(1)
 var<storage, read_write> outputParticles: array<Particle>;
 @group(0) @binding(2)
-var<uniform> mass: f32;
+var<uniform> clothParams: ClothSimParams;
 
 
 @compute @workgroup_size(64)
@@ -36,8 +44,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     outputParticles[index].position = vert.position;
     outputParticles[index].prevPosition = vert.position;
     outputParticles[index].velocity = vec4<f32>(0.f, 0.f, 0.f, 0.f);
-    outputParticles[index].mass = mass;
+    outputParticles[index].mass = clothParams.mass;
     outputParticles[index].isFixed = 0u; // TODO add way to set fixed constraint
-    atomicStore(outputParticles[index].firstSpringIdx, arrayLength(&inputVertices));
-    atomicStore(outputParticles[index].springCount, 0); // I think defaults to 0 but making sure
+    atomicStore(&outputParticles[index].firstSpringIdx, 4294967295u); // max u32
+    atomicStore(&outputParticles[index].springCount, 0u); // I think defaults to 0 but making sure
 }
