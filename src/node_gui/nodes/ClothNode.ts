@@ -117,6 +117,8 @@ export class ClothNode extends Node implements IGeometryModifier {
 
   gridSizeBuffer: GPUBuffer;
 
+  springBuffer: GPUBuffer;
+
   constructor() {
     super("Cloth");
 
@@ -208,7 +210,7 @@ export class ClothNode extends Node implements IGeometryModifier {
 
     // Output buffer for created springs. <-- split into several buffers
     // Imported sorting pipeline seems restricted to sorting at most 32 bits at a time, so doing two passes to get each value sorted, then recombining
-    // const outputSpringBuffer = gpu.device.createBuffer({
+    // this.springBuffer = gpu.device.createBuffer({
     //   size: input.indexBuffer!.size * 4, // indexBuffer.size = 3*number of triangles = number of edges = number of springs -> each index 4 bytes -> each spring 16 bytes
     //   usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, // TODO not sure usages right
     // });
@@ -419,7 +421,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     // start addSpringsToParticles
 
 
-    const outputSpringBuffer = gpu.device.createBuffer({
+    this.springBuffer = gpu.device.createBuffer({
       size: maxSpringCount * 16, 
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, // TODO remove COPY_SRC if not needed after debug
     });
@@ -479,7 +481,7 @@ export class ClothNode extends Node implements IGeometryModifier {
         { binding: 1, resource: { buffer: outputSpringSecondParticleIndicesBuffer } },
         { binding: 2, resource: { buffer: outputSpringRestLengthBuffer } },
         { binding: 3, resource: { buffer: outputParticleBuffer } },
-        { binding: 4, resource: { buffer: outputSpringBuffer } },
+        { binding: 4, resource: { buffer: this.springBuffer } },
       ],
     });
 
@@ -585,22 +587,28 @@ export class ClothNode extends Node implements IGeometryModifier {
 
     // Still using CPU vertices, TODO change to read from GPU vertex buffer evetually.
     // TODO move to GPU
-    this.fillParticleBuffer(cpuParticles, input.vertices, this.vertexCount);
+    // this.fillParticleBuffer(cpuParticles, input.vertices, this.vertexCount);
 
     // Ping-pong GPU buffers.
-    this.particleBuffer1 = gpu.device.createBuffer({
-      size: cpuParticles.buffer.byteLength,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
+    this.particleBuffer1 = outputParticleBuffer
 
     this.particleBuffer2 = gpu.device.createBuffer({
-      size: cpuParticles.buffer.byteLength,
+      size: outputParticleBuffer.size,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
 
     // Upload initial data to buffer1
-    gpu.device.queue.writeBuffer(this.particleBuffer1, 0, cpuParticles.buffer);
-    gpu.device.queue.writeBuffer(this.particleBuffer2, 0, cpuParticles.buffer);
+    // gpu.device.queue.writeBuffer(this.particleBuffer1, 0, cpuParticles.buffer);
+    // gpu.device.queue.writeBuffer(this.particleBuffer2, 0, cpuParticles.buffer);
+    const enc = gpu.device.createCommandEncoder();
+    enc.copyBufferToBuffer(
+      this.particleBuffer1,
+      0,
+      this.particleBuffer2,
+      0,
+      this.particleBuffer1.size
+    );
+    gpu.device.queue.submit([enc.finish()]);
 
     this.currentReadBuffer = this.particleBuffer1;
     this.currentWriteBuffer = this.particleBuffer2;
@@ -762,6 +770,11 @@ export class ClothNode extends Node implements IGeometryModifier {
           visibility: GPUShaderStage.COMPUTE,
           buffer: { type: "uniform" },
         }, // grid size
+        {
+          binding: 6,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "storage" },
+        }, // input springs
       ],
     });
 
@@ -828,6 +841,7 @@ export class ClothNode extends Node implements IGeometryModifier {
         { binding: 3, resource: { buffer: this.clothSimUniformBuffer } },
         { binding: 4, resource: { buffer: this.timeUniformBuffer } },
         { binding: 5, resource: { buffer: this.gridSizeBuffer } },
+        { binding: 6, resource: { buffer: this.springBuffer } },
       ],
     });
 
