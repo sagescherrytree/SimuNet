@@ -45,7 +45,7 @@ export class GraphEngine {
         target.setInputGeometry(geometry, index);
         console.log(`Flow: ${source.label} -> ${target.label} Input #${index}`);
         // target.setInputGeometry(index, geometry);
-        
+
         // if (isExecutable(target)) {
         //   console.log("executing:");
         //   console.log(target);
@@ -248,6 +248,8 @@ export class GraphEngine {
         node = NodeTypes.RecomputeNormals();
       } else if (nodeData.label == "Material") {
         node = NodeTypes.Material();
+      } else if (nodeData.label == "AttribRand") {
+        node = NodeTypes.AttribRand();
       }
 
       node.id = nodeData.id;

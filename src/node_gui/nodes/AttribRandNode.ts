@@ -4,6 +4,7 @@ import { NumberControl } from "../controls/NumberControl";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { GPUContext } from "../../webgpu/GPUContext";
 import { Vec3Control } from "../controls/Vec3Control";
+import { DropdownControl } from "../controls/DropdownControl";
 // Import attrib randomize compute shader.
 import attribRandComputeShader from '../../webgpu/shaders/attribRand.cs.wgsl';
 
@@ -26,13 +27,13 @@ export class AttribRandNode
     // Scale is uniform scale, functions similar to pscale from Houdini.
     scaleMinControl: NumberControl;
     scaleMaxControl: NumberControl;
-    // Rotation will be vec3 for time being.
-    rotationControl: Vec3Control;
+    // Random rotation on if 1, else off.
+    rotationControl: DropdownControl;
 
     // TODO: Add control for type of distribution needed?
 
     constructor() {
-        super("RecomputeNormals");
+        super("AttribRand");
 
         this.ioBehavior.addGeometryInput();
         this.ioBehavior.addGeometryOutput();
@@ -46,12 +47,10 @@ export class AttribRandNode
 
         this.scaleMinControl = new NumberControl("Scale Min Val", 0.5, onChange, 0.1);
         this.scaleMaxControl = new NumberControl("Scale Max Val", 2.0, onChange, 0.1);
-        this.rotationControl = new Vec3Control(
-            "Rotation",
-            { x: 0, y: 0, z: 0 },
-            onChange,
-            5
-        );
+        this.rotationControl = new DropdownControl("Random Rotation", 0, onChange, [
+            { value: 0, label: "Off" },
+            { value: 1, label: "On" },
+        ]);
     }
 
     setInputGeometry(geometry: GeometryData) {
@@ -74,8 +73,8 @@ export class AttribRandNode
         const vertexBuffer = input.vertexBuffer;
         const indexBuffer = input.indexBuffer;
 
-        console.log("RecomputeNormals: incoming vertexBuffer", vertexBuffer);
-        console.log("RecomputeNormals: incoming vertex buffer size:", vertexBuffer?.size);
+        console.log("AttribRand: incoming vertexBuffer", vertexBuffer);
+        console.log("AttribRand: incoming vertex buffer size:", vertexBuffer?.size);
 
         // Create point attrib buffer.
         // Should probably be completely empty because we have yet to fill it.
@@ -104,7 +103,8 @@ export class AttribRandNode
             wireframeIndexBuffer: input.wireframeIndexBuffer,
             id: this.id,
             sourceId: input.sourceId ?? input.id,
-            materialBuffer: input.materialBuffer
+            materialBuffer: input.materialBuffer,
+            pointAttributeBuffer: input.pointAttributeBuffer,
         };
 
         return this.geometry;
@@ -125,19 +125,19 @@ export class AttribRandNode
 
         const f32 = new Float32Array((count * stride) / 4);
         for (let i = 0; i < count; i++) {
-            const o = i * 12;
+            const offset = i * 12;
 
-            f32[o + 0] = 1.0;  // pscale
-            f32[o + 1] = 0.0;  // padding
-            f32[o + 2] = 1.0;  // scale.x
-            f32[o + 3] = 1.0;  // scale.y
-            f32[o + 4] = 1.0;  // scale.z
+            f32[offset + 0] = 1.0;  // pscale
+            f32[offset + 1] = 0.0;  // padding
+            f32[offset + 2] = 1.0;  // scale.x
+            f32[offset + 3] = 1.0;  // scale.y
+            f32[offset + 4] = 1.0;  // scale.z
 
             // quaternion identity
-            f32[o + 8] = 0.0;
-            f32[o + 9] = 0.0;
-            f32[o + 10] = 0.0;
-            f32[o + 11] = 1.0;
+            f32[offset + 8] = 0.0;
+            f32[offset + 9] = 0.0;
+            f32[offset + 10] = 0.0;
+            f32[offset + 11] = 1.0;
         }
 
         gpu.device.queue.writeBuffer(geom.pointAttributeBuffer, 0, f32);
@@ -148,10 +148,8 @@ export class AttribRandNode
         const data = new Float32Array([
             this.scaleMinControl.value,
             this.scaleMaxControl.value,
-            this.rotationControl.value.x,
-            this.rotationControl.value.y,
-            this.rotationControl.value.z,
-            0, 0, 0
+            this.rotationControl.value,
+            0,
         ]);
         if (!this.attribRandUniformBuffer) {
             this.attribRandUniformBuffer = gpu.device.createBuffer({
@@ -181,12 +179,12 @@ export class AttribRandNode
 
 
         const pipelineLayout = gpu.device.createPipelineLayout({
-            label: "copy to points compute layout",
+            label: "attribute randomize compute layout",
             bindGroupLayouts: [this.attribRandComputeBindGroupLayout]
         });
 
         this.attribRandComputePipeline = gpu.device.createComputePipeline({
-            label: "copy to points compute pipeline",
+            label: "attribute randomize compute pipeline",
             layout: pipelineLayout,
             compute: { module: shaderModule, entryPoint: "main" },
         });
@@ -199,9 +197,9 @@ export class AttribRandNode
             ],
         });
 
-        console.log("CopyToPointsNode: compute shader loaded");
-        console.log("CopyToPointsNode: pipeline created:", this.attribRandComputePipeline);
-        console.log("CopyToPointsNode: bind group:", this.attribRandComputeBindGroup);
+        console.log("AttribRandNode: compute shader loaded");
+        console.log("AttribRandNode: pipeline created:", this.attribRandComputePipeline);
+        console.log("AttribRandNode: bind group:", this.attribRandComputeBindGroup);
     }
 
     async execute(inputs?: Record<string, any>) {
