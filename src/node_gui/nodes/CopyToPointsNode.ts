@@ -73,6 +73,9 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
         this.indexCountSrc = src.indexBuffer!.size / 4;
         this.vertexCountTgt = tgt.vertexBuffer!.size / this.stride;
 
+        // Should we get stuffs from pointAttribBuffer for tgt input?
+        const pointAttributeBuffer = tgt.pointAttributeBuffer!;
+
         // GPU stuffs.
         const gpu = GPUContext.getInstance();
 
@@ -106,7 +109,7 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
         // Need vertexBuffers for both objects.
         // TODO: Update wireframe buffers for CpyToPts logic.
         this.updateUniformBuffer();
-        this.setupComputePipeline(src.vertexBuffer!, src.indexBuffer!, tgt.vertexBuffer!, outputVertexBuffer, outputIndexBuffer, this.cpyToPtsUniformBuffer);
+        this.setupComputePipeline(src.vertexBuffer!, src.indexBuffer!, tgt.vertexBuffer!, pointAttributeBuffer, outputVertexBuffer, outputIndexBuffer, this.cpyToPtsUniformBuffer);
 
         // Invoke compute pass.
         const encoder = gpu.device.createCommandEncoder();
@@ -152,7 +155,8 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
     }
 
     // Pass in buffers for input vertices.
-    setupComputePipeline(srcVertexBuffer: GPUBuffer, srcIndexBuffer: GPUBuffer, tgtVertexBuffer: GPUBuffer, outputVertexBuffer: GPUBuffer, outputIndexBuffer: GPUBuffer, cpyToPtsUniBuffer: GPUBuffer) {
+    setupComputePipeline(srcVertexBuffer: GPUBuffer, srcIndexBuffer: GPUBuffer, tgtVertexBuffer: GPUBuffer, pointAttributeBuffer: GPUBuffer,
+        outputVertexBuffer: GPUBuffer, outputIndexBuffer: GPUBuffer, cpyToPtsUniBuffer: GPUBuffer) {
         const gpu = GPUContext.getInstance();
 
         this.cpyToPtsComputeBindGroupLayout = gpu.device.createBindGroupLayout({
@@ -161,9 +165,10 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
                 { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // src vertices
                 { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // src indices
                 { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // target vertices
-                { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } }, // out vertices
-                { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } }, // out indices
-                { binding: 5, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } }, // counts
+                { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // point attribute buffer from attrib random node, if exists.
+                { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } }, // out vertices
+                { binding: 5, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } }, // out indices
+                { binding: 6, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } }, // counts
             ]
         });
 
@@ -190,9 +195,10 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
                 { binding: 0, resource: { buffer: srcVertexBuffer } },
                 { binding: 1, resource: { buffer: srcIndexBuffer } },
                 { binding: 2, resource: { buffer: tgtVertexBuffer } },
-                { binding: 3, resource: { buffer: outputVertexBuffer } },
-                { binding: 4, resource: { buffer: outputIndexBuffer } },
-                { binding: 5, resource: { buffer: cpyToPtsUniBuffer } },
+                { binding: 3, resource: { buffer: pointAttributeBuffer } },
+                { binding: 4, resource: { buffer: outputVertexBuffer } },
+                { binding: 5, resource: { buffer: outputIndexBuffer } },
+                { binding: 6, resource: { buffer: cpyToPtsUniBuffer } },
             ]
         });
 

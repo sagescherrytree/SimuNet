@@ -19,7 +19,7 @@ struct AttrRandUnifs {
 }
 
 @group(0) @binding(0)
-var<storage, read_write> pointAttribBuffer : array<PointAttrib>;
+var<storage, read_write> attribs : array<PointAttrib>;
 
 @group(0) @binding(1)
 var<uniform> params : AttrRandUnifs;
@@ -31,21 +31,21 @@ fn hash(n : f32) -> f32 {
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
     let index = gid.x;
-    if (index >= arrayLength(&attribs)) {
+    if (index >= arrayLength(&attribs )) {
         return;
     }
 
     var a = attribs[index];
 
     let rand = hash(f32(index) * 1.2345);
-    let scaleVal = mix(u.scaleMin, u.scaleMax, rand);
+    let scaleVal = mix(params.scaleMin, params.scaleMax, rand);
 
     a.pscale = scaleVal;
     a.scale = vec3<f32>(scaleVal);
 
-    let rx = u.rotX;
-    let ry = u.rotY;
-    let rz = u.rotZ;
+    let rx = params.rotX;
+    let ry = params.rotY;
+    let rz = params.rotZ;
 
     let cx = cos(rx*0.5); let sx = sin(rx*0.5);
     let cy = cos(ry*0.5); let sy = sin(ry*0.5);
