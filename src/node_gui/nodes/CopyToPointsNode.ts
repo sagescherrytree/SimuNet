@@ -127,7 +127,7 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
         this.geometry = {
             vertexBuffer: outputVertexBuffer,
             indexBuffer: outputIndexBuffer,
-            wireframeIndexBuffer: src.wireframeIndexBuffer,
+            wireframeIndexBuffer: src.wireframeIndexBuffer, // TODO: Update wireframe buffer for copy to points.
             id: this.id,
             sourceId: src.sourceId ?? src.id,
             materialBuffer: src.materialBuffer
