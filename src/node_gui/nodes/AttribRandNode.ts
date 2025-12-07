@@ -61,10 +61,6 @@ export class AttribRandNode
     applyModification(input: GeometryData): GeometryData | undefined {
         if (!input) return;
 
-        const stride = 8 * 4; // 32 bytes to fit vec4 padding.
-        const vertexCount = input.vertexBuffer!.size / stride;
-        const indexCount = input.indexBuffer!.size / 4; // integers = 4 bytes
-
         // GPU stuffs.
         const gpu = GPUContext.getInstance();
 
@@ -80,8 +76,11 @@ export class AttribRandNode
         // Should probably be completely empty because we have yet to fill it.
         this.createPointAttribBuffer(input);
 
+        const pointStride = 48;
+        const pointCount = input.pointAttributeBuffer!.size / pointStride;
+
         // No output vertex buffer, because we do not modify vertices in any way.
-        this.updateUniformBuffer();
+        this.updateUniformBuffer(pointCount);
         this.setupComputePipeline(input.pointAttributeBuffer!);
 
         // Invoke compute pass.
@@ -91,7 +90,7 @@ export class AttribRandNode
         pass.setBindGroup(0, this.attribRandComputeBindGroup);
 
         // operating per triangle; so indexCount/3s
-        const workgroups = Math.ceil(indexCount / 3 / this.workgroupSize);
+        const workgroups = Math.ceil(pointCount / this.workgroupSize);
         pass.dispatchWorkgroups(workgroups);
 
         pass.end();
@@ -112,44 +111,54 @@ export class AttribRandNode
 
     createPointAttribBuffer(geom: GeometryData) {
         const gpu = GPUContext.getInstance();
-        const count = geom.vertices
-            ? geom.vertices.length / 8
-            : (geom.vertexBuffer!.size / 32); // 32 bytes per vertex
+        const stride = 48; // bytes per attribute
+        const vertCount = geom.vertexBuffer ? (geom.vertexBuffer.size / 32) : (geom.vertices ? geom.vertices.length / 8 : 0);
 
-        const stride = 48; // bytes per attribute (pscale + orient)
+        const neededSize = vertCount * stride;
 
-        geom.pointAttributeBuffer = gpu.device.createBuffer({
-            size: count * stride,
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
-        });
+        if (geom.pointAttributeBuffer && geom.pointAttributeBuffer.size === neededSize) {
+            geom.pointAttributeBuffer;
+        } else {
+            geom.pointAttributeBuffer = gpu.device.createBuffer({
+                size: neededSize,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+            });
 
-        const f32 = new Float32Array((count * stride) / 4);
-        for (let i = 0; i < count; i++) {
-            const offset = i * 12;
+            // initialize defaults
+            const f32 = new Float32Array((vertCount * stride) / 4);
+            for (let i = 0; i < vertCount; i++) {
+                const offset = i * 12;
+                f32[offset + 0] = 1.0;  // pscale
+                f32[offset + 1] = 0.0;  // padding
+                f32[offset + 2] = 1.0;  // scale.x
+                f32[offset + 3] = 1.0;  // scale.y
+                f32[offset + 4] = 1.0;  // scale.z
 
-            f32[offset + 0] = 1.0;  // pscale
-            f32[offset + 1] = 0.0;  // padding
-            f32[offset + 2] = 1.0;  // scale.x
-            f32[offset + 3] = 1.0;  // scale.y
-            f32[offset + 4] = 1.0;  // scale.z
+                // quaternion identity
+                f32[offset + 8] = 0.0;
+                f32[offset + 9] = 0.0;
+                f32[offset + 10] = 0.0;
+                f32[offset + 11] = 1.0;
+            }
 
-            // quaternion identity
-            f32[offset + 8] = 0.0;
-            f32[offset + 9] = 0.0;
-            f32[offset + 10] = 0.0;
-            f32[offset + 11] = 1.0;
+            gpu.device.queue.writeBuffer(geom.pointAttributeBuffer, 0, f32);
         }
-
-        gpu.device.queue.writeBuffer(geom.pointAttributeBuffer, 0, f32);
     }
 
-    updateUniformBuffer() {
+    updateUniformBuffer(pointCount: number) {
         const gpu = GPUContext.getInstance();
+
+        const useRandom = Number(this.rotationControl.value) || 0;
+
         const data = new Float32Array([
             this.scaleMinControl.value,
             this.scaleMaxControl.value,
-            this.rotationControl.value,
-            0,
+            useRandom,
+            0.0,
+            pointCount,
+            0.0,
+            0.0,
+            0.0
         ]);
         if (!this.attribRandUniformBuffer) {
             this.attribRandUniformBuffer = gpu.device.createBuffer({

@@ -10,8 +10,12 @@ struct PointAttrib {
 struct AttrRandUnifs {
     scaleMin : f32,
     scaleMax : f32,
-    useRandomRotation : u32, 
-    pad0: f32,
+    useRandomRotation : f32,
+    pad0 : f32,
+    pointCount : f32,
+    pad1 : f32,
+    pad2 : f32,
+    pad3 : f32,
 }
 
 @group(0) @binding(0)
@@ -40,7 +44,7 @@ fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
     a.scale = vec3<f32>(scaleVal);
 
     // Random rotations.
-    if (params.useRandomRotation == 1u) {
+    if (params.useRandomRotation > 0.5) {
         let r1 = hash(f32(index) * 17.123);
         let r2 = hash(f32(index) * 37.321);
         let r3 = hash(f32(index) * 71.777);
