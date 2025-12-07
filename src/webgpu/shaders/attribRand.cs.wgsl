@@ -10,12 +10,8 @@ struct PointAttrib {
 struct AttrRandUnifs {
     scaleMin : f32,
     scaleMax : f32,
-    rotX     : f32,
-    rotY     : f32,
-    rotZ     : f32,
-    pad0     : f32,
-    pad1     : f32,
-    pad2     : f32,
+    useRandomRotation : u32, 
+    pad0: f32,
 }
 
 @group(0) @binding(0)
@@ -43,22 +39,28 @@ fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
     a.pscale = scaleVal;
     a.scale = vec3<f32>(scaleVal);
 
-    let rx = params.rotX;
-    let ry = params.rotY;
-    let rz = params.rotZ;
+    // Random rotations.
+    if (params.useRandomRotation == 1u) {
+        let r1 = hash(f32(index) * 17.123);
+        let r2 = hash(f32(index) * 37.321);
+        let r3 = hash(f32(index) * 71.777);
 
-    let cx = cos(rx*0.5); let sx = sin(rx*0.5);
-    let cy = cos(ry*0.5); let sy = sin(ry*0.5);
-    let cz = cos(rz*0.5); let sz = sin(rz*0.5);
+        let u1 = r1;
+        let u2 = r2 * 6.2831853;
+        let u3 = r3 * 6.2831853;
 
-    let q = vec4<f32>(
-        sx*cy*cz - cx*sy*sz, // x
-        cx*sy*cz + sx*cy*sz, // y
-        cx*cy*sz - sx*sy*cz, // z
-        cx*cy*cz + sx*sy*sz  // w
-    );
+        let sqrt1 = sqrt(1.0 - u1);
+        let sqrt2 = sqrt(u1);
 
-    a.orient = q;
+        a.orient = vec4<f32>(
+            sqrt1 * sin(u2),
+            sqrt1 * cos(u2),
+            sqrt2 * sin(u3),
+            sqrt2 * cos(u3)
+        );
+    } else {
+        a.orient = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    }
 
     attribs[index] = a;
 }

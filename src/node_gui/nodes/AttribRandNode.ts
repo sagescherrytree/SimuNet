@@ -4,6 +4,7 @@ import { NumberControl } from "../controls/NumberControl";
 import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { GPUContext } from "../../webgpu/GPUContext";
 import { Vec3Control } from "../controls/Vec3Control";
+import { DropdownControl } from "../controls/DropdownControl";
 // Import attrib randomize compute shader.
 import attribRandComputeShader from '../../webgpu/shaders/attribRand.cs.wgsl';
 
@@ -26,8 +27,8 @@ export class AttribRandNode
     // Scale is uniform scale, functions similar to pscale from Houdini.
     scaleMinControl: NumberControl;
     scaleMaxControl: NumberControl;
-    // Rotation will be vec3 for time being.
-    rotationControl: Vec3Control;
+    // Random rotation on if 1, else off.
+    rotationControl: DropdownControl;
 
     // TODO: Add control for type of distribution needed?
 
@@ -46,12 +47,10 @@ export class AttribRandNode
 
         this.scaleMinControl = new NumberControl("Scale Min Val", 0.5, onChange, 0.1);
         this.scaleMaxControl = new NumberControl("Scale Max Val", 2.0, onChange, 0.1);
-        this.rotationControl = new Vec3Control(
-            "Rotation",
-            { x: 0, y: 0, z: 0 },
-            onChange,
-            5
-        );
+        this.rotationControl = new DropdownControl("Random Rotation", 0, onChange, [
+            { value: 0, label: "Off" },
+            { value: 1, label: "On" },
+        ]);
     }
 
     setInputGeometry(geometry: GeometryData) {
@@ -149,10 +148,8 @@ export class AttribRandNode
         const data = new Float32Array([
             this.scaleMinControl.value,
             this.scaleMaxControl.value,
-            this.rotationControl.value.x,
-            this.rotationControl.value.y,
-            this.rotationControl.value.z,
-            0, 0, 0
+            this.rotationControl.value,
+            0,
         ]);
         if (!this.attribRandUniformBuffer) {
             this.attribRandUniformBuffer = gpu.device.createBuffer({
