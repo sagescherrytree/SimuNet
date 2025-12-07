@@ -112,6 +112,8 @@ export class ClothNode extends Node implements IGeometryModifier {
   gravityControl: NumberControl;
   pinningModeControl: DropdownControl;
   particleRadiusControl: NumberControl;
+  staticFrictionControl: NumberControl;
+  kineticFrictionControl: NumberControl;
 
   private spacingX: number = 0.125;
   private spacingZ: number = 0.125;
@@ -162,6 +164,22 @@ export class ClothNode extends Node implements IGeometryModifier {
     this.particleRadiusControl = new NumberControl(
       "Particle Radius",
       0.1,
+      onChange,
+      0.01,
+      0,
+      1000
+    );
+    this.staticFrictionControl = new NumberControl(
+      "Static Friction Coeff.",
+      0.25,
+      onChange,
+      0.01,
+      0,
+      1000
+    );
+    this.kineticFrictionControl = new NumberControl(
+      "Kinetic Friction Coeff.",
+      0.2,
       onChange,
       0.01,
       0,
@@ -728,8 +746,8 @@ export class ClothNode extends Node implements IGeometryModifier {
     const spacingZ = this.spacingZ ?? 0.125;
 
     // Stiffness, mass, damping, gravity.
-    const data = new ArrayBuffer(9*4)
-    const floatData = new Float32Array(data, 0, 8)
+    const data = new ArrayBuffer(11*4)
+    const floatData = new Float32Array(data, 0, 10)
     floatData[0] = this.stiffnessControl.value;
     floatData[1] = this.massControl.value;
     floatData[2] = this.dampingControl.value;
@@ -738,7 +756,9 @@ export class ClothNode extends Node implements IGeometryModifier {
     floatData[5] = spacingZ; // TODO can remove?
     floatData[6] = Number(this.pinningModeControl.value);
     floatData[7] = this.particleRadiusControl.value;
-    const u32Data = new Uint32Array(data, 8*4, 1);
+    floatData[8] = this.staticFrictionControl.value;
+    floatData[9] = this.kineticFrictionControl.value;
+    const u32Data = new Uint32Array(data, 10*4, 1);
     u32Data[0] = this.inputGeometries[1] ? 1 : 0;
 
     if (!this.clothSimUniformBuffer) {
@@ -912,6 +932,8 @@ export class ClothNode extends Node implements IGeometryModifier {
       gravity: this.gravityControl,
       pinningMode: this.pinningModeControl,
       particleRadius: this.particleRadiusControl,
+      staticFriction: this.staticFrictionControl,
+      kineticFriction: this.kineticFrictionControl,
     };
   }
 }
