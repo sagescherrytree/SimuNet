@@ -41,7 +41,6 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
 
     setInputGeometry(geometry: GeometryData, index: number = 0) {
         this.inputGeometries[index] = geometry;
-        console.log(this);
         this.applyModificationMultiple(this.inputGeometries);
     }
 

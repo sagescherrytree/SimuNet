@@ -6,7 +6,9 @@ struct ClothSimParams {
     gravity: f32,
     spacingX: f32,
     spacingZ: f32,
-    pinningMode: f32
+    pinningMode: f32,
+    particleRadius: f32, // TODO could have set per particle but probably no reason to
+    hasCollisionGeometry: u32,
 }
 
 // Each vert can be represented as a particle.
@@ -58,6 +60,12 @@ var<uniform> deltaTime: f32;
 @group(0) @binding(5)
 var<storage, read> inputSprings: array<Spring>;
 
+@group(0) @binding(6)
+var<storage, read> inputCollisionVertices: array<VertexOut>;
+@group(0) @binding(7)
+var<storage, read> inputCollisionIndices: array<u32>;
+
+
 fn getParticleIndex(x: u32, y: u32, width: u32) -> u32 {
     return y * width + x;
 }
@@ -89,11 +97,55 @@ fn computeSpringForce(p1: vec3<f32>, p2: vec3<f32>, restLength: f32, stiffness: 
     }
 
     let direction = normalize(delta);
-    let forceMagnitude = stiffness * (dist - restLength);
+    let forceMagnitude = stiffness * (dist - restLength) / dist; // I think this is meant to be proportional? not sure. maybe change back
+    // TODO should there be dampening here?
     return forceMagnitude * direction;
 }
 
-// TODO add sphereTriangleCollision
+// Collision detection based on triangles.
+// TODO does making this into a struct run slower? will keep as is for now but maybe should be like passed in as 3 pointers?
+struct Triangle {
+    v0: vec3<f32>,
+    v1: vec3<f32>,
+    v2: vec3<f32>,
+}
+fn sphereTriangleCollision(pos: vec3<f32>, radius: f32, tri: Triangle) -> vec3<f32> {
+    // Find closest point on triangle to sphere center.
+    let edge0 = tri.v1 - tri.v0; // TODO should this be doing .xyz? does that matter performance-wise? like is it one less subtraction operation or is it the same or worse
+    let edge1 = tri.v2 - tri.v0;
+    let v0ToPoint = pos - tri.v0;
+
+    let dot00 = dot(edge0, edge0);
+    let dot01 = dot(edge0, edge1);
+    let dot11 = dot(edge1, edge1);
+    let dot02 = dot(edge0, v0ToPoint);
+    let dot12 = dot(edge1, v0ToPoint);
+
+    let denom = dot00 * dot11 - dot01 * dot01;
+    var u = (dot11 * dot02 - dot01 * dot12) / denom;
+    var v = (dot00 * dot12 - dot01 * dot02) / denom;
+
+    // Clamp barycentric coords.
+    u = clamp(u, 0.0, 1.0);
+    v = clamp(v, 0.0, 1.0);
+    if (u + v > 1.0) {
+        let t = u + v - 1.0;
+        u -= t * (u / (u + v));
+        v -= t * (v / (u + v));
+    }
+
+    let closest = tri.v0 + edge0 * u + edge1 * v;
+    let dir = pos - closest;
+    let dist = length(dir);
+
+    if (dist < radius && dist > 0.0001) {
+        // return normalize(dir) ; 
+        return normalize(dir) * (radius - dist); 
+    }
+
+    return vec3<f32>(0.0);
+}
+
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -118,7 +170,6 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     var force = vec3<f32>(0.0, -clothParams.gravity * (*p).mass, 0.0); // Gravity!
     // var force = vec3<f32>(0.0, 0.0, 0.0);
 
-    // TODO once GPU-side setup is done:
     for (var i = (*p).firstSpringIdx; i < (*p).firstSpringIdx + (*p).springCount; i++) {
         let otherParticleIdx = inputSprings[i].particleIdx1;
         let restLength = inputSprings[i].restLength;
@@ -144,23 +195,78 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     //   in this, have a loop that goes over all the triangles in that and checks for sphere-triangle intersection
     //    then I guess if it does intersect apply force (along the normal vector of the triangle? in sphere-triangle intersect finding nearest point to sphere center, so push along vector from that point to sphere center)
     
+    var offsetPos = (*p).position.xyz;
+    if (clothParams.hasCollisionGeometry == 1) {
+        for (var i = 0u; i < arrayLength(&inputCollisionIndices); i += 3u) {
+            // test collision per triangle
+            let i0 = inputCollisionIndices[i];
+            let i1 = inputCollisionIndices[i+1];
+            let i2 = inputCollisionIndices[i+2];
+            let v0 = &(inputCollisionVertices[i0]);
+            let v1 = &(inputCollisionVertices[i1]);
+            let v2 = &(inputCollisionVertices[i2]);
+            // let collisionVector = sphereTriangleCollision((*p).position, clothParams.particleRadius, Triangle((*v0).position, (*v1).position, (*v2).position));
+            let collisionVector = sphereTriangleCollision(
+                // (*p).position.xyz, 
+                offsetPos,
+                clothParams.particleRadius, 
+                Triangle(
+                    (*v0).position.xyz, 
+                    (*v1).position.xyz, 
+                    (*v2).position.xyz
+                )
+            );
+
+            // if (any(collisionVector != vec4<f32>(0.0))) {
+            if (length(collisionVector) > 0.0) {
+                // force += vec3f(0.0, 10.0, 0.0);
+                // force += collisionVector.xyz * 500.0;
+                offsetPos += collisionVector;
+                // TODO not sure if it makes more sense to apply as a force or just move it immediately?
+            }
+
+            // TODO friction? want if colliding to have a force in opposite direction of current velocity?
+
+            // Placeholder code TODO delete
+            // let d1 = (*p).position.xyz - (*v0).position.xyz;
+            // let d2 = (*p).position.xyz - (*v1).position.xyz;
+            // let d3 = (*p).position.xyz - (*v2).position.xyz;
+            // if (min(length(d1), min(length(d2), length(d3))) <= clothParams.particleRadius) {
+            //     force += vec3f(0.0, 100.0, 0.0);
+            // }
+            // force += vec3f(0.0, 10000.0, 0.0);
+            // position.y += 10.0;
+        }
+    }
+
+
+    // let dampingFactor = 1.0 - clothParams.damping;
+    let dampingFactor = clothParams.damping;
+    let vel = (offsetPos - (*p).prevPosition.xyz) / deltaTime;
+    // let vel = ((*p).position.xyz - (*p).prevPosition.xyz) / deltaTime;
+    let linearDampingForce = -vel * dampingFactor;
+    force += linearDampingForce;
     // Verlet calcuation LOL
     let acceleration = force / clothParams.mass;
-    let dampingFactor = 1.0 - clothParams.damping;
-    let position = (*p).position.xyz + ((*p).position.xyz - (*p).prevPosition.xyz) * dampingFactor + acceleration * deltaTime * deltaTime;
+    // let position = (*p).position.xyz + prevVel + acceleration * deltaTime * deltaTime;
+    let position = 2 * offsetPos - (*p).prevPosition.xyz + acceleration * deltaTime * deltaTime;
+    // let position = 2 * (*p).position.xyz - (*p).prevPosition.xyz + acceleration * deltaTime * deltaTime;
     
     var finalPos = position;
-    var prevPos = (*p).position;
+    // var prevPos = (*p).position.xyz;
+    var prevPos = vec4<f32>(offsetPos, 1.0);
 
     if (finalPos.y < 0.0) {
         finalPos.y = 0.0;
-        let prevVel = (*p).position.xyz - (*p).prevPosition.xyz;
+        let prevVel = (offsetPos - (*p).prevPosition.xyz);
+        // let prevVel = ((*p).position.xyz - (*p).prevPosition.xyz);
         let dampedVel = prevVel * 0.3; // Friction coefficient!
+        // TODO integrate ground friction in as a force I think
         prevPos = vec4<f32>(finalPos - dampedVel, 1.0);
     }
 
     var outParticle = (*p);
-    outParticle.prevPosition = (*p).position;
+    outParticle.prevPosition = prevPos;
     outParticle.position = vec4<f32>(finalPos, 1.0);
 
     outputParticles[index] = outParticle;

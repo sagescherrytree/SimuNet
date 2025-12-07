@@ -74,7 +74,7 @@ class ClothParticleCPU {
 }
 
 export class ClothNode extends Node implements IGeometryModifier {
-  public inputGeometry?: GeometryData;
+  public inputGeometries?: GeometryData[];
 
   clothSimUniformBuffer?: GPUBuffer;
 
@@ -87,6 +87,9 @@ export class ClothNode extends Node implements IGeometryModifier {
   private currentWriteBuffer: GPUBuffer;
 
   private outputVertexBuffer: GPUBuffer;
+
+  private collisionVertexBuffer: GPUBuffer;
+  private collisionIndexBuffer: GPUBuffer;
 
   // Time uniform buffer in local cloth node.
   // Should we change this? Should geometry carry time uniform buffer?
@@ -108,6 +111,7 @@ export class ClothNode extends Node implements IGeometryModifier {
   dampingControl: NumberControl;
   gravityControl: NumberControl;
   pinningModeControl: DropdownControl;
+  particleRadiusControl: NumberControl;
 
   private spacingX: number = 0.125;
   private spacingZ: number = 0.125;
@@ -118,17 +122,22 @@ export class ClothNode extends Node implements IGeometryModifier {
   gridWidth: number;
 
   springBuffer: GPUBuffer;
+  // private numInputs = 2; // not using actually since want to handle both the 1 and 2 case
 
   constructor() {
     super("Cloth");
 
-    this.ioBehavior.addGeometryInput();
+    this.ioBehavior.addMultipleInputs(2);
+    // this.ioBehavior.addGeometryInput();
     this.ioBehavior.addGeometryOutput();
 
+    this.inputGeometries = [];
+
     const onChange = () => {
-      if (this.inputGeometry) {
-        this.applyModification(this.inputGeometry);
-      }
+      // if (this.inputGeometry) {
+      //   this.applyModification(this.inputGeometry);
+      // }
+      this.applyModificationMultiple(this.inputGeometries);
       this.updateBehavior.triggerUpdate();
     };
 
@@ -150,6 +159,14 @@ export class ClothNode extends Node implements IGeometryModifier {
       0,
       1000
     );
+    this.particleRadiusControl = new NumberControl(
+      "Particle Radius",
+      0.1,
+      onChange,
+      0.01,
+      0,
+      1000
+    );
 
     this.pinningModeControl = new DropdownControl("Pinning Mode", 0, onChange, [
       { value: 0, label: "Top Edge" },
@@ -161,31 +178,28 @@ export class ClothNode extends Node implements IGeometryModifier {
     ]);
   }
 
-  setInputGeometry(geometry: GeometryData) {
-    this.inputGeometry = geometry;
-    this.applyModification(this.inputGeometry);
-  }
+  
+  // setInputGeometry(geometry: GeometryData) {
+  //   this.inputGeometry = geometry;
+  //   this.applyModification(this.inputGeometry);
+  // }
 
+  setInputGeometry(geometry: GeometryData, index: number = 0) {
+    this.inputGeometries[index] = geometry;
+    console.log(this);
+    this.applyModificationMultiple(this.inputGeometries);
+}
   // Need another input for second geom.
-  applyModification(input: GeometryData): GeometryData | undefined {
-    if (!input) return;
+  // applyModification(input: GeometryData): GeometryData | undefined {
+  applyModificationMultiple(inputs: GeometryData[]): GeometryData | undefined {
+    if (!inputs[0]) {
+      return;
+    }
+    const input = inputs[0];
 
     // GPU stuffs.
     const gpu = GPUContext.getInstance();
 
-    // TODO remove once moved to GPU
-
-    const stride = 8;
-
-    const uniqueX = new Set<number>();
-    const uniqueZ = new Set<number>();
-
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minZ = Infinity;
-    let maxZ = -Infinity;
-
-    const precisionFactor = 1000;
 
     //PLAN FOR CLOTH SETUP ON GPU:
     // 1: compute shader for each triangle (set of 3 indices) make 6 springs (each direction separately) set in buffer of array<Spring>
@@ -441,7 +455,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     // start addSpringsToParticles
 
     this.springBuffer = gpu.device.createBuffer({
-      size: maxSpringCount * 16,
+      size: maxSpringCount * springStride,
       usage:
         GPUBufferUsage.STORAGE |
         GPUBufferUsage.COPY_DST |
@@ -603,6 +617,32 @@ export class ClothNode extends Node implements IGeometryModifier {
       });
     }
 
+
+
+    // TODO need to set inputGeometries[1] to null when the second input is disconnected, not sure where should do that
+    // not sure if still ne
+    // Set up buffers for collision geometry
+    if (!inputs[1]) {
+      // no other collision
+
+      // Can't pass zero-sized buffer in as storage, need either a dummy buffer and some uniform that tells if it's unused or two different pipelines I think
+      // Doing the former; in clothsimparams have a hasCollisionGeometry which is set to 0 in this case and 1 in the other
+      this.collisionVertexBuffer = gpu.device.createBuffer({
+        label: "Empty collision vertex buffer",
+        size: 32,
+        usage: GPUBufferUsage.STORAGE |
+        GPUBufferUsage.VERTEX,
+      });
+      this.collisionIndexBuffer = gpu.device.createBuffer({
+        label: "Empty collision index buffer",
+        size: 32,
+        usage: GPUBufferUsage.INDEX | GPUBufferUsage.STORAGE,
+      });
+    } else {
+      this.collisionVertexBuffer = inputs[1].vertexBuffer;
+      this.collisionIndexBuffer = inputs[1].indexBuffer;
+    }
+
     this.setupComputePipeline();
 
     // Invoke compute pass.
@@ -611,26 +651,26 @@ export class ClothNode extends Node implements IGeometryModifier {
     // Done via updateSim and dispatchSim methods.
 
     // Debug.
-    gpu.device.queue.onSubmittedWorkDone().then(async () => {
-      const readBuffer = gpu.device.createBuffer({
-        size: this.outputVertexBuffer.size,
-        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-      });
+    // gpu.device.queue.onSubmittedWorkDone().then(async () => {
+    //   const readBuffer = gpu.device.createBuffer({
+    //     size: this.outputVertexBuffer.size,
+    //     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    //   });
 
-      const enc = gpu.device.createCommandEncoder();
-      enc.copyBufferToBuffer(
-        this.outputVertexBuffer,
-        0,
-        readBuffer,
-        0,
-        this.outputVertexBuffer.size
-      );
-      gpu.device.queue.submit([enc.finish()]);
+    //   const enc = gpu.device.createCommandEncoder();
+    //   enc.copyBufferToBuffer(
+    //     this.outputVertexBuffer,
+    //     0,
+    //     readBuffer,
+    //     0,
+    //     this.outputVertexBuffer.size
+    //   );
+    //   gpu.device.queue.submit([enc.finish()]);
 
-      await readBuffer.mapAsync(GPUMapMode.READ);
-      const gpuVerts = new Float32Array(readBuffer.getMappedRange());
-      console.log("[ClothNode.ts] GPU output vertices:", gpuVerts);
-    });
+    //   await readBuffer.mapAsync(GPUMapMode.READ);
+    //   const gpuVerts = new Float32Array(readBuffer.getMappedRange());
+    //   console.log("[ClothNode.ts] GPU output vertices:", gpuVerts);
+    // });
 
     this.geometry = {
       vertexBuffer: this.outputVertexBuffer,
@@ -644,6 +684,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     return this.geometry;
   }
 
+  // TODO CAN REMOVE? this and ClothParticleCPU
   // Fill particle buffer.
   fillParticleBuffer(
     clothPartBufferCPU: ClothParticleCPU,
@@ -675,6 +716,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     }
   }
 
+  // TODO can remove?
   isEdgePinned(vertexIndex: number, vertexCount: number) {
     // TODO: Implement pinned edge logic.
     return false;
@@ -686,15 +728,18 @@ export class ClothNode extends Node implements IGeometryModifier {
     const spacingZ = this.spacingZ ?? 0.125;
 
     // Stiffness, mass, damping, gravity.
-    const data = new Float32Array([
-      this.stiffnessControl.value,
-      this.massControl.value,
-      this.dampingControl.value,
-      this.gravityControl.value,
-      spacingX,
-      spacingZ,
-      Number(this.pinningModeControl.value),
-    ]);
+    const data = new ArrayBuffer(9*4)
+    const floatData = new Float32Array(data, 0, 8)
+    floatData[0] = this.stiffnessControl.value;
+    floatData[1] = this.massControl.value;
+    floatData[2] = this.dampingControl.value;
+    floatData[3] = this.gravityControl.value;
+    floatData[4] = spacingX; // TODO can remove?
+    floatData[5] = spacingZ; // TODO can remove?
+    floatData[6] = Number(this.pinningModeControl.value);
+    floatData[7] = this.particleRadiusControl.value;
+    const u32Data = new Uint32Array(data, 8*4, 1);
+    u32Data[0] = this.inputGeometries[1] ? 1 : 0;
 
     if (!this.clothSimUniformBuffer) {
       this.clothSimUniformBuffer = gpu.device.createBuffer({
@@ -743,6 +788,16 @@ export class ClothNode extends Node implements IGeometryModifier {
           visibility: GPUShaderStage.COMPUTE,
           buffer: { type: "read-only-storage" },
         }, // input springs
+        {
+          binding: 6,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "read-only-storage" },
+        }, // input collision vertices
+        {
+          binding: 7,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "read-only-storage" },
+        }, // input collision indices
       ],
     });
 
@@ -773,7 +828,7 @@ export class ClothNode extends Node implements IGeometryModifier {
   public updateSim(deltaTime: number) {
     if (!this.timeUniformBuffer) return;
 
-    this.updateUniformBuffer();
+    // this.updateUniformBuffer(); // I think redundant?
 
     // write deltaTime into uniform buffer (we use a Float32Array, buffer padded to 16 bytes)
     // const f32 = new Float32Array([deltaTime, 0, 0, 0]);
@@ -807,6 +862,8 @@ export class ClothNode extends Node implements IGeometryModifier {
         { binding: 3, resource: { buffer: this.clothSimUniformBuffer } },
         { binding: 4, resource: { buffer: this.timeUniformBuffer } },
         { binding: 5, resource: { buffer: this.springBuffer } },
+        { binding: 6, resource: { buffer: this.collisionVertexBuffer } },
+        { binding: 7, resource: { buffer: this.collisionIndexBuffer } },
       ],
     });
 
@@ -823,16 +880,29 @@ export class ClothNode extends Node implements IGeometryModifier {
     ];
   }
 
+  // async execute(inputs?: Record<string, any>) {
+  //   const geom = inputs?.geometry?.[0] as GeometryData;
+  //   if (!geom) {
+  //     console.warn("ClothSimNode: No input geometry");
+  //     return;
+  //   }
+
+  //   this.geometry = this.applyModification(geom);
+  //   return { geometry: this.geometry };
+  // }
+  // TODO not really sure if execute set up right
   async execute(inputs?: Record<string, any>) {
-    const geom = inputs?.geometry?.[0] as GeometryData;
+    const geom = inputs?.geometry0?.[0] as GeometryData;
+    const geom2 = inputs?.geometry1?.[0] as GeometryData;
     if (!geom) {
-      console.warn("ClothSimNode: No input geometry");
-      return;
+        console.warn("ClothSimNode: No input geometry");
+        return;
     }
 
-    this.geometry = this.applyModification(geom);
+
+    this.geometry = this.applyModificationMultiple([geom, geom2]);
     return { geometry: this.geometry };
-  }
+}
 
   getEditableControls() {
     return {
@@ -841,6 +911,7 @@ export class ClothNode extends Node implements IGeometryModifier {
       damping: this.dampingControl,
       gravity: this.gravityControl,
       pinningMode: this.pinningModeControl,
+      particleRadius: this.particleRadiusControl,
     };
   }
 }
