@@ -10,6 +10,8 @@ import clothSimComputeShader from "../../webgpu/shaders/clothSim.cs.wgsl";
 import makeSpringsComputeShader from "../../webgpu/shaders/makeSprings.cs.wgsl";
 import makeParticlesComputeShader from "../../webgpu/shaders/makeParticles.cs.wgsl";
 import addSpringsToParticlesComputeShader from "../../webgpu/shaders/addSpringsToParticles.cs.wgsl";
+import addMissingSpringPairsComputeShader from "../../webgpu/shaders/addMissingSpringPairs.cs.wgsl";
+import resetParticleSpringIndicesComputeShader from "../../webgpu/shaders/resetParticleSpringIndices.cs.wgsl";
 // Maybe we can change this to be more efficient structurally, but for now, call renderer.
 import { Renderer } from "../../webgpu/renderer";
 import { RadixSortKernel } from "webgpu-radix-sort";
@@ -234,6 +236,14 @@ export class ClothNode extends Node implements IGeometryModifier {
     // then run cloth sim
     //  in order to access neighbors iterate over [firstSpringIdx, firstSpringIdx+springCount) and that gives the other vertex index and rest length
 
+    // TODO how to make edges of open mesh (e.g. plane) consistent (spring working in both directions)?
+    // potential ways:
+    //  1. do 6 springs per triangle (each direction), then delete duplicates --> need stream compaction I guess, also not really sure how I'd test duplicates exactly (need to sort by both first and second particle of each spring? so double the sort passes needed plus stream compaction)
+    //  2. maybe instead do after the above process, for each spring, look at the second particle, iterate through that particle's springs to see if any have its second = this first
+    //   then add a copy of this in the opposite direction
+    //    initialize buffer to twice number of edges (so max 6*triangles springs) and add the copy springs all in the second half of it
+    //   then need to run sort and reset atomics and run addSpringsToParticles again I guess
+
     // Set up buffers.
     // Input buffers for verts and indices.
     const vertexBuffer = input.vertexBuffer;
@@ -250,7 +260,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     const indexCount = input.indexBuffer!.size / 4; // integers = 4 bytes
     const springStride = 4 * 4; // 16 bytes for spring with padding.
     const triangleCount = indexCount / 3;
-    const maxSpringCount = triangleCount * 3;
+    const maxSpringCount = triangleCount * 6;
 
     // start makeSprings
 
@@ -261,21 +271,21 @@ export class ClothNode extends Node implements IGeometryModifier {
     //   usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, // TODO not sure usages right
     // });
     const outputSpringFirstParticleIndicesBuffer = gpu.device.createBuffer({
-      size: input.indexBuffer!.size,
+      size: input.indexBuffer!.size * 2,
       usage:
         GPUBufferUsage.STORAGE |
         GPUBufferUsage.COPY_DST |
         GPUBufferUsage.COPY_SRC, // TODO remove copy_src when done debugging
     });
     const outputSpringSecondParticleIndicesBuffer = gpu.device.createBuffer({
-      size: input.indexBuffer!.size,
+      size: input.indexBuffer!.size * 2,
       usage:
         GPUBufferUsage.STORAGE |
         GPUBufferUsage.COPY_DST |
         GPUBufferUsage.COPY_SRC, // TODO remove copy_src when done debugging
     });
     const outputSpringRestLengthBuffer = gpu.device.createBuffer({
-      size: input.indexBuffer!.size,
+      size: input.indexBuffer!.size * 2,
       usage:
         GPUBufferUsage.STORAGE |
         GPUBufferUsage.COPY_DST |
@@ -283,7 +293,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     });
 
     const copySpringFirstParticleIndicesBuffer = gpu.device.createBuffer({
-      size: input.indexBuffer!.size,
+      size: input.indexBuffer!.size * 2,
       usage:
         GPUBufferUsage.STORAGE |
         GPUBufferUsage.COPY_DST |
@@ -386,7 +396,7 @@ export class ClothNode extends Node implements IGeometryModifier {
       device: gpu.device, // GPUDevice to use
       keys: outputSpringFirstParticleIndicesBuffer, // GPUBuffer containing the keys to sort
       values: outputSpringSecondParticleIndicesBuffer, // (optional) GPUBuffer containing the associated values
-      count: outputSpringFirstParticleIndicesBuffer.size / 4, // Number of elements to sort
+      count: outputSpringFirstParticleIndicesBuffer.size / 2 / 4, // Number of elements to sort
       check_order: false, // Whether to check if the input is already sorted to exit early
       bit_count: 32, // Number of bits per element. Must be a multiple of 4 (default: 32)
       workgroup_size: { x: 16, y: 16 }, // Workgroup size in x and y dimensions. (x * y) must be a power of two
@@ -398,7 +408,7 @@ export class ClothNode extends Node implements IGeometryModifier {
       device: gpu.device, // GPUDevice to use
       keys: copySpringFirstParticleIndicesBuffer, // GPUBuffer containing the keys to sort
       values: outputSpringRestLengthBuffer, // (optional) GPUBuffer containing the associated values
-      count: copySpringFirstParticleIndicesBuffer.size / 4, // Number of elements to sort
+      count: copySpringFirstParticleIndicesBuffer.size / 2 / 4, // Number of elements to sort
       check_order: false, // Whether to check if the input is already sorted to exit early
       bit_count: 32, // Number of bits per element. Must be a multiple of 4 (default: 32)
       workgroup_size: { x: 16, y: 16 }, // Workgroup size in x and y dimensions. (x * y) must be a power of two
@@ -510,6 +520,11 @@ export class ClothNode extends Node implements IGeometryModifier {
             visibility: GPUShaderStage.COMPUTE,
             buffer: { type: "storage" },
           },
+          {
+            binding: 5,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "read-only-storage" },
+          },
         ],
       });
 
@@ -536,6 +551,16 @@ export class ClothNode extends Node implements IGeometryModifier {
       }
     );
 
+    let totalSpringCountBuffer = gpu.device.createBuffer({
+      label: "total spring count storage", // changed from uniform for simplicity of interchanging with other buffer
+      size: 4,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    gpu.device.queue.writeBuffer(
+      totalSpringCountBuffer,
+      0,
+      new Uint32Array([maxSpringCount / 2])
+    );
     let addSpringsToParticlesComputeBindGroup = gpu.device.createBindGroup({
       layout: addSpringsToParticlesComputeBindGroupLayout,
       entries: [
@@ -550,6 +575,7 @@ export class ClothNode extends Node implements IGeometryModifier {
         { binding: 2, resource: { buffer: outputSpringRestLengthBuffer } },
         { binding: 3, resource: { buffer: outputParticleBuffer } },
         { binding: 4, resource: { buffer: this.springBuffer } },
+        { binding: 5, resource: { buffer: totalSpringCountBuffer } },
       ],
     });
 
@@ -557,13 +583,285 @@ export class ClothNode extends Node implements IGeometryModifier {
     pass.setBindGroup(0, addSpringsToParticlesComputeBindGroup);
 
     const addSpringsToParticlesWorkgroups = Math.ceil(
-      maxSpringCount / this.workgroupSize
+      maxSpringCount / 2 / this.workgroupSize
     );
     pass.dispatchWorkgroups(addSpringsToParticlesWorkgroups);
+
+
+
+    // Steps to account for mesh edge spring symmetry
+
+    // START pass add copy springs for missing pairs
+    //   ALSO accumulate count of added springs
+    let updatedSpringCountBuffer = gpu.device.createBuffer({
+      label: "updated spring count storage",
+      size: 4,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    gpu.device.queue.writeBuffer(
+      updatedSpringCountBuffer,
+      0,
+      new Uint32Array([maxSpringCount / 2])
+    );
+
+    // set up compute pipeline
+    let addMissingSpringPairsComputeBindGroupLayout =
+      gpu.device.createBindGroupLayout({
+        label: "addMissingSpringPairs compute BGL",
+        entries: [
+          {
+            binding: 0,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "storage" },
+          },
+          {
+            binding: 1,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "storage" },
+          },
+          {
+            binding: 2,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "storage" },
+          },
+          {
+            binding: 3,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "storage" },
+          },
+          {
+            binding: 4,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "read-only-storage" },
+          },
+          {
+            binding: 5,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "read-only-storage" },
+          },
+          {
+            binding: 6,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "storage" },
+          },
+        ],
+      });
+
+    let addMissingSpringPairsShaderModule = gpu.device.createShaderModule({
+      label: "addMissingSpringPairs compute shader",
+      code: addMissingSpringPairsComputeShader,
+    });
+
+    const addMissingSpringPairsPipelineLayout = gpu.device.createPipelineLayout(
+      {
+        label: "addMissingSpringPairs compute layout",
+        bindGroupLayouts: [addMissingSpringPairsComputeBindGroupLayout],
+      }
+    );
+
+    let addMissingSpringPairsComputePipeline = gpu.device.createComputePipeline(
+      {
+        label: "addMissingSpringPairs compute pipeline",
+        layout: addMissingSpringPairsPipelineLayout,
+        compute: {
+          module: addMissingSpringPairsShaderModule,
+          entryPoint: "main",
+        },
+      }
+    );
+
+
+    let addMissingSpringPairsComputeBindGroup = gpu.device.createBindGroup({
+      layout: addMissingSpringPairsComputeBindGroupLayout,
+      entries: [
+        {
+          binding: 0,
+          resource: { buffer: outputSpringFirstParticleIndicesBuffer },
+        },
+        {
+          binding: 1,
+          resource: { buffer: copySpringFirstParticleIndicesBuffer },
+        },
+        {
+          binding: 2,
+          resource: { buffer: outputSpringSecondParticleIndicesBuffer },
+        },
+        { binding: 3, resource: { buffer: outputSpringRestLengthBuffer } },
+        { binding: 4, resource: { buffer: outputParticleBuffer } },
+        { binding: 5, resource: { buffer: totalSpringCountBuffer } },
+        { binding: 6, resource: { buffer: updatedSpringCountBuffer } },
+      ],
+    });
+
+    pass.setPipeline(addMissingSpringPairsComputePipeline);
+    pass.setBindGroup(0, addMissingSpringPairsComputeBindGroup);
+
+    const addMissingSpringPairsWorkgroups = Math.ceil(
+      maxSpringCount / 2 / this.workgroupSize
+    );
+    pass.dispatchWorkgroups(addMissingSpringPairsWorkgroups);
+
+    // pass.end();
+    // maybe better to just directly use the storage buffer rather than copying into a uniform
+    // encoder.copyBufferToBuffer(
+    //   updatedSpringCountBuffer,
+    //   0,
+    //   totalSpringCountBuffer,
+    //   0,
+    //   updatedSpringCountBuffer.size
+    // );
+    // gpu.device.queue.onSubmittedWorkDone().then(async () => {
+    //   const readBuffer = gpu.device.createBuffer({
+    //     size: outputSpringFirstParticleIndicesBuffer.size,
+    //     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    //   });
+
+    //   const enc = gpu.device.createCommandEncoder();
+    //   enc.copyBufferToBuffer(
+    //     outputSpringFirstParticleIndicesBuffer,
+    //     0,
+    //     readBuffer,
+    //     0,
+    //     outputSpringFirstParticleIndicesBuffer.size
+    //   );
+    //   gpu.device.queue.submit([enc.finish()]);
+
+    //   await readBuffer.mapAsync(GPUMapMode.READ);
+    //   const gpuSprings = new Uint32Array(readBuffer.getMappedRange());
+    //   console.log("[ClothNode.ts] Output unsorted spring particle indices:", gpuSprings);
+    // });
+
+    // START sort
+      // Sort springs by particleIdx0
+      const radixSortKernel3 = new RadixSortKernel({
+      device: gpu.device, // GPUDevice to use
+      keys: outputSpringFirstParticleIndicesBuffer, // GPUBuffer containing the keys to sort
+      values: outputSpringSecondParticleIndicesBuffer, // (optional) GPUBuffer containing the associated values
+      count: outputSpringFirstParticleIndicesBuffer.size / 4, // Number of elements to sort
+      check_order: false, // Whether to check if the input is already sorted to exit early
+      bit_count: 32, // Number of bits per element. Must be a multiple of 4 (default: 32)
+      workgroup_size: { x: 16, y: 16 }, // Workgroup size in x and y dimensions. (x * y) must be a power of two
+    });
+
+    radixSortKernel3.dispatch(pass); // Sort keysBuffer and valuesBuffer in-place on the GPU
+
+    const radixSortKernel4 = new RadixSortKernel({
+      device: gpu.device, // GPUDevice to use
+      keys: copySpringFirstParticleIndicesBuffer, // GPUBuffer containing the keys to sort
+      values: outputSpringRestLengthBuffer, // (optional) GPUBuffer containing the associated values
+      count: copySpringFirstParticleIndicesBuffer.size / 4, // Number of elements to sort
+      check_order: false, // Whether to check if the input is already sorted to exit early
+      bit_count: 32, // Number of bits per element. Must be a multiple of 4 (default: 32)
+      workgroup_size: { x: 16, y: 16 }, // Workgroup size in x and y dimensions. (x * y) must be a power of two
+    });
+
+    radixSortKernel4.dispatch(pass); // Sort keysBuffer and valuesBuffer in-place on the GPU
+  
+    // START pass reset particle->spring indices?
+    let resetParticleSpringIndicesComputeBindGroupLayout = gpu.device.createBindGroupLayout({
+      label: "reset particle spring indices compute BGL",
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "storage" },
+        },
+      ],
+    });
+
+    let resetParticleSpringIndicesShaderModule = gpu.device.createShaderModule({
+      label: "reset particle spring indices compute shader",
+      code: resetParticleSpringIndicesComputeShader,
+    });
+
+    const resetParticleSpringIndicesPipelineLayout = gpu.device.createPipelineLayout({
+      label: "reset particle spring indices compute layout",
+      bindGroupLayouts: [resetParticleSpringIndicesComputeBindGroupLayout],
+    });
+
+    let resetParticleSpringIndicesComputePipeline = gpu.device.createComputePipeline({
+      label: "reset particle spring indices compute pipeline",
+      layout: resetParticleSpringIndicesPipelineLayout,
+      compute: { module: resetParticleSpringIndicesShaderModule, entryPoint: "main" },
+    });
+
+    let resetParticleSpringIndicesComputeBindGroup = gpu.device.createBindGroup({
+      layout: resetParticleSpringIndicesComputeBindGroupLayout,
+      entries: [
+        { binding: 0, resource: { buffer: outputParticleBuffer } },
+      ],
+    });
+
+    pass.setPipeline(resetParticleSpringIndicesComputePipeline);
+    pass.setBindGroup(0, resetParticleSpringIndicesComputeBindGroup);
+
+    const resetParticleSpringIndicesWorkgroups = Math.ceil(vertexCount / this.workgroupSize);
+    pass.dispatchWorkgroups(resetParticleSpringIndicesWorkgroups);
+
+    // START update particle-spring indices
+    //  re-run addSpringsToParticles
+    let secondPassAddSpringsToParticlesComputeBindGroup = gpu.device.createBindGroup({
+      layout: addSpringsToParticlesComputeBindGroupLayout,
+      entries: [
+        {
+          binding: 0,
+          resource: { buffer: outputSpringFirstParticleIndicesBuffer },
+        },
+        {
+          binding: 1,
+          resource: { buffer: outputSpringSecondParticleIndicesBuffer },
+        },
+        { binding: 2, resource: { buffer: outputSpringRestLengthBuffer } },
+        { binding: 3, resource: { buffer: outputParticleBuffer } },
+        { binding: 4, resource: { buffer: this.springBuffer } },
+        { binding: 5, resource: { buffer: updatedSpringCountBuffer } },
+      ],
+    });
+
+    const secondPassAddSpringsToParticlesWorkgroups = Math.ceil(
+      maxSpringCount / this.workgroupSize // really should run just up to number in updatedSpringCountBuffer but probably fine (checked w/in shader still but is making extra groups; would need to copy back to CPU first though otherwise)
+    );
+    pass.setPipeline(addSpringsToParticlesComputePipeline);
+    pass.setBindGroup(0, secondPassAddSpringsToParticlesComputeBindGroup);
+
+    pass.dispatchWorkgroups(secondPassAddSpringsToParticlesWorkgroups);
+
+
+    
 
     pass.end();
     gpu.device.queue.submit([encoder.finish()]);
 
+
+    
+    // Debug.
+    // gpu.device.queue.onSubmittedWorkDone().then(async () => {
+    //   const readBuffer = gpu.device.createBuffer({
+    //     size: totalSpringCountBuffer.size * 2,
+    //     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    //   });
+
+    //   const enc = gpu.device.createCommandEncoder();
+    //   enc.copyBufferToBuffer(
+    //     totalSpringCountBuffer,
+    //     0,
+    //     readBuffer,
+    //     0,
+    //     totalSpringCountBuffer.size
+    //   );
+    //   enc.copyBufferToBuffer(
+    //     updatedSpringCountBuffer,
+    //     0,
+    //     readBuffer,
+    //     4,
+    //     updatedSpringCountBuffer.size
+    //   );
+    //   gpu.device.queue.submit([enc.finish()]);
+
+    //   await readBuffer.mapAsync(GPUMapMode.READ);
+    //   const gpuSprings = new Uint32Array(readBuffer.getMappedRange());
+    //   console.log("[ClothNode.ts] Output spring count 1:", gpuSprings);
+    // });
     // Debug.
     // gpu.device.queue.onSubmittedWorkDone().then(async () => {
     //   const readBuffer = gpu.device.createBuffer({
