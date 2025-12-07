@@ -8,6 +8,8 @@ struct ClothSimParams {
     spacingZ: f32,
     pinningMode: f32,
     particleRadius: f32, // TODO could have set per particle but probably no reason to
+    staticFriction: f32,
+    kineticFriction: f32,
     hasCollisionGeometry: u32,
 }
 
@@ -138,9 +140,10 @@ fn sphereTriangleCollision(pos: vec3<f32>, radius: f32, tri: Triangle) -> vec3<f
     let dir = pos - closest;
     let dist = length(dir);
 
-    if (dist < radius && dist > 0.0001) {
+    if (dist < radius && dist > 0.00001) {
         // return normalize(dir) ; 
-        return normalize(dir) * (radius - dist); 
+        return normalize(dir); 
+        // return normalize(dir) * (radius - dist); 
     }
 
     return vec3<f32>(0.0);
@@ -195,7 +198,12 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     //   in this, have a loop that goes over all the triangles in that and checks for sphere-triangle intersection
     //    then I guess if it does intersect apply force (along the normal vector of the triangle? in sphere-triangle intersect finding nearest point to sphere center, so push along vector from that point to sphere center)
     
-    var offsetPos = (*p).position.xyz;
+    // var offsetPos = (*p).position.xyz;
+    let vel = ((*p).position.xyz - (*p).prevPosition.xyz) / deltaTime;
+    // TODO technically this should be the last frame's deltaTime if the deltaTime isn't
+    // let dampingFactor = 1.0 - clothParams.damping;
+    
+
     if (clothParams.hasCollisionGeometry == 1) {
         for (var i = 0u; i < arrayLength(&inputCollisionIndices); i += 3u) {
             // test collision per triangle
@@ -207,8 +215,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
             let v2 = &(inputCollisionVertices[i2]);
             // let collisionVector = sphereTriangleCollision((*p).position, clothParams.particleRadius, Triangle((*v0).position, (*v1).position, (*v2).position));
             let collisionVector = sphereTriangleCollision(
-                // (*p).position.xyz, 
-                offsetPos,
+                (*p).position.xyz, 
+                // offsetPos,
                 clothParams.particleRadius, 
                 Triangle(
                     (*v0).position.xyz, 
@@ -221,8 +229,47 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
             if (length(collisionVector) > 0.0) {
                 // force += vec3f(0.0, 10.0, 0.0);
                 // force += collisionVector.xyz * 500.0;
-                offsetPos += collisionVector;
+                // offsetPos += collisionVector;
                 // TODO not sure if it makes more sense to apply as a force or just move it immediately?
+                // Normal force?
+                // Am I right in thinking just: projection of forces onto negation of the normal vector, negated?
+                // maybe ought to both apply normal force but also correct position to outside?
+                let normalForce = dot(force, -collisionVector) * collisionVector; //collisionVector already normalized
+                force += normalForce;
+
+                if (length(vel) < 0.1) {
+                    // TODO not sure epsilon to use there^
+                    //   setting it to a probably super-high 0.1 here is unrealistic I think but actually looks pretty good?
+                    // assume stationary enough -> static friction
+                    let staticFrictionMax = clothParams.staticFriction * length(normalForce);
+                    // I THINK: 
+                    // take sum of forces
+                    // get component that goes along surface = subtract out component along normal
+                    // take negation
+                    // set max length of that negation to staticFrictionMax
+                    // not 100% sure this is right in terms of the projection part though
+                    let forceOutOfSurface = dot(force, -collisionVector) * collisionVector;
+                    let forceAlongSurface = force - forceOutOfSurface;
+                    var frictionForce = -forceAlongSurface;
+                    if (length(frictionForce) > staticFrictionMax) {
+                        frictionForce = normalize(frictionForce) * staticFrictionMax;
+                    }
+                    force += frictionForce;
+                } else {
+                    let kineticFrictionMagnitude = clothParams.kineticFriction * length(normalForce);
+                    // I THINK: 
+                    // take velocity
+                    // get component that goes along surface = subtract out component along normal
+                    // take negation
+                    // set length of that negation to kineticFrictionMagnitude
+                    let velocityOutOfSurface = dot(vel, -collisionVector) * collisionVector;
+                    let reversedVelocityAlongSurface = velocityOutOfSurface - vel;
+                    let frictionForce = kineticFrictionMagnitude * normalize(reversedVelocityAlongSurface);
+                    force += frictionForce;
+                    
+                }
+                // TODO this doubles up at seams? should it just "break;" here?
+                break; // TODO not sure
             }
 
             // TODO friction? want if colliding to have a force in opposite direction of current velocity?
@@ -238,21 +285,27 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
             // position.y += 10.0;
         }
     }
-
-
-    // let dampingFactor = 1.0 - clothParams.damping;
+    // TODO not sure how damping should interact with e.g. friction
     let dampingFactor = clothParams.damping;
-    let vel = (offsetPos - (*p).prevPosition.xyz) / deltaTime;
+    // let vel = (offsetPos - (*p).prevPosition.xyz) / deltaTime;
     // let vel = ((*p).position.xyz - (*p).prevPosition.xyz) / deltaTime;
     let linearDampingForce = -vel * dampingFactor;
     force += linearDampingForce;
+
+    
     // Verlet calcuation LOL
+    
     let acceleration = force / clothParams.mass;
     // let position = (*p).position.xyz + prevVel + acceleration * deltaTime * deltaTime;
+    let offsetPos = (*p).position.xyz; // TODO change back?
     let position = 2 * offsetPos - (*p).prevPosition.xyz + acceleration * deltaTime * deltaTime;
     // let position = 2 * (*p).position.xyz - (*p).prevPosition.xyz + acceleration * deltaTime * deltaTime;
     
     var finalPos = position;
+    if (length(position - offsetPos) < 0.00001) {
+        // TODO issue with this is should still build up velocity I guess? so maybe need to artificially change prevPos?
+        finalPos = (*p).position.xyz;
+    }
     // var prevPos = (*p).position.xyz;
     var prevPos = vec4<f32>(offsetPos, 1.0);
 
