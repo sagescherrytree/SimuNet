@@ -229,6 +229,39 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
 
     gpu.device.queue.submit([encoder.finish()]);
 
+    const sourceVertexBufferCopy = gpu.device.createBuffer({
+      size: src.vertexBuffer.size,
+      usage:
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.VERTEX |
+        GPUBufferUsage.COPY_DST,
+      label: "CopyToPoints source vertex copy",
+    });
+
+    const sourceIndexBufferCopy = gpu.device.createBuffer({
+      size: src.indexBuffer.size,
+      usage:
+        GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+      label: "CopyToPoints source index copy",
+    });
+
+    const copyEncoder = gpu.device.createCommandEncoder();
+    copyEncoder.copyBufferToBuffer(
+      src.vertexBuffer,
+      0,
+      sourceVertexBufferCopy,
+      0,
+      src.vertexBuffer.size
+    );
+    copyEncoder.copyBufferToBuffer(
+      src.indexBuffer,
+      0,
+      sourceIndexBufferCopy,
+      0,
+      src.indexBuffer.size
+    );
+    gpu.device.queue.submit([copyEncoder.finish()]);
+
     // this.analyzeCubeGeometry(src);
 
     this.geometry = {
@@ -241,6 +274,13 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
       boundingSphere: src.boundingSphere, // Pass through for radius
       pointCount: instanceCount,
       instancePositions: undefined, // will be set to async
+      sourceGeometry: {
+        vertexBuffer: sourceVertexBufferCopy,
+        indexBuffer: sourceIndexBufferCopy,
+        boundingSphere: src.boundingSphere,
+        boundingBox: src.boundingBox,
+      },
+      pointAttributeBuffer: pointAttributeBuffer,
     };
 
     console.log("CopyToPoints output:", {

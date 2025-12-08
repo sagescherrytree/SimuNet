@@ -27,6 +27,7 @@ export interface GeometryData {
   geomIDBuffer?: GPUBuffer; // Also for copyToPoints -> Rigidbodies.
   pointCount?: number; // Number of instances from copy-to-points
   instancePositions?: number[][]; // [[x,y,z], ...] for each instance
+  sourceGeometry?: Partial<GeometryData>;
 }
 
 import { Node } from "../types";

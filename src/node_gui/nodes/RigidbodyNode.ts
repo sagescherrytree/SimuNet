@@ -87,6 +87,8 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
 
   transformParamsBuffer: GPUBuffer;
 
+  private isInitialized: boolean = false;
+
   constructor() {
     super("Rigidbody");
 
@@ -150,9 +152,20 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
     console.log(`RigidbodyNode: Detected ${this.instanceCount} instances`);
 
     this.extractSourceGeometry(input);
-    this.initializeRigidbodies();
+    this.isInitialized = false;
+    this.initializeRigidbodies()
+      .then(() => {
+        this.isInitialized = true;
+        console.log("RigidbodyNode: Initialization complete!");
+        // Trigger an update so the renderer knows we're ready
+        this.updateBehavior.triggerUpdate();
+      })
+      .catch((err) => {
+        console.error("RigidbodyNode: Initialization failed:", err);
+      });
 
-    return this.geometry;
+    // Return undefined for now - geometry will be available after async init
+    return undefined;
   }
 
   private extractSourceGeometry(input: GeometryData) {
@@ -160,6 +173,12 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
 
     if (this.instanceCount === 1) {
       this.sourceGeometry = input;
+      return;
+    }
+
+    if (input.sourceGeometry) {
+      console.log("Using source geometry from CopyToPoints");
+      this.sourceGeometry = input.sourceGeometry as GeometryData;
       return;
     }
 
@@ -214,15 +233,16 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
       boundingSphere: input.boundingSphere,
       boundingBox: input.boundingBox,
       materialBuffer: input.materialBuffer,
+      pointAttributeBuffer: input.pointAttributeBuffer,
     };
   }
 
-  setInputGeometry(geometry: GeometryData, index: number = 0) {
+  async setInputGeometry(geometry: GeometryData, index: number = 0) {
     this.inputGeometry = geometry;
-    this.applyModification(geometry);
+    await this.applyModification(geometry);
   }
 
-  initializeRigidbodies() {
+  async initializeRigidbodies() {
     if (!this.inputGeometry || !this.sourceGeometry) {
       console.error("RigidbodyNode: No input or source geometry!");
       return;
@@ -260,7 +280,7 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
     });
 
     this.updateSimParamsBuffer();
-    this.initializeRigidbodiesOnCPU();
+    await this.initializeRigidbodiesOnCPU();
     this.setupComputePipeline();
 
     // Output buffer for ALL instances
@@ -308,7 +328,7 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
     this.runIndexDuplication();
   }
 
-  private initializeRigidbodiesOnCPU() {
+  private async initializeRigidbodiesOnCPU() {
     const gpu = GPUContext.getInstance();
     const spawnVel = this.initialVelocityControl.value;
 
@@ -319,37 +339,75 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
     }
 
     const center = boundingSphere.center;
-    const radius = boundingSphere.radius;
-
-    const minY = center[1] - radius;
-
-    console.log("Bounding sphere info:", {
-      center,
-      radius,
-      minY,
-      message:
-        minY !== 0
-          ? "Center is not at origin! Floor will be offset."
-          : "Center is at origin",
-    });
-
+    const baseRadius = boundingSphere.radius;
     const positions = this.inputGeometry.instancePositions || [[0, 0, 0]];
 
-    console.log(
-      `Initializing ${this.instanceCount} rigidbodies with radius ${radius}`
-    );
+    let pscales: Float32Array | null = null;
+    if (this.inputGeometry.pointAttributeBuffer) {
+      const attribBuffer = this.inputGeometry.pointAttributeBuffer;
+      const readBuffer = gpu.device.createBuffer({
+        size: attribBuffer.size,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+      });
+
+      const encoder = gpu.device.createCommandEncoder();
+      encoder.copyBufferToBuffer(
+        attribBuffer,
+        0,
+        readBuffer,
+        0,
+        attribBuffer.size
+      );
+      gpu.device.queue.submit([encoder.finish()]);
+
+      await readBuffer.mapAsync(GPUMapMode.READ);
+      const attribData = new Float32Array(readBuffer.getMappedRange());
+
+      // Extract pscale values (first float of each 9-float attribute block)
+      pscales = new Float32Array(this.instanceCount);
+      for (let i = 0; i < this.instanceCount; i++) {
+        pscales[i] = attribData[i * 9]; // pscale is at index 0 of each block
+      }
+
+      readBuffer.unmap();
+      console.log("RigidbodyNode: Read pscale values", pscales);
+
+      console.log(
+        "RigidbodyNode: Point attribute buffer size:",
+        attribBuffer.size
+      );
+      console.log(
+        "RigidbodyNode: Expected size for",
+        this.instanceCount,
+        "instances:",
+        this.instanceCount * 9 * 4,
+        "bytes"
+      );
+      console.log("RigidbodyNode: Read pscale values:");
+      for (let i = 0; i < this.instanceCount; i++) {
+        console.log(
+          `  Instance ${i}: pscale=${pscales[i]}, reading from index ${i * 9}`
+        );
+      }
+    } else {
+      console.warn(
+        "RigidbodyNode: No pointAttributeBuffer found, using default scale of 1.0"
+      );
+    }
 
     const cpuBody = new RigidbodyCPU(this.instanceCount);
 
     for (let i = 0; i < this.instanceCount; i++) {
       const pos = positions[i] || [0, 0, 0];
+      const pscale = pscales ? pscales[i] : 1.0;
+      const radius = baseRadius * pscale;
 
       // Adjust initial Y position to account for center offset
       // If the mesh center is at y=0.5, we need to shift rigidbody down by 0.5
       const adjustedY = pos[1] - center[1];
 
       cpuBody.writeRigidbody(i, {
-        position: { x: pos[0], y: pos[1], z: pos[2] },
+        position: { x: pos[0], y: adjustedY, z: pos[2] },
         velocity: spawnVel,
         mass: this.massControl.value,
         radius: radius,
@@ -392,7 +450,7 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
   struct TransformParams {
     verticesPerInstance: u32,
     instanceCount: u32,
-    padding1: u32,
+    baseRadius: f32,
     padding2: u32,
   }
   
@@ -435,9 +493,12 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
     
     // Calculate offset from original center
     let offset = sourceVert.position.xyz - originalCenter.xyz;
+
+    let scaleFactor = body.radius / params.baseRadius;
+    let scaledOffset = offset * scaleFactor;
     
     // Apply offset to rigidbody's current position
-    let newPos = body.position.xyz + offset;
+    let newPos = body.position.xyz + scaledOffset;
     
     var outputVert = sourceVert;
     outputVert.position = vec4<f32>(newPos, 1.0);
@@ -494,19 +555,23 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
 
     // Create params buffer
     const verticesPerInstance = this.sourceGeometry.vertexBuffer.size / (8 * 4);
-    const paramsData = new Uint32Array([
-      verticesPerInstance,
-      this.instanceCount,
-      0,
-      0,
-    ]);
+    const baseRadius = this.sourceGeometry.boundingSphere.radius;
+
+    const paramsBuffer = new ArrayBuffer(16); // 4 floats = 16 bytes
+    const uint32View = new Uint32Array(paramsBuffer);
+    const float32View = new Float32Array(paramsBuffer);
+
+    uint32View[0] = verticesPerInstance; // u32
+    uint32View[1] = this.instanceCount; // u32
+    float32View[2] = baseRadius; // f32 (same offset, different view)
+    uint32View[3] = 0;
 
     this.transformParamsBuffer = gpu.device.createBuffer({
-      size: paramsData.byteLength,
+      size: 16,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
-    gpu.device.queue.writeBuffer(this.transformParamsBuffer, 0, paramsData);
+    gpu.device.queue.writeBuffer(this.transformParamsBuffer, 0, paramsBuffer);
   }
 
   setupIndexDuplicationPipeline() {
@@ -728,7 +793,8 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
     pass.setPipeline(this.transformMeshPipeline);
     pass.setBindGroup(0, transformBindGroup);
 
-    const sphereVertexCount = this.inputGeometry.vertexBuffer.size / (8 * 4);
+    const sphereVertexCount =
+      (this.sourceGeometry.vertexBuffer.size / (8 * 4)) * this.instanceCount;
     const transformWorkgroups = Math.ceil(
       sphereVertexCount / this.workgroupSize
     );
@@ -756,6 +822,11 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
   }
 
   public dispatchSim(pass: GPUComputePassEncoder) {
+    if (!this.isInitialized) {
+      console.log("RigidbodyNode: Still initializing, skipping frame");
+      return;
+    }
+
     if (!this.rigidbodySimPipeline || !this.currentReadBuffer) {
       console.log(
         "RigidbodyNode: Cannot dispatch - missing pipeline or buffer"
@@ -799,7 +870,8 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
     pass.setPipeline(this.transformMeshPipeline);
     pass.setBindGroup(0, transformBindGroup);
 
-    const sphereVertexCount = this.inputGeometry.vertexBuffer.size / (8 * 4);
+    const sphereVertexCount =
+      (this.sourceGeometry.vertexBuffer.size / (8 * 4)) * this.instanceCount;
     const transformWorkgroups = Math.ceil(
       sphereVertexCount / this.workgroupSize
     );
@@ -813,7 +885,7 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
       return;
     }
 
-    this.geometry = this.applyModification(geom);
+    this.geometry = await this.applyModification(geom);
     return { geometry: this.geometry };
   }
 
