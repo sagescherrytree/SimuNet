@@ -21,8 +21,10 @@ import { Connection } from "../connections/Connection";
 import { AreaPlugin } from "rete-area-plugin";
 
 export class GraphEngine {
-  constructor(private editor: NodeEditor<Schemes>, private area: AreaPlugin<Schemes, AreaExtra>) { }
-
+  constructor(
+    private editor: NodeEditor<Schemes>,
+    private area: AreaPlugin<Schemes, AreaExtra>
+  ) {}
 
   async propagate(sourceId: string) {
     const source = this.editor.getNode(sourceId);
@@ -90,7 +92,9 @@ export class GraphEngine {
         case "connectioncreated":
           break;
         case "connectionremove":
-          allConnections = allConnections.filter((conn) => conn.id !== context.data.id);
+          allConnections = allConnections.filter(
+            (conn) => conn.id !== context.data.id
+          );
           break;
         case "nodecreate":
           // if (isGenerator(context.data)) {
@@ -129,7 +133,6 @@ export class GraphEngine {
     console.log(nodesForGeometries);
     runRebuild();
   }
-
 
   exportGraphToJSON() {
     // planning
@@ -176,7 +179,7 @@ export class GraphEngine {
       const outData = {
         id: node.id,
         label: node.label,
-        controls: node.getEditableControls()
+        controls: node.getEditableControls(),
       };
       nodeData.push(outData);
     }
@@ -187,23 +190,21 @@ export class GraphEngine {
       const pos = value.position;
       nodePositionData.push({
         id: key,
-        position: pos
+        position: pos,
       });
     }
 
     const outputObject = {
       nodes: nodeData,
       connections: allConnections,
-      nodePositions: nodePositionData
+      nodePositions: nodePositionData,
     };
-
 
     const jsonOutput = JSON.stringify(outputObject);
     return jsonOutput;
   }
 
   async loadGraphFromJSON(jsonInput: string) {
-
     let inputObject: any;
     try {
       inputObject = JSON.parse(jsonInput);
@@ -230,6 +231,8 @@ export class GraphEngine {
       let node: Node;
       if (nodeData.label == "Cloth") {
         node = NodeTypes.Cloth();
+      } else if (nodeData.label == "RigidBody") {
+        node = NodeTypes.Rigidbody();
       } else if (nodeData.label == "CopyToPoints") {
         node = NodeTypes.CopyToPoints();
       } else if (nodeData.label == "Cube") {

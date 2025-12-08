@@ -27,7 +27,20 @@ import { Renderer } from "../webgpu/renderer";
 type ContextMenuItem = [string, () => Schemes["Node"]];
 
 function getContextMenuItems() {
-  const { Cube, Icosphere, Noise, Transform, Cloth, Plane, Torus, RecomputeNormals, CopyToPoints, AttribRand, Material } = NodeTypes;
+  const {
+    Cube,
+    Icosphere,
+    Noise,
+    Transform,
+    Cloth,
+    Plane,
+    Torus,
+    RecomputeNormals,
+    CopyToPoints,
+    AttribRand,
+    Material,
+    Rigidbody,
+  } = NodeTypes;
 
   const primitiveItems: ContextMenuItem[] = [
     ["Cube", Cube],
@@ -44,6 +57,7 @@ function getContextMenuItems() {
     ["Attribute Random", AttribRand],
     ["Recompute Normals", RecomputeNormals],
     ["Material", Material],
+    ["Rigidbody", Rigidbody],
   ];
 
   primitiveItems.sort((a, b) => a[0].localeCompare(b[0]));
@@ -126,7 +140,10 @@ export async function createEditor(
         engine.updateAllGeometries(context);
 
         const node = context.data;
-        if (typeof node.updateSim === "function" && typeof node.dispatchSim === "function") {
+        if (
+          typeof node.updateSim === "function" &&
+          typeof node.dispatchSim === "function"
+        ) {
           renderer.registerSimNode(node);
           console.log(`Registered ${node.label} for GPU simulation`);
         }
@@ -141,7 +158,10 @@ export async function createEditor(
 
         if (context.type === "noderemove") {
           const node = context.data;
-          if (typeof node.updateSim === "function" && typeof node.dispatchSim === "function") {
+          if (
+            typeof node.updateSim === "function" &&
+            typeof node.dispatchSim === "function"
+          ) {
             renderer.unregisterSimNode(node);
             console.log(`Unregistered ${node.label} from GPU simulation`);
           }
@@ -161,9 +181,9 @@ export async function createEditor(
 
   return {
     editor,
-    destroy: () => { },
+    destroy: () => {},
     getNodeById,
-    engine
+    engine,
   };
 }
 
