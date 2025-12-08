@@ -231,7 +231,7 @@ export class GraphEngine {
       let node: Node;
       if (nodeData.label == "Cloth") {
         node = NodeTypes.Cloth();
-      } else if (nodeData.label == "RigidBody") {
+      } else if (nodeData.label == "Rigidbody") {
         node = NodeTypes.Rigidbody();
       } else if (nodeData.label == "CopyToPoints") {
         node = NodeTypes.CopyToPoints();

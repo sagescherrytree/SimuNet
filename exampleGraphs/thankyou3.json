@@ -1,0 +1,2180 @@
+{
+  "nodes": [
+    {
+      "id": "d91edc6c0c516854",
+      "label": "Cube",
+      "controls": {
+        "position": {
+          "id": "649f7653f179da2e",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "25980915d372b9f2",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "64e19e2604590bc5",
+          "value": { "x": 0.2, "y": 0.2, "z": 0.6 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "aac82f9d15afb74f",
+      "label": "Icosphere",
+      "controls": {
+        "subdivisions": {
+          "id": "30e5b400b61d8006",
+          "value": 2,
+          "stepSize": 1,
+          "min": 0,
+          "max": 6,
+          "label": "Subdivisions"
+        },
+        "position": {
+          "id": "2aea6098a1e80bfe",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "30bc1c1e4449f169",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "36724a18a7a45aa5",
+          "value": { "x": 1, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "dbe8b02f5e2ab72f",
+      "label": "AttribRand",
+      "controls": {
+        "scaleMin": {
+          "id": "ffda3ae1feb8da2b",
+          "value": 0.7,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Scale Min Val"
+        },
+        "scaleMax": {
+          "id": "7507377a365300a8",
+          "value": 1.8,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Scale Max Val"
+        },
+        "rotation": {
+          "id": "0690318da6b2ac8b",
+          "value": 1,
+          "options": [
+            { "value": 0, "label": "Off" },
+            { "value": 1, "label": "On" }
+          ],
+          "label": "Random Rotation"
+        }
+      }
+    },
+    { "id": "11dc4a3f975f17d4", "label": "CopyToPoints", "controls": {} },
+    {
+      "id": "062dfe76d19799e5",
+      "label": "Material",
+      "controls": {
+        "color": {
+          "id": "e75f96e269db6571",
+          "value": { "x": 0.8, "y": 0.9, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Color"
+        }
+      }
+    },
+    { "id": "f38396944599ace7", "label": "RecomputeNormals", "controls": {} },
+    {
+      "id": "0987d3c278b793da",
+      "label": "Cube",
+      "controls": {
+        "position": {
+          "id": "e11028f3b46bbb20",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "5876a0d0bb1b3d5c",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "3f621778ae86cd93",
+          "value": { "x": 0.1, "y": 0.1, "z": 0.1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "b3a5f5177daabccb",
+      "label": "Material",
+      "controls": {
+        "color": {
+          "id": "0397255eecad9d29",
+          "value": { "x": 1, "y": 0.8, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Color"
+        }
+      }
+    },
+    { "id": "64b534feb81ca138", "label": "RecomputeNormals", "controls": {} },
+    {
+      "id": "bc66a609bde3df17",
+      "label": "Cube",
+      "controls": {
+        "position": {
+          "id": "af6e4113d89fee95",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "a8c957d710aeae85",
+          "value": { "x": 120, "y": 50, "z": 70 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "39e667eb976d465d",
+          "value": { "x": 1, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "f015912f17087501",
+      "label": "AttribRand",
+      "controls": {
+        "scaleMin": {
+          "id": "3a3cc9f4a40a3434",
+          "value": 0.5,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Scale Min Val"
+        },
+        "scaleMax": {
+          "id": "cc23efddb854cb52",
+          "value": 2,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Scale Max Val"
+        },
+        "rotation": {
+          "id": "6a8a3488b2eda7d7",
+          "value": 0,
+          "options": [
+            { "value": 0, "label": "Off" },
+            { "value": 1, "label": "On" }
+          ],
+          "label": "Random Rotation"
+        }
+      }
+    },
+    { "id": "65b00d5f0d9b2a6b", "label": "CopyToPoints", "controls": {} },
+    { "id": "6404762f03b841e9", "label": "RecomputeNormals", "controls": {} },
+    {
+      "id": "a8e7168854596a62",
+      "label": "Torus",
+      "controls": {
+        "majorRadius": {
+          "id": "5e8a563740ae1760",
+          "value": 3.3,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Major Radius"
+        },
+        "minorRadius": {
+          "id": "8096c67a3900eee2",
+          "value": 0.4,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Minor Radius"
+        },
+        "tubularSegments": {
+          "id": "b964d5739d3764f2",
+          "value": 32,
+          "stepSize": 1,
+          "min": 4,
+          "max": 256,
+          "label": "Tubular Segments"
+        },
+        "radialSegments": {
+          "id": "0cb3f639963aec34",
+          "value": 16,
+          "stepSize": 1,
+          "min": 3,
+          "max": 64,
+          "label": "Radial Segments"
+        },
+        "position": {
+          "id": "fd8ff80253bdc696",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "a120ee6b5575edc8",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        }
+      }
+    },
+    {
+      "id": "32ea615e0de655a4",
+      "label": "Torus",
+      "controls": {
+        "majorRadius": {
+          "id": "5036e052fc171648",
+          "value": 3.7,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Major Radius"
+        },
+        "minorRadius": {
+          "id": "f1a29423b9cfc30a",
+          "value": 0.2,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Minor Radius"
+        },
+        "tubularSegments": {
+          "id": "7af0a8236fce17a9",
+          "value": 50,
+          "stepSize": 1,
+          "min": 4,
+          "max": 256,
+          "label": "Tubular Segments"
+        },
+        "radialSegments": {
+          "id": "cf2c1d2962916c94",
+          "value": 25,
+          "stepSize": 1,
+          "min": 3,
+          "max": 64,
+          "label": "Radial Segments"
+        },
+        "position": {
+          "id": "e0ce40ecbd9fe7a0",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "0a25ea7d3026a882",
+          "value": { "x": 70, "y": 75, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        }
+      }
+    },
+    {
+      "id": "35c942ac5f84ee62",
+      "label": "Material",
+      "controls": {
+        "color": {
+          "id": "472eda7e8d05352f",
+          "value": { "x": 1, "y": 0.8, "z": 0.6 },
+          "stepSize": 0.1,
+          "label": "Color"
+        }
+      }
+    },
+    {
+      "id": "17e7fb239412efb6",
+      "label": "Material",
+      "controls": {
+        "color": {
+          "id": "b55934131a36411e",
+          "value": { "x": 1, "y": 0.4, "z": 0.5 },
+          "stepSize": 0.1,
+          "label": "Color"
+        }
+      }
+    },
+    {
+      "id": "8f688bdf7046af0d",
+      "label": "Plane",
+      "controls": {
+        "width": {
+          "id": "eeb0727e6b58117b",
+          "value": 40,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Width"
+        },
+        "height": {
+          "id": "74918d8496f62a14",
+          "value": 80,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Height"
+        },
+        "position": {
+          "id": "dbec1a39e557d56b",
+          "value": { "x": 10.3, "y": 0, "z": 25 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "458d8f9de4e2d7b2",
+          "value": { "x": 0, "y": 0, "z": 90 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "subdivision": {
+          "id": "408a83002ae54a1d",
+          "value": 20,
+          "stepSize": 1,
+          "min": 1,
+          "max": 200,
+          "label": "Subdivisions"
+        }
+      }
+    },
+    {
+      "id": "1e34b8d51676ed84",
+      "label": "AttribRand",
+      "controls": {
+        "scaleMin": {
+          "id": "817b4dd3f07b5064",
+          "value": 0.5,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Scale Min Val"
+        },
+        "scaleMax": {
+          "id": "0ddc9b1fc208056a",
+          "value": 1.7,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Scale Max Val"
+        },
+        "rotation": {
+          "id": "9e5990bfcbe09cca",
+          "value": 0,
+          "options": [
+            { "value": 0, "label": "Off" },
+            { "value": 1, "label": "On" }
+          ],
+          "label": "Random Rotation"
+        }
+      }
+    },
+    { "id": "ff58762c9b533ef4", "label": "CopyToPoints", "controls": {} },
+    {
+      "id": "32c37d421841e920",
+      "label": "Icosphere",
+      "controls": {
+        "subdivisions": {
+          "id": "bfbf6d0a07b30e72",
+          "value": 2,
+          "stepSize": 1,
+          "min": 0,
+          "max": 6,
+          "label": "Subdivisions"
+        },
+        "position": {
+          "id": "fa5fb0013ea50a64",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "7aeae96316a1a149",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "0d49dc844a265b28",
+          "value": { "x": 0.1, "y": 0.1, "z": 0.1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "457c278ce9ccd9d8",
+      "label": "Icosphere",
+      "controls": {
+        "subdivisions": {
+          "id": "05c89cee497acff4",
+          "value": 2,
+          "stepSize": 1,
+          "min": 0,
+          "max": 6,
+          "label": "Subdivisions"
+        },
+        "position": {
+          "id": "b858912fc8719976",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "91efc21eb2e45d1a",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "a1500977c4fbe853",
+          "value": { "x": 1, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    { "id": "315d6c708213ca71", "label": "Merge", "controls": {} },
+    {
+      "id": "2a260dc3af7d25fb",
+      "label": "Cube",
+      "controls": {
+        "position": {
+          "id": "099851b0b46e6199",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "076b2b1c4f861a19",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "7667834bfe7de1a5",
+          "value": { "x": 1, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "97d2da880801dd53",
+      "label": "Material",
+      "controls": {
+        "color": {
+          "id": "5db4cd29afe26c73",
+          "value": { "x": 0.4, "y": 0.9, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Color"
+        }
+      }
+    },
+    { "id": "80bf1223b61529aa", "label": "RecomputeNormals", "controls": {} },
+    {
+      "id": "e3ef5de6d7838e1f",
+      "label": "Cube",
+      "controls": {
+        "position": {
+          "id": "a0126505abebb4c5",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "2006eeaec4632e36",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "7579d859512abc5e",
+          "value": { "x": 1, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "9cb12888a50f49d4",
+      "label": "Transform",
+      "controls": {
+        "translation": {
+          "id": "58d322f1a249b767",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Translation"
+        },
+        "rotation": {
+          "id": "468444955222bd86",
+          "value": { "x": -135, "y": 30, "z": 250 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "197dd1f3a6476919",
+          "value": { "x": 0.1, "y": 6.2, "z": 0.1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "20053919e13e2923",
+      "label": "Material",
+      "controls": {
+        "color": {
+          "id": "32365df0bb07d183",
+          "value": { "x": 0.6, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Color"
+        }
+      }
+    },
+    { "id": "7570cbe82156f0df", "label": "RecomputeNormals", "controls": {} },
+    {
+      "id": "7d869ff63b8855f5",
+      "label": "Transform",
+      "controls": {
+        "translation": {
+          "id": "86aaa0280c1adadf",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Translation"
+        },
+        "rotation": {
+          "id": "b973a6ddf3486010",
+          "value": { "x": 0, "y": 0, "z": 90 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "8bb7f284dc33a6e7",
+          "value": { "x": 1, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "876be27ff10300d2",
+      "label": "Noise",
+      "controls": {
+        "strength": {
+          "id": "072688d14dcd4a56",
+          "value": 0.5,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Strength"
+        },
+        "scale": {
+          "id": "b7fd2a092de97514",
+          "value": 1.4,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Scale"
+        },
+        "seed": {
+          "id": "3f22b126a250c7d1",
+          "value": 2,
+          "stepSize": 1,
+          "min": 0,
+          "max": 1000,
+          "label": "Seed"
+        },
+        "noiseStyle": {
+          "id": "6ee05e1495f8308d",
+          "value": 1,
+          "options": [
+            { "value": 0, "label": "Basic Noise" },
+            { "value": 1, "label": "Worley Noise" },
+            { "value": 2, "label": "FBM Noise" }
+          ],
+          "label": "Noise Type"
+        },
+        "modificationStyle": {
+          "id": "bd49774f7fd98d54",
+          "value": 0,
+          "options": [
+            { "value": 0, "label": "Radial Displacement" },
+            { "value": 1, "label": "Y Displacement" },
+            { "value": 2, "label": "X Displacement" },
+            { "value": 3, "label": "Z Displacement" }
+          ],
+          "label": "Transform Type"
+        }
+      }
+    },
+    { "id": "2270a4c1e8d49605", "label": "RecomputeNormals", "controls": {} },
+    { "id": "aa62e1e0ba3ad5b0", "label": "Merge", "controls": {} },
+    {
+      "id": "273fc18048a07e5e",
+      "label": "Transform",
+      "controls": {
+        "translation": {
+          "id": "ad470efb9ef49c20",
+          "value": { "x": 0, "y": 5.2, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Translation"
+        },
+        "rotation": {
+          "id": "3cdea01c11f62863",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "a4e377671ba24601",
+          "value": { "x": 1, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "a1f959945ac63396",
+      "label": "Plane",
+      "controls": {
+        "width": {
+          "id": "08361e587c63d830",
+          "value": 10,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Width"
+        },
+        "height": {
+          "id": "832c9767f3954639",
+          "value": 10,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Height"
+        },
+        "position": {
+          "id": "b7814696d72316a9",
+          "value": { "x": 0, "y": 3, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "149c163386dbb7a3",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "subdivision": {
+          "id": "03393f60aa1bd2d0",
+          "value": 100,
+          "stepSize": 1,
+          "min": 1,
+          "max": 200,
+          "label": "Subdivisions"
+        }
+      }
+    },
+    {
+      "id": "4ec4760719fbef92",
+      "label": "Cloth",
+      "controls": {
+        "stiffness": {
+          "id": "881a7b3ec3fa7f3a",
+          "value": 3,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Stiffness"
+        },
+        "mass": {
+          "id": "322006266953e86c",
+          "value": 0.1,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Mass"
+        },
+        "damping": {
+          "id": "327aebd2df4cef2d",
+          "value": 3,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 10,
+          "label": "Dampening"
+        },
+        "gravity": {
+          "id": "c66c36df46c8e6a9",
+          "value": 5,
+          "stepSize": 1,
+          "min": 0,
+          "max": 1000,
+          "label": "Gravity"
+        },
+        "pinningMode": {
+          "id": "960e852c47a45575",
+          "value": 5,
+          "options": [
+            { "value": 0, "label": "Top Edge" },
+            { "value": 1, "label": "Top Corners" },
+            { "value": 2, "label": "All Edges" },
+            { "value": 3, "label": "Top & Bottom Edges" },
+            { "value": 4, "label": "Four Corners" },
+            { "value": 5, "label": "None" }
+          ],
+          "label": "Pinning Mode"
+        },
+        "particleRadius": {
+          "id": "16896330df863098",
+          "value": 0.2,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 1000,
+          "label": "Particle Radius"
+        },
+        "staticFriction": {
+          "id": "4448d30c27f0064f",
+          "value": 0.6,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 1000,
+          "label": "Static Friction Coeff."
+        },
+        "kineticFriction": {
+          "id": "4b4256062da6fd28",
+          "value": 0.4,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 1000,
+          "label": "Kinetic Friction Coeff."
+        }
+      }
+    },
+    {
+      "id": "edd5c610dc1fc16d",
+      "label": "Cube",
+      "controls": {
+        "position": {
+          "id": "a931d61698f2dbfb",
+          "value": { "x": 0, "y": 0, "z": 0.6 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "25f823f593b565da",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "aa2d1c5a3220929d",
+          "value": { "x": 0.05, "y": 0.3, "z": 0.6 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "fc07736591b9cdf9",
+      "label": "Plane",
+      "controls": {
+        "width": {
+          "id": "08f3d26105504645",
+          "value": 10,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Width"
+        },
+        "height": {
+          "id": "54b9bcae7f142839",
+          "value": 10,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Height"
+        },
+        "position": {
+          "id": "21389738e6bc4440",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "04cc2fdd1014d6d7",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "subdivision": {
+          "id": "318311ce551c476d",
+          "value": 20,
+          "stepSize": 1,
+          "min": 1,
+          "max": 200,
+          "label": "Subdivisions"
+        }
+      }
+    },
+    {
+      "id": "57250082b1629d87",
+      "label": "AttribRand",
+      "controls": {
+        "scaleMin": {
+          "id": "3a1b48752928fdaf",
+          "value": 0.5,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Scale Min Val"
+        },
+        "scaleMax": {
+          "id": "10a274a5ac2289d3",
+          "value": 2.3,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Scale Max Val"
+        },
+        "rotation": {
+          "id": "2423c34550904fe2",
+          "value": 0,
+          "options": [
+            { "value": 0, "label": "Off" },
+            { "value": 1, "label": "On" }
+          ],
+          "label": "Random Rotation"
+        }
+      }
+    },
+    { "id": "78264d574606a5fa", "label": "CopyToPoints", "controls": {} },
+    {
+      "id": "02b4e9489ce68e27",
+      "label": "Material",
+      "controls": {
+        "color": {
+          "id": "bc60a3c7b77419cd",
+          "value": { "x": 0.8, "y": 0.8, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Color"
+        }
+      }
+    },
+    { "id": "ad7f68745776fae8", "label": "Merge", "controls": {} },
+    {
+      "id": "0b82859eaf4e2c46",
+      "label": "Torus",
+      "controls": {
+        "majorRadius": {
+          "id": "f2f63bd948793991",
+          "value": 5,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Major Radius"
+        },
+        "minorRadius": {
+          "id": "87cc2f7244ae7ace",
+          "value": 0.2,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Minor Radius"
+        },
+        "tubularSegments": {
+          "id": "89dd7de2e5694a15",
+          "value": 32,
+          "stepSize": 1,
+          "min": 4,
+          "max": 256,
+          "label": "Tubular Segments"
+        },
+        "radialSegments": {
+          "id": "eeecb452fca2682a",
+          "value": 16,
+          "stepSize": 1,
+          "min": 3,
+          "max": 64,
+          "label": "Radial Segments"
+        },
+        "position": {
+          "id": "c622dd0cc61db929",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "16675009d276164d",
+          "value": { "x": 70, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        }
+      }
+    },
+    {
+      "id": "5c026cb61b17d27a",
+      "label": "Material",
+      "controls": {
+        "color": {
+          "id": "1883b3c4b8903ed9",
+          "value": { "x": 1, "y": 0.6, "z": 0.3 },
+          "stepSize": 0.1,
+          "label": "Color"
+        }
+      }
+    },
+    {
+      "id": "e681228d9ed5feb9",
+      "label": "Torus",
+      "controls": {
+        "majorRadius": {
+          "id": "681704b064683147",
+          "value": 5.5,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Major Radius"
+        },
+        "minorRadius": {
+          "id": "2007f75ca8eaf6fa",
+          "value": 0.2,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Minor Radius"
+        },
+        "tubularSegments": {
+          "id": "3728533fa69cb37e",
+          "value": 32,
+          "stepSize": 1,
+          "min": 4,
+          "max": 256,
+          "label": "Tubular Segments"
+        },
+        "radialSegments": {
+          "id": "5de23ae6d868bf46",
+          "value": 16,
+          "stepSize": 1,
+          "min": 3,
+          "max": 64,
+          "label": "Radial Segments"
+        },
+        "position": {
+          "id": "47e7a8392501f83e",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "eaf6dd5223e7acfc",
+          "value": { "x": 70, "y": -45, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        }
+      }
+    },
+    {
+      "id": "8efe8e5c9d3e6673",
+      "label": "Material",
+      "controls": {
+        "color": {
+          "id": "0e9e1555917d0b73",
+          "value": { "x": 1, "y": 0.5, "z": 0.3 },
+          "stepSize": 0.1,
+          "label": "Color"
+        }
+      }
+    },
+    {
+      "id": "305f347005453052",
+      "label": "Torus",
+      "controls": {
+        "majorRadius": {
+          "id": "7b7dc63f7b1f7499",
+          "value": 1,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Major Radius"
+        },
+        "minorRadius": {
+          "id": "ab54c47a524550ed",
+          "value": 0.4,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Minor Radius"
+        },
+        "tubularSegments": {
+          "id": "3ebcc9058ca22030",
+          "value": 32,
+          "stepSize": 1,
+          "min": 4,
+          "max": 256,
+          "label": "Tubular Segments"
+        },
+        "radialSegments": {
+          "id": "a8b53580cf9d4c57",
+          "value": 16,
+          "stepSize": 1,
+          "min": 3,
+          "max": 64,
+          "label": "Radial Segments"
+        },
+        "position": {
+          "id": "36e3340d5dc85719",
+          "value": { "x": 0, "y": 5.6, "z": 4.2 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "d52145076f811da0",
+          "value": { "x": -30, "y": 0, "z": 35 },
+          "stepSize": 5,
+          "label": "Rotation"
+        }
+      }
+    },
+    {
+      "id": "5c2ddf697c661ca9",
+      "label": "Plane",
+      "controls": {
+        "width": {
+          "id": "7442394e3d5b9e71",
+          "value": 3,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Width"
+        },
+        "height": {
+          "id": "6bebafe04ac8a79c",
+          "value": 3,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Height"
+        },
+        "position": {
+          "id": "775fdf4f2b9215b9",
+          "value": { "x": 0, "y": 7, "z": 4 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "62523cc6d768777a",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "subdivision": {
+          "id": "ac3e43ba36205450",
+          "value": 100,
+          "stepSize": 1,
+          "min": 1,
+          "max": 200,
+          "label": "Subdivisions"
+        }
+      }
+    },
+    {
+      "id": "3503d26678ae0ac1",
+      "label": "Material",
+      "controls": {
+        "color": {
+          "id": "ee53130eda122b12",
+          "value": { "x": 0.9, "y": 0.9, "z": 0.8 },
+          "stepSize": 0.1,
+          "label": "Color"
+        }
+      }
+    },
+    {
+      "id": "f0d1a479f067bed8",
+      "label": "Material",
+      "controls": {
+        "color": {
+          "id": "0a3af2051a5f1b6b",
+          "value": { "x": 0.6, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Color"
+        }
+      }
+    },
+    {
+      "id": "d1f96ab9b85389d3",
+      "label": "Cloth",
+      "controls": {
+        "stiffness": {
+          "id": "742bbff1edac9c41",
+          "value": 3,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Stiffness"
+        },
+        "mass": {
+          "id": "5dbb289921aa666d",
+          "value": 0.1,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Mass"
+        },
+        "damping": {
+          "id": "5358f4a2d69005be",
+          "value": 3,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 10,
+          "label": "Dampening"
+        },
+        "gravity": {
+          "id": "9b563059deadf878",
+          "value": 5,
+          "stepSize": 1,
+          "min": 0,
+          "max": 1000,
+          "label": "Gravity"
+        },
+        "pinningMode": {
+          "id": "e88d6e492de5508f",
+          "value": 0,
+          "options": [
+            { "value": 0, "label": "Top Edge" },
+            { "value": 1, "label": "Top Corners" },
+            { "value": 2, "label": "All Edges" },
+            { "value": 3, "label": "Top & Bottom Edges" },
+            { "value": 4, "label": "Four Corners" },
+            { "value": 5, "label": "None" }
+          ],
+          "label": "Pinning Mode"
+        },
+        "particleRadius": {
+          "id": "292dee85f1bc6345",
+          "value": 0.2,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 1000,
+          "label": "Particle Radius"
+        },
+        "staticFriction": {
+          "id": "34a68080bef53b98",
+          "value": 0.6,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 1000,
+          "label": "Static Friction Coeff."
+        },
+        "kineticFriction": {
+          "id": "ab3f150f0f9f2e8a",
+          "value": 0.4,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 1000,
+          "label": "Kinetic Friction Coeff."
+        }
+      }
+    },
+    {
+      "id": "8583d9c4228d18ef",
+      "label": "Cube",
+      "controls": {
+        "position": {
+          "id": "154cacf08bf40db8",
+          "value": { "x": 0, "y": 8.2, "z": -4.6 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "9dfadbd6d9257a60",
+          "value": { "x": 15, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "8bfeb249e29c7ee6",
+          "value": { "x": 1, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "a22397c70b692f61",
+      "label": "Plane",
+      "controls": {
+        "width": {
+          "id": "14b36489ca45236a",
+          "value": 3,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Width"
+        },
+        "height": {
+          "id": "86950065ca4f224b",
+          "value": 3,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Height"
+        },
+        "position": {
+          "id": "6fac3fbc780e02ea",
+          "value": { "x": 0, "y": 9.7, "z": -4.7 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "e22a92a5bb254db6",
+          "value": { "x": 0, "y": -40, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "subdivision": {
+          "id": "98847b2eae9708b6",
+          "value": 150,
+          "stepSize": 1,
+          "min": 1,
+          "max": 200,
+          "label": "Subdivisions"
+        }
+      }
+    },
+    {
+      "id": "b1677b4491e24bf9",
+      "label": "Cloth",
+      "controls": {
+        "stiffness": {
+          "id": "18a46bbc6913ed47",
+          "value": 3,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Stiffness"
+        },
+        "mass": {
+          "id": "123632f74f522e3b",
+          "value": 0.1,
+          "stepSize": 0.1,
+          "min": null,
+          "max": null,
+          "label": "Mass"
+        },
+        "damping": {
+          "id": "d81052c0697f707d",
+          "value": 3,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 10,
+          "label": "Dampening"
+        },
+        "gravity": {
+          "id": "562bbbc694ec8da2",
+          "value": 5,
+          "stepSize": 1,
+          "min": 0,
+          "max": 1000,
+          "label": "Gravity"
+        },
+        "pinningMode": {
+          "id": "81b8ceb59f3ef638",
+          "value": 3,
+          "options": [
+            { "value": 0, "label": "Top Edge" },
+            { "value": 1, "label": "Top Corners" },
+            { "value": 2, "label": "All Edges" },
+            { "value": 3, "label": "Top & Bottom Edges" },
+            { "value": 4, "label": "Four Corners" },
+            { "value": 5, "label": "None" }
+          ],
+          "label": "Pinning Mode"
+        },
+        "particleRadius": {
+          "id": "d473047b74962755",
+          "value": 0.1,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 1000,
+          "label": "Particle Radius"
+        },
+        "staticFriction": {
+          "id": "c727003bd881c45c",
+          "value": 0.6,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 1000,
+          "label": "Static Friction Coeff."
+        },
+        "kineticFriction": {
+          "id": "616f237a070c6a0b",
+          "value": 0.4,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 1000,
+          "label": "Kinetic Friction Coeff."
+        }
+      }
+    },
+    {
+      "id": "5247880fbbbcc216",
+      "label": "Material",
+      "controls": {
+        "color": {
+          "id": "2ca20a69d9aa1940",
+          "value": { "x": 0.9, "y": 1, "z": 0.9 },
+          "stepSize": 0.1,
+          "label": "Color"
+        }
+      }
+    },
+    {
+      "id": "47e379452a3d177e",
+      "label": "Icosphere",
+      "controls": {
+        "subdivisions": {
+          "id": "afa863057ade62ef",
+          "value": 2,
+          "stepSize": 1,
+          "min": 0,
+          "max": 6,
+          "label": "Subdivisions"
+        },
+        "position": {
+          "id": "13efc1efee765e6e",
+          "value": { "x": 0, "y": 4.3, "z": 5.1 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "1731c7617ffe271c",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "838c402904660091",
+          "value": { "x": 1, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "b2c1883189c3ad8b",
+      "label": "Rigidbody",
+      "controls": {
+        "mass": {
+          "id": "b8536e915f5d11cc",
+          "value": 1,
+          "stepSize": 0.1,
+          "min": 0.1,
+          "max": 10,
+          "label": "Mass"
+        },
+        "gravity": {
+          "id": "81cd95acf7cdb244",
+          "value": 9.8,
+          "stepSize": 0.1,
+          "min": 0,
+          "max": 50,
+          "label": "Gravity"
+        },
+        "damping": {
+          "id": "f6367ced6a1ae320",
+          "value": 0.01,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 0.99,
+          "label": "Damping"
+        },
+        "bounciness": {
+          "id": "d1a97e99692929d6",
+          "value": 0.7,
+          "stepSize": 0.1,
+          "min": 0,
+          "max": 1,
+          "label": "Bounciness"
+        },
+        "initialVelocity": {
+          "id": "b8af87eff3cd04a0",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Initial Velocity"
+        }
+      }
+    },
+    {
+      "id": "27d243ae4610d194",
+      "label": "Icosphere",
+      "controls": {
+        "subdivisions": {
+          "id": "9a15ef30d0761e8d",
+          "value": 2,
+          "stepSize": 1,
+          "min": 0,
+          "max": 6,
+          "label": "Subdivisions"
+        },
+        "position": {
+          "id": "e174252949e0bcf6",
+          "value": { "x": 6.6, "y": 6, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "1755bd75bd4fb9a9",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "5a1e0e568ed4f364",
+          "value": { "x": 1, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "0e553ccf53e3d956",
+      "label": "Rigidbody",
+      "controls": {
+        "mass": {
+          "id": "dd92e8239488f1b1",
+          "value": 1,
+          "stepSize": 0.1,
+          "min": 0.1,
+          "max": 10,
+          "label": "Mass"
+        },
+        "gravity": {
+          "id": "21c6397784a0df01",
+          "value": 9.8,
+          "stepSize": 0.1,
+          "min": 0,
+          "max": 50,
+          "label": "Gravity"
+        },
+        "damping": {
+          "id": "a14853ecd30d3825",
+          "value": 0.01,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 0.99,
+          "label": "Damping"
+        },
+        "bounciness": {
+          "id": "e850cda497841012",
+          "value": 0.7,
+          "stepSize": 0.1,
+          "min": 0,
+          "max": 1,
+          "label": "Bounciness"
+        },
+        "initialVelocity": {
+          "id": "93eb499988cacf69",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Initial Velocity"
+        }
+      }
+    },
+    {
+      "id": "163fb11ea5d90abc",
+      "label": "Icosphere",
+      "controls": {
+        "subdivisions": {
+          "id": "984e39e525b6da4c",
+          "value": 2,
+          "stepSize": 1,
+          "min": 0,
+          "max": 6,
+          "label": "Subdivisions"
+        },
+        "position": {
+          "id": "5e7b376560296763",
+          "value": { "x": 0, "y": 6.5, "z": -5.2 },
+          "stepSize": 0.1,
+          "label": "Position"
+        },
+        "rotation": {
+          "id": "43d254963ebe4479",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 5,
+          "label": "Rotation"
+        },
+        "scale": {
+          "id": "5abbfd5dedd9c1d0",
+          "value": { "x": 1, "y": 1, "z": 1 },
+          "stepSize": 0.1,
+          "label": "Scale"
+        }
+      }
+    },
+    {
+      "id": "85e38f20d74a71f3",
+      "label": "Rigidbody",
+      "controls": {
+        "mass": {
+          "id": "0d2220181c55cc43",
+          "value": 1,
+          "stepSize": 0.1,
+          "min": 0.1,
+          "max": 10,
+          "label": "Mass"
+        },
+        "gravity": {
+          "id": "df85e7c223d5cae3",
+          "value": 9.8,
+          "stepSize": 0.1,
+          "min": 0,
+          "max": 50,
+          "label": "Gravity"
+        },
+        "damping": {
+          "id": "341cd37c6609a94f",
+          "value": 0.01,
+          "stepSize": 0.01,
+          "min": 0,
+          "max": 0.99,
+          "label": "Damping"
+        },
+        "bounciness": {
+          "id": "4b1fd0441feaf5cd",
+          "value": 0.7,
+          "stepSize": 0.1,
+          "min": 0,
+          "max": 1,
+          "label": "Bounciness"
+        },
+        "initialVelocity": {
+          "id": "d69f5288b8e8f3aa",
+          "value": { "x": 0, "y": 0, "z": 0 },
+          "stepSize": 0.1,
+          "label": "Initial Velocity"
+        }
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "c0bc7eeb9be38d96",
+      "source": "aac82f9d15afb74f",
+      "sourceOutput": "geometry",
+      "target": "dbe8b02f5e2ab72f",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "7a8718d28ef146bc",
+      "source": "d91edc6c0c516854",
+      "sourceOutput": "geometry",
+      "target": "11dc4a3f975f17d4",
+      "targetInput": "geometry0"
+    },
+    {
+      "id": "7c1e2659ee64f7e5",
+      "source": "dbe8b02f5e2ab72f",
+      "sourceOutput": "geometry",
+      "target": "11dc4a3f975f17d4",
+      "targetInput": "geometry1"
+    },
+    {
+      "id": "8b5238a3e9b2f6dc",
+      "source": "11dc4a3f975f17d4",
+      "sourceOutput": "geometry",
+      "target": "062dfe76d19799e5",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "43bdf6d284d7809a",
+      "source": "062dfe76d19799e5",
+      "sourceOutput": "geometry",
+      "target": "f38396944599ace7",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "7dbbb71e5f062f75",
+      "source": "0987d3c278b793da",
+      "sourceOutput": "geometry",
+      "target": "b3a5f5177daabccb",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "cf1b6bcad1378a40",
+      "source": "b3a5f5177daabccb",
+      "sourceOutput": "geometry",
+      "target": "64b534feb81ca138",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "1b67db6d637e906e",
+      "source": "bc66a609bde3df17",
+      "sourceOutput": "geometry",
+      "target": "f015912f17087501",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "4ead1f4ac1450af5",
+      "source": "f015912f17087501",
+      "sourceOutput": "geometry",
+      "target": "65b00d5f0d9b2a6b",
+      "targetInput": "geometry1"
+    },
+    {
+      "id": "77e3767b6a2f86ea",
+      "source": "b3a5f5177daabccb",
+      "sourceOutput": "geometry",
+      "target": "65b00d5f0d9b2a6b",
+      "targetInput": "geometry0"
+    },
+    {
+      "id": "65481559192ea375",
+      "source": "a8e7168854596a62",
+      "sourceOutput": "geometry",
+      "target": "35c942ac5f84ee62",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "c1ea86e535f4f582",
+      "source": "32ea615e0de655a4",
+      "sourceOutput": "geometry",
+      "target": "17e7fb239412efb6",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "881e0b13e0ee1acc",
+      "source": "8f688bdf7046af0d",
+      "sourceOutput": "geometry",
+      "target": "1e34b8d51676ed84",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "9d6e6e43b87a6324",
+      "source": "1e34b8d51676ed84",
+      "sourceOutput": "geometry",
+      "target": "ff58762c9b533ef4",
+      "targetInput": "geometry1"
+    },
+    {
+      "id": "0c904d6237c60c31",
+      "source": "32c37d421841e920",
+      "sourceOutput": "geometry",
+      "target": "ff58762c9b533ef4",
+      "targetInput": "geometry0"
+    },
+    {
+      "id": "0b28d49567e35dec",
+      "source": "457c278ce9ccd9d8",
+      "sourceOutput": "geometry",
+      "target": "315d6c708213ca71",
+      "targetInput": "geometry0"
+    },
+    {
+      "id": "43a9fadf65c7fda2",
+      "source": "2a260dc3af7d25fb",
+      "sourceOutput": "geometry",
+      "target": "315d6c708213ca71",
+      "targetInput": "geometry1"
+    },
+    {
+      "id": "927f32b639aa135e",
+      "source": "315d6c708213ca71",
+      "sourceOutput": "geometry",
+      "target": "97d2da880801dd53",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "62e6c98ad7998bde",
+      "source": "315d6c708213ca71",
+      "sourceOutput": "geometry",
+      "target": "80bf1223b61529aa",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "3fabecce0c4a4de2",
+      "source": "e3ef5de6d7838e1f",
+      "sourceOutput": "geometry",
+      "target": "9cb12888a50f49d4",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "55b259426e7683df",
+      "source": "9cb12888a50f49d4",
+      "sourceOutput": "geometry",
+      "target": "20053919e13e2923",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "992f8ab45e3e2659",
+      "source": "20053919e13e2923",
+      "sourceOutput": "geometry",
+      "target": "7570cbe82156f0df",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "9dcf44bb5be12528",
+      "source": "7570cbe82156f0df",
+      "sourceOutput": "geometry",
+      "target": "7d869ff63b8855f5",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "bb28d0583885f408",
+      "source": "7d869ff63b8855f5",
+      "sourceOutput": "geometry",
+      "target": "876be27ff10300d2",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "3d91fe2b04526ab4",
+      "source": "876be27ff10300d2",
+      "sourceOutput": "geometry",
+      "target": "2270a4c1e8d49605",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "f125881de8323aff",
+      "source": "35c942ac5f84ee62",
+      "sourceOutput": "geometry",
+      "target": "aa62e1e0ba3ad5b0",
+      "targetInput": "geometry0"
+    },
+    {
+      "id": "6f55602bb8c0668c",
+      "source": "17e7fb239412efb6",
+      "sourceOutput": "geometry",
+      "target": "aa62e1e0ba3ad5b0",
+      "targetInput": "geometry1"
+    },
+    {
+      "id": "a225527f7758a268",
+      "source": "65b00d5f0d9b2a6b",
+      "sourceOutput": "geometry",
+      "target": "273fc18048a07e5e",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "bf4a6a659f1d42dd",
+      "source": "273fc18048a07e5e",
+      "sourceOutput": "geometry",
+      "target": "6404762f03b841e9",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "83243320d642eb35",
+      "source": "a1f959945ac63396",
+      "sourceOutput": "geometry",
+      "target": "4ec4760719fbef92",
+      "targetInput": "geometry0"
+    },
+    {
+      "id": "b177374e19df7753",
+      "source": "fc07736591b9cdf9",
+      "sourceOutput": "geometry",
+      "target": "57250082b1629d87",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "2c4584610398787f",
+      "source": "edd5c610dc1fc16d",
+      "sourceOutput": "geometry",
+      "target": "78264d574606a5fa",
+      "targetInput": "geometry0"
+    },
+    {
+      "id": "dc2e3bd3a48cf8d6",
+      "source": "57250082b1629d87",
+      "sourceOutput": "geometry",
+      "target": "78264d574606a5fa",
+      "targetInput": "geometry1"
+    },
+    {
+      "id": "20af5f882989ff63",
+      "source": "f38396944599ace7",
+      "sourceOutput": "geometry",
+      "target": "ad7f68745776fae8",
+      "targetInput": "geometry1"
+    },
+    {
+      "id": "8b31486d8014064a",
+      "source": "78264d574606a5fa",
+      "sourceOutput": "geometry",
+      "target": "ad7f68745776fae8",
+      "targetInput": "geometry0"
+    },
+    {
+      "id": "02b57de1bfbf27fd",
+      "source": "ad7f68745776fae8",
+      "sourceOutput": "geometry",
+      "target": "4ec4760719fbef92",
+      "targetInput": "geometry1"
+    },
+    {
+      "id": "30ec1320eafdf269",
+      "source": "ad7f68745776fae8",
+      "sourceOutput": "geometry",
+      "target": "02b4e9489ce68e27",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "187b76011d8683b7",
+      "source": "0b82859eaf4e2c46",
+      "sourceOutput": "geometry",
+      "target": "5c026cb61b17d27a",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "64cdcb6c7a825850",
+      "source": "e681228d9ed5feb9",
+      "sourceOutput": "geometry",
+      "target": "8efe8e5c9d3e6673",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "0bdd558de60ce268",
+      "source": "305f347005453052",
+      "sourceOutput": "geometry",
+      "target": "3503d26678ae0ac1",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "dcfaf88e9b427680",
+      "source": "ff58762c9b533ef4",
+      "sourceOutput": "geometry",
+      "target": "f0d1a479f067bed8",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "558e372f31ca2737",
+      "source": "305f347005453052",
+      "sourceOutput": "geometry",
+      "target": "d1f96ab9b85389d3",
+      "targetInput": "geometry1"
+    },
+    {
+      "id": "7da945351a6f5eb9",
+      "source": "5c2ddf697c661ca9",
+      "sourceOutput": "geometry",
+      "target": "d1f96ab9b85389d3",
+      "targetInput": "geometry0"
+    },
+    {
+      "id": "954cfdcb3d0743d3",
+      "source": "8583d9c4228d18ef",
+      "sourceOutput": "geometry",
+      "target": "5247880fbbbcc216",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "55cf7a569ef79836",
+      "source": "8583d9c4228d18ef",
+      "sourceOutput": "geometry",
+      "target": "b1677b4491e24bf9",
+      "targetInput": "geometry1"
+    },
+    {
+      "id": "56b89c95fb580a72",
+      "source": "a22397c70b692f61",
+      "sourceOutput": "geometry",
+      "target": "b1677b4491e24bf9",
+      "targetInput": "geometry0"
+    },
+    {
+      "id": "a8bec17980efdade",
+      "source": "47e379452a3d177e",
+      "sourceOutput": "geometry",
+      "target": "b2c1883189c3ad8b",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "663226e5c57c9ee0",
+      "source": "27d243ae4610d194",
+      "sourceOutput": "geometry",
+      "target": "0e553ccf53e3d956",
+      "targetInput": "geometry"
+    },
+    {
+      "id": "b802aca920397783",
+      "source": "163fb11ea5d90abc",
+      "sourceOutput": "geometry",
+      "target": "85e38f20d74a71f3",
+      "targetInput": "geometry"
+    }
+  ],
+  "nodePositions": [
+    {
+      "id": "d91edc6c0c516854",
+      "position": { "x": -3043.8107031053805, "y": -1400.1633304604984 }
+    },
+    {
+      "id": "aac82f9d15afb74f",
+      "position": { "x": -2800.491202643444, "y": -1569.71847631104 }
+    },
+    {
+      "id": "dbe8b02f5e2ab72f",
+      "position": { "x": -2802.0401464519528, "y": -1405.330216918638 }
+    },
+    {
+      "id": "11dc4a3f975f17d4",
+      "position": { "x": -2829.29378163795, "y": -1206.8200401784172 }
+    },
+    {
+      "id": "062dfe76d19799e5",
+      "position": { "x": -2833.5991636103954, "y": -985.1933530023265 }
+    },
+    {
+      "id": "f38396944599ace7",
+      "position": { "x": -2831.6237427610513, "y": -806.7700065964812 }
+    },
+    {
+      "id": "0987d3c278b793da",
+      "position": { "x": -802.0839332973694, "y": -1029.4126327014246 }
+    },
+    {
+      "id": "b3a5f5177daabccb",
+      "position": { "x": -808.0882753376977, "y": -828.2671743504268 }
+    },
+    {
+      "id": "64b534feb81ca138",
+      "position": { "x": -805.4191325831868, "y": -458.1420199537382 }
+    },
+    {
+      "id": "bc66a609bde3df17",
+      "position": { "x": -402.38183699810986, "y": -1033.220080129133 }
+    },
+    {
+      "id": "f015912f17087501",
+      "position": { "x": -377.81422442512985, "y": -825.3447465956463 }
+    },
+    {
+      "id": "65b00d5f0d9b2a6b",
+      "position": { "x": -601.5739478263337, "y": -721.8943866195226 }
+    },
+    {
+      "id": "6404762f03b841e9",
+      "position": { "x": -386.3377736758982, "y": -473.78267703806284 }
+    },
+    {
+      "id": "a8e7168854596a62",
+      "position": { "x": 93.52910347834711, "y": -760.3039133831285 }
+    },
+    {
+      "id": "32ea615e0de655a4",
+      "position": { "x": 589.9677657997117, "y": -768.4182057516917 }
+    },
+    {
+      "id": "35c942ac5f84ee62",
+      "position": { "x": 108.02500433495729, "y": -471.6237445599334 }
+    },
+    {
+      "id": "17e7fb239412efb6",
+      "position": { "x": 588.000894822679, "y": -480.265632150317 }
+    },
+    {
+      "id": "8f688bdf7046af0d",
+      "position": { "x": 1051.7511465924806, "y": -485.4400366811834 }
+    },
+    {
+      "id": "1e34b8d51676ed84",
+      "position": { "x": 1061.502471174767, "y": -1034.5446113483142 }
+    },
+    {
+      "id": "ff58762c9b533ef4",
+      "position": { "x": 1565.0699569399665, "y": -470.1016733662661 }
+    },
+    {
+      "id": "32c37d421841e920",
+      "position": { "x": 1545.1481069059978, "y": -1010.8376028597016 }
+    },
+    {
+      "id": "457c278ce9ccd9d8",
+      "position": { "x": 2126.03321308754, "y": -1042.5504154401299 }
+    },
+    {
+      "id": "315d6c708213ca71",
+      "position": { "x": 2140.532751838384, "y": -719.9179724549327 }
+    },
+    {
+      "id": "2a260dc3af7d25fb",
+      "position": { "x": 2461.702953594577, "y": -1034.6110576287053 }
+    },
+    {
+      "id": "97d2da880801dd53",
+      "position": { "x": 2122.397514606128, "y": -449.8733919257969 }
+    },
+    {
+      "id": "80bf1223b61529aa",
+      "position": { "x": 2438.7622248977063, "y": -443.2500512204754 }
+    },
+    {
+      "id": "e3ef5de6d7838e1f",
+      "position": { "x": 3585.438559527149, "y": -952.746710038947 }
+    },
+    {
+      "id": "9cb12888a50f49d4",
+      "position": { "x": 3300.642414266146, "y": -1130.4277331897592 }
+    },
+    {
+      "id": "20053919e13e2923",
+      "position": { "x": 3051.7326238325613, "y": -990.4428662681028 }
+    },
+    {
+      "id": "7570cbe82156f0df",
+      "position": { "x": 3098.0183407932996, "y": -809.7807120926768 }
+    },
+    {
+      "id": "7d869ff63b8855f5",
+      "position": { "x": 3555.306244910083, "y": -629.6530708531886 }
+    },
+    {
+      "id": "876be27ff10300d2",
+      "position": { "x": 3547.201043185953, "y": -441.20713076717027 }
+    },
+    {
+      "id": "2270a4c1e8d49605",
+      "position": { "x": 3125.7305535312025, "y": -445.2597316292352 }
+    },
+    {
+      "id": "aa62e1e0ba3ad5b0",
+      "position": { "x": 393.4308352122163, "y": -1023.4215258014536 }
+    },
+    {
+      "id": "273fc18048a07e5e",
+      "position": { "x": -382.7896903602617, "y": -699.9862397437497 }
+    },
+    {
+      "id": "a1f959945ac63396",
+      "position": { "x": -3740.814506256284, "y": -963.1208456188965 }
+    },
+    {
+      "id": "4ec4760719fbef92",
+      "position": { "x": -3544.127860915003, "y": -482.7385672526912 }
+    },
+    {
+      "id": "edd5c610dc1fc16d",
+      "position": { "x": -3526.6306882098456, "y": -1162.156909909539 }
+    },
+    {
+      "id": "fc07736591b9cdf9",
+      "position": { "x": -3271.273373392194, "y": -1167.1997048642552 }
+    },
+    {
+      "id": "57250082b1629d87",
+      "position": { "x": -3269.863443590058, "y": -996.3932112315925 }
+    },
+    {
+      "id": "78264d574606a5fa",
+      "position": { "x": -3383.3998992732354, "y": -764.6914706104451 }
+    },
+    {
+      "id": "02b4e9489ce68e27",
+      "position": { "x": -3035.4594452914343, "y": -356.1717630079256 }
+    },
+    {
+      "id": "ad7f68745776fae8",
+      "position": { "x": -3036.47501390043, "y": -569.8658218147407 }
+    },
+    {
+      "id": "0b82859eaf4e2c46",
+      "position": { "x": 363.0815355846943, "y": -234.77718545176333 }
+    },
+    {
+      "id": "5c026cb61b17d27a",
+      "position": { "x": 367.90377668636756, "y": -9.455374053160426 }
+    },
+    {
+      "id": "e681228d9ed5feb9",
+      "position": { "x": 677.5723007764809, "y": -234.73618223759163 }
+    },
+    {
+      "id": "8efe8e5c9d3e6673",
+      "position": { "x": 665.3199180501085, "y": -33.253538429515906 }
+    },
+    {
+      "id": "305f347005453052",
+      "position": { "x": 4837.331640621462, "y": -823.8201665975038 }
+    },
+    {
+      "id": "5c2ddf697c661ca9",
+      "position": { "x": 4521.310393217676, "y": -825.3549737473518 }
+    },
+    {
+      "id": "3503d26678ae0ac1",
+      "position": { "x": 4919.400184425728, "y": -627.0669950516074 }
+    },
+    {
+      "id": "f0d1a479f067bed8",
+      "position": { "x": 1557.5854708168217, "y": -275.9005090086641 }
+    },
+    {
+      "id": "d1f96ab9b85389d3",
+      "position": { "x": 4590.938156899639, "y": -596.7941989241892 }
+    },
+    {
+      "id": "8583d9c4228d18ef",
+      "position": { "x": 5613.987740973738, "y": -817.450483538387 }
+    },
+    {
+      "id": "a22397c70b692f61",
+      "position": { "x": 5285.09615366687, "y": -815.581895070306 }
+    },
+    {
+      "id": "b1677b4491e24bf9",
+      "position": { "x": 5436.460715992369, "y": -581.9939654348193 }
+    },
+    {
+      "id": "5247880fbbbcc216",
+      "position": { "x": 5707.42263909221, "y": -595.0752823051668 }
+    },
+    {
+      "id": "47e379452a3d177e",
+      "position": { "x": 4098.469594299673, "y": -542.751212417558 }
+    },
+    {
+      "id": "b2c1883189c3ad8b",
+      "position": { "x": 4105.944119256823, "y": -357.74983356386656 }
+    },
+    {
+      "id": "27d243ae4610d194",
+      "position": { "x": 4472.20987111287, "y": -389.51771945432654 }
+    },
+    {
+      "id": "0e553ccf53e3d956",
+      "position": { "x": 4474.078545123364, "y": -210.1222770897037 }
+    },
+    {
+      "id": "163fb11ea5d90abc",
+      "position": { "x": 4855.293945690601, "y": -346.53761841607763 }
+    },
+    {
+      "id": "85e38f20d74a71f3",
+      "position": { "x": 4847.819078563799, "y": -163.40465694564116 }
+    }
+  ]
+}
