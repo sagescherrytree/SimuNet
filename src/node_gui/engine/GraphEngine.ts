@@ -250,6 +250,8 @@ export class GraphEngine {
         node = NodeTypes.Material();
       } else if (nodeData.label == "AttribRand") {
         node = NodeTypes.AttribRand();
+      } else if (nodeData.label == "Merge") {
+        node = NodeTypes.Merge();
       }
 
       node.id = nodeData.id;

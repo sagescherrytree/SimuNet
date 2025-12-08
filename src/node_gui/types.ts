@@ -9,6 +9,7 @@ import { NoiseNode } from "./nodes/NoiseNode";
 import { ClothNode } from "./nodes/ClothNode";
 import { CopyToPointsNode } from "./nodes/CopyToPointsNode";
 import { AttribRandNode } from "./nodes/AttribRandNode";
+import { MergeNode } from "./nodes/MergeNode";
 import {
   IExecutable,
   IGeometryModifier,
@@ -49,6 +50,7 @@ export const NodeTypes = {
   Cloth: createThematicNode(ClothNode),
   CopyToPoints: createThematicNode(CopyToPointsNode),
   AttribRand: createThematicNode(AttribRandNode),
+  Merge: createThematicNode(MergeNode),
   Plane: createThematicNode(PlaneNode),
   Torus: createThematicNode(TorusNode),
   RecomputeNormals: createThematicNode(RecomputeNormalsNode),
@@ -70,4 +72,4 @@ export const isGenerator = (n: any): n is IGeometryGenerator =>
 export const isUpdatable = (n: any): n is IUpdatable =>
   n && typeof (n as any).setUpdateCallback === "function";
 
-export { Node, CubeNode, IcosphereNode, TransformNode, NoiseNode, ClothNode, PlaneNode, TorusNode, RecomputeNormalsNode, CopyToPointsNode, AttribRandNode, MaterialNode };
+export { Node, CubeNode, IcosphereNode, TransformNode, NoiseNode, ClothNode, PlaneNode, TorusNode, RecomputeNormalsNode, CopyToPointsNode, AttribRandNode, MergeNode, MaterialNode };
