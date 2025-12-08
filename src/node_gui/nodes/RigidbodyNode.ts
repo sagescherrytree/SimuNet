@@ -78,6 +78,15 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
   restitutionControl: NumberControl;
   initialVelocityControl: Vec3Control;
 
+  private sourceGeometry?: GeometryData; // The single sphere before CopyToPoints
+  private instanceCount: number = 1;
+
+  private indexDuplicationPipeline?: GPUComputePipeline;
+  private indexDuplicationBindGroupLayout?: GPUBindGroupLayout;
+  private indexParamsBuffer?: GPUBuffer;
+
+  transformParamsBuffer: GPUBuffer;
+
   constructor() {
     super("Rigidbody");
 
@@ -132,9 +141,81 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
     }
 
     this.inputGeometry = input;
+
+    // Detect if this is from CopyToPoints
+    this.instanceCount = input.pointCount ?? 1;
+
+    // If from CopyToPoints, we need the source geometry
+
+    console.log(`RigidbodyNode: Detected ${this.instanceCount} instances`);
+
+    this.extractSourceGeometry(input);
     this.initializeRigidbodies();
 
     return this.geometry;
+  }
+
+  private extractSourceGeometry(input: GeometryData) {
+    const gpu = GPUContext.getInstance();
+
+    if (this.instanceCount === 1) {
+      // No CopyToPoints, just use input directly
+      this.sourceGeometry = input;
+      return;
+    }
+
+    // Calculate vertices per instance
+    const totalVertices = input.vertexBuffer.size / (8 * 4);
+    const verticesPerInstance = Math.floor(totalVertices / this.instanceCount);
+    const totalIndices = input.indexBuffer.size / 4;
+    const indicesPerInstance = Math.floor(totalIndices / this.instanceCount);
+
+    console.log(
+      `Extracting source: ${verticesPerInstance} verts, ${indicesPerInstance} indices per instance`
+    );
+
+    // Create buffers for just the first instance
+    const sourceVertexBuffer = gpu.device.createBuffer({
+      size: verticesPerInstance * 8 * 4,
+      usage:
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.VERTEX |
+        GPUBufferUsage.COPY_DST,
+    });
+
+    const sourceIndexBuffer = gpu.device.createBuffer({
+      size: indicesPerInstance * 4,
+      usage:
+        GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+    });
+
+    // Copy first instance's data
+    const encoder = gpu.device.createCommandEncoder();
+    encoder.copyBufferToBuffer(
+      input.vertexBuffer,
+      0,
+      sourceVertexBuffer,
+      0,
+      verticesPerInstance * 8 * 4
+    );
+    encoder.copyBufferToBuffer(
+      input.indexBuffer,
+      0,
+      sourceIndexBuffer,
+      0,
+      indicesPerInstance * 4
+    );
+    gpu.device.queue.submit([encoder.finish()]);
+
+    this.sourceGeometry = {
+      vertexBuffer: sourceVertexBuffer,
+      indexBuffer: sourceIndexBuffer,
+      id: `${input.id}-source`,
+      sourceId: input.sourceId,
+      boundingSphere: input.boundingSphere,
+      boundingBox: input.boundingBox,
+      materialBuffer: input.materialBuffer,
+    };
   }
 
   setInputGeometry(geometry: GeometryData, index: number = 0) {
@@ -143,18 +224,18 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
   }
 
   initializeRigidbodies() {
-    if (!this.inputGeometry) {
-      console.error("RigidbodyNode: No input geometry!");
+    if (!this.inputGeometry || !this.sourceGeometry) {
+      console.error("RigidbodyNode: No input or source geometry!");
       return;
     }
 
-    console.log("RigidbodyNode: Starting initialization...");
+    console.log(
+      `RigidbodyNode: Initializing ${this.instanceCount} rigidbodies...`
+    );
 
     const gpu = GPUContext.getInstance();
 
-    const sphereVertexCount = this.inputGeometry.vertexBuffer.size / (8 * 4);
-
-    const bufferSize = RigidbodyCPU.STRIDE;
+    const bufferSize = RigidbodyCPU.STRIDE * this.instanceCount;
 
     this.rigidbodyBuffer1 = gpu.device.createBuffer({
       size: bufferSize,
@@ -174,30 +255,40 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
     this.currentReadBuffer = this.rigidbodyBuffer1;
     this.currentWriteBuffer = this.rigidbodyBuffer2;
 
-    // uniform buffers
     this.timeUniformBuffer = gpu.device.createBuffer({
       size: 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
     this.updateSimParamsBuffer();
-
-    this.initializeRigidbodyOnCPU();
-
+    this.initializeRigidbodiesOnCPU();
     this.setupComputePipeline();
+
+    // Output buffer for ALL instances
+    const verticesPerInstance = this.sourceGeometry.vertexBuffer.size / (8 * 4);
+    const totalVertices = verticesPerInstance * this.instanceCount;
 
     this.outputVertexBuffer = gpu.device.createBuffer({
       label: "Rigidbody output vertex buffer",
-      size: sphereVertexCount * 8 * 4,
+      size: totalVertices * 8 * 4,
       usage:
         GPUBufferUsage.STORAGE |
         GPUBufferUsage.VERTEX |
         GPUBufferUsage.COPY_SRC,
     });
 
-    this.outputIndexBuffer = this.inputGeometry.indexBuffer;
+    // Need to duplicate indices for each instance
+    const indicesPerInstance = this.sourceGeometry.indexBuffer.size / 4;
+    const totalIndices = indicesPerInstance * this.instanceCount;
+
+    this.outputIndexBuffer = gpu.device.createBuffer({
+      size: totalIndices * 4,
+      usage:
+        GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_SRC,
+    });
 
     this.setupTransformPipeline();
+    this.setupIndexDuplicationPipeline();
 
     this.geometry = {
       vertexBuffer: this.outputVertexBuffer,
@@ -206,30 +297,71 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
       id: this.id,
       sourceId: this.inputGeometry.sourceId ?? this.inputGeometry.id,
       materialBuffer: this.inputGeometry.materialBuffer,
+      pointCount: this.instanceCount,
+      instancePositions: this.inputGeometry.instancePositions,
     };
 
-    console.log("RigidbodyNode: Created geometry with single rigidbody");
+    console.log(
+      `RigidbodyNode: Created geometry with ${this.instanceCount} rigidbodies`
+    );
 
     this.runInitialTransform();
+    this.runIndexDuplication();
   }
 
-  private initializeRigidbodyOnCPU() {
+  private initializeRigidbodiesOnCPU() {
     const gpu = GPUContext.getInstance();
     const spawnVel = this.initialVelocityControl.value;
 
-    // uses the bounding sphere rather than get it from gpu
-    const boundingSphere = this.inputGeometry.boundingSphere;
+    const boundingSphere = this.sourceGeometry.boundingSphere;
     if (!boundingSphere) {
-      console.error("Input geometry has no bounding sphere!");
+      console.error("Source geometry has no bounding sphere!");
       return;
     }
 
     const center = boundingSphere.center;
     const radius = boundingSphere.radius;
 
-    console.log("Using bounding sphere - Center:", center, "Radius:", radius);
+    // IMPORTANT: Calculate the actual lowest point of the sphere
+    const minY = center[1] - radius;
 
-    // Create center buffer and write CPU-calculated center
+    console.log("Bounding sphere info:", {
+      center,
+      radius,
+      minY,
+      message:
+        minY !== 0
+          ? "⚠️ Center is not at origin! Floor will be offset."
+          : "✓ Center is at origin",
+    });
+
+    const positions = this.inputGeometry.instancePositions || [[0, 0, 0]];
+
+    console.log(
+      `Initializing ${this.instanceCount} rigidbodies with radius ${radius}`
+    );
+
+    const cpuBody = new RigidbodyCPU(this.instanceCount);
+
+    for (let i = 0; i < this.instanceCount; i++) {
+      const pos = positions[i] || [0, 0, 0];
+
+      // Adjust initial Y position to account for center offset
+      // If the mesh center is at y=0.5, we need to shift rigidbody down by 0.5
+      const adjustedY = pos[1] - center[1];
+
+      cpuBody.writeRigidbody(i, {
+        position: { x: pos[0], y: pos[1], z: pos[2] },
+        velocity: spawnVel,
+        mass: this.massControl.value,
+        radius: radius,
+      });
+    }
+
+    gpu.device.queue.writeBuffer(this.rigidbodyBuffer1, 0, cpuBody.buffer);
+    gpu.device.queue.writeBuffer(this.rigidbodyBuffer2, 0, cpuBody.buffer);
+
+    // Store the original center for offset calculations
     this.originalCenterBuffer = gpu.device.createBuffer({
       size: 16,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
@@ -239,88 +371,81 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
       0,
       new Float32Array([center[0], center[1], center[2], 1.0])
     );
-
-    // Create rigidbody with CPU-calculated values
-    const cpuBody = new RigidbodyCPU(1);
-    cpuBody.writeRigidbody(0, {
-      position: { x: center[0], y: center[1], z: center[2] },
-      velocity: spawnVel,
-      mass: this.massControl.value,
-      radius: radius,
-    });
-
-    // Create and upload buffers
-    this.rigidbodyBuffer1 = gpu.device.createBuffer({
-      size: RigidbodyCPU.STRIDE,
-      usage:
-        GPUBufferUsage.STORAGE |
-        GPUBufferUsage.COPY_DST |
-        GPUBufferUsage.COPY_SRC,
-    });
-
-    this.rigidbodyBuffer2 = gpu.device.createBuffer({
-      size: RigidbodyCPU.STRIDE,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
-
-    gpu.device.queue.writeBuffer(this.rigidbodyBuffer1, 0, cpuBody.buffer);
-    gpu.device.queue.writeBuffer(this.rigidbodyBuffer2, 0, cpuBody.buffer);
-
-    this.currentReadBuffer = this.rigidbodyBuffer1;
-    this.currentWriteBuffer = this.rigidbodyBuffer2;
   }
 
   setupTransformPipeline() {
     const gpu = GPUContext.getInstance();
 
     const shaderCode = `
-    struct Rigidbody {
-      position: vec4<f32>,
-      velocity: vec4<f32>,
-      mass: f32,
-      radius: f32,
-      padding1: f32,
-      padding2: f32,
+  struct Rigidbody {
+    position: vec4<f32>,
+    velocity: vec4<f32>,
+    mass: f32,
+    radius: f32,
+    padding1: f32,
+    padding2: f32,
+  }
+  
+  struct Vertex {
+    position: vec4<f32>,
+    normal: vec4<f32>,
+  }
+  
+  struct TransformParams {
+    verticesPerInstance: u32,
+    instanceCount: u32,
+    padding1: u32,
+    padding2: u32,
+  }
+  
+  @group(0) @binding(0)
+  var<storage, read> rigidbodies: array<Rigidbody>;
+  
+  @group(0) @binding(1)
+  var<storage, read> sourceMesh: array<Vertex>;
+  
+  @group(0) @binding(2)
+  var<storage, read_write> outputVertices: array<Vertex>;
+  
+  @group(0) @binding(3)
+  var<storage, read> originalCenter: vec4<f32>;
+  
+  @group(0) @binding(4)
+  var<uniform> params: TransformParams;
+  
+  @compute @workgroup_size(64)
+  fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+    let globalVertexIndex = id.x;
+    
+    // Total vertices = verticesPerInstance * instanceCount
+    let totalVertices = params.verticesPerInstance * params.instanceCount;
+    if (globalVertexIndex >= totalVertices) {
+      return;
     }
     
-    struct Vertex {
-      position: vec4<f32>,
-      normal: vec4<f32>,
-    }
+    // Figure out which instance this vertex belongs to
+    let instanceIndex = globalVertexIndex / params.verticesPerInstance;
     
-    @group(0) @binding(0)
-    var<storage, read> rigidbodies: array<Rigidbody>;
+    // Get the local vertex index within the source mesh
+    let localVertexIndex = globalVertexIndex % params.verticesPerInstance;
     
-    @group(0) @binding(1)
-    var<storage, read> originalMesh: array<Vertex>;
+    // Get the rigidbody for this instance
+    let body = rigidbodies[instanceIndex];
     
-    @group(0) @binding(2)
-    var<storage, read_write> outputVertices: array<Vertex>;
+    // Get the vertex from the source mesh (single sphere)
+    let sourceVert = sourceMesh[localVertexIndex];
     
-    @group(0) @binding(3)
-    var<storage, read> originalCenter: vec4<f32>;
+    // Calculate offset from original center
+    let offset = sourceVert.position.xyz - originalCenter.xyz;
     
-    @compute @workgroup_size(64)
-    fn main(@builtin(global_invocation_id) id: vec3<u32>) {
-      let index = id.x;
-      if (index >= arrayLength(&originalMesh)) {
-        return;
-      }
-      
-      let body = rigidbodies[0];
-      let originalVert = originalMesh[index];
-      
-      // Calculate offset from stored center
-      let offset = originalVert.position.xyz - originalCenter.xyz;
-      
-      // Apply offset to new rigidbody position
-      let newPos = body.position.xyz + offset;
-      
-      var outputVert = originalVert;
-      outputVert.position = vec4<f32>(newPos, 1.0);
-      
-      outputVertices[index] = outputVert;
-    }
+    // Apply offset to rigidbody's current position
+    let newPos = body.position.xyz + offset;
+    
+    var outputVert = sourceVert;
+    outputVert.position = vec4<f32>(newPos, 1.0);
+    
+    outputVertices[globalVertexIndex] = outputVert;
+  }
   `;
 
     const shaderModule = gpu.device.createShaderModule({
@@ -335,22 +460,27 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
           binding: 0,
           visibility: GPUShaderStage.COMPUTE,
           buffer: { type: "read-only-storage" },
-        },
+        }, // rigidbodies
         {
           binding: 1,
           visibility: GPUShaderStage.COMPUTE,
           buffer: { type: "read-only-storage" },
-        },
+        }, // source mesh
         {
           binding: 2,
           visibility: GPUShaderStage.COMPUTE,
           buffer: { type: "storage" },
-        },
+        }, // output vertices
         {
           binding: 3,
           visibility: GPUShaderStage.COMPUTE,
           buffer: { type: "read-only-storage" },
-        },
+        }, // original center
+        {
+          binding: 4,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "uniform" },
+        }, // params
       ],
     });
 
@@ -363,6 +493,151 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
       layout: pipelineLayout,
       compute: { module: shaderModule, entryPoint: "main" },
     });
+
+    // Create params buffer
+    const verticesPerInstance = this.sourceGeometry.vertexBuffer.size / (8 * 4);
+    const paramsData = new Uint32Array([
+      verticesPerInstance,
+      this.instanceCount,
+      0,
+      0,
+    ]);
+
+    this.transformParamsBuffer = gpu.device.createBuffer({
+      size: paramsData.byteLength,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    gpu.device.queue.writeBuffer(this.transformParamsBuffer, 0, paramsData);
+  }
+
+  setupIndexDuplicationPipeline() {
+    const gpu = GPUContext.getInstance();
+
+    const shaderCode = `
+  struct IndexParams {
+    indicesPerInstance: u32,
+    verticesPerInstance: u32,
+    instanceCount: u32,
+    padding: u32,
+  }
+  
+  @group(0) @binding(0)
+  var<storage, read> sourceIndices: array<u32>;
+  
+  @group(0) @binding(1)
+  var<storage, read_write> outputIndices: array<u32>;
+  
+  @group(0) @binding(2)
+  var<uniform> params: IndexParams;
+  
+  @compute @workgroup_size(64)
+  fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+    let globalIndexIndex = id.x;
+    let totalIndices = params.indicesPerInstance * params.instanceCount;
+    
+    if (globalIndexIndex >= totalIndices) {
+      return;
+    }
+    
+    // Which instance does this index belong to?
+    let instanceIndex = globalIndexIndex / params.indicesPerInstance;
+    
+    // Local index within source indices
+    let localIndex = globalIndexIndex % params.indicesPerInstance;
+    
+    // Read source index and add vertex offset for this instance
+    let srcIndex = sourceIndices[localIndex];
+    let vertexOffset = instanceIndex * params.verticesPerInstance;
+    
+    outputIndices[globalIndexIndex] = srcIndex + vertexOffset;
+  }
+  `;
+
+    const shaderModule = gpu.device.createShaderModule({
+      label: "index duplication shader",
+      code: shaderCode,
+    });
+
+    this.indexDuplicationBindGroupLayout = gpu.device.createBindGroupLayout({
+      label: "index duplication BGL",
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "read-only-storage" },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "storage" },
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: { type: "uniform" },
+        },
+      ],
+    });
+
+    const pipelineLayout = gpu.device.createPipelineLayout({
+      bindGroupLayouts: [this.indexDuplicationBindGroupLayout],
+    });
+
+    this.indexDuplicationPipeline = gpu.device.createComputePipeline({
+      label: "index duplication pipeline",
+      layout: pipelineLayout,
+      compute: { module: shaderModule, entryPoint: "main" },
+    });
+
+    // Create params buffer
+    const indicesPerInstance = this.sourceGeometry.indexBuffer.size / 4;
+    const verticesPerInstance = this.sourceGeometry.vertexBuffer.size / (8 * 4);
+
+    const paramsData = new Uint32Array([
+      indicesPerInstance,
+      verticesPerInstance,
+      this.instanceCount,
+      0,
+    ]);
+
+    this.indexParamsBuffer = gpu.device.createBuffer({
+      size: paramsData.byteLength,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    gpu.device.queue.writeBuffer(this.indexParamsBuffer, 0, paramsData);
+  }
+
+  runIndexDuplication() {
+    const gpu = GPUContext.getInstance();
+
+    const bindGroup = gpu.device.createBindGroup({
+      layout: this.indexDuplicationBindGroupLayout,
+      entries: [
+        { binding: 0, resource: { buffer: this.sourceGeometry.indexBuffer } },
+        { binding: 1, resource: { buffer: this.outputIndexBuffer } },
+        { binding: 2, resource: { buffer: this.indexParamsBuffer } },
+      ],
+    });
+
+    const encoder = gpu.device.createCommandEncoder();
+    const pass = encoder.beginComputePass();
+
+    pass.setPipeline(this.indexDuplicationPipeline);
+    pass.setBindGroup(0, bindGroup);
+
+    const totalIndices =
+      (this.sourceGeometry.indexBuffer.size / 4) * this.instanceCount;
+    const workgroups = Math.ceil(totalIndices / this.workgroupSize);
+    pass.dispatchWorkgroups(workgroups);
+
+    pass.end();
+    gpu.device.queue.submit([encoder.finish()]);
+
+    console.log(
+      `Index duplication complete: ${totalIndices} indices for ${this.instanceCount} instances`
+    );
   }
 
   updateSimParamsBuffer() {
@@ -445,9 +720,10 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
       layout: this.transformBindGroupLayout,
       entries: [
         { binding: 0, resource: { buffer: this.currentReadBuffer } },
-        { binding: 1, resource: { buffer: this.inputGeometry.vertexBuffer } },
+        { binding: 1, resource: { buffer: this.sourceGeometry.vertexBuffer } },
         { binding: 2, resource: { buffer: this.outputVertexBuffer } },
         { binding: 3, resource: { buffer: this.originalCenterBuffer } },
+        { binding: 4, resource: { buffer: this.transformParamsBuffer } },
       ],
     });
 
@@ -503,7 +779,8 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
 
     pass.setPipeline(this.rigidbodySimPipeline);
     pass.setBindGroup(0, bindGroup);
-    pass.dispatchWorkgroups(1);
+    const simWorkgroups = Math.ceil(this.instanceCount / this.workgroupSize);
+    pass.dispatchWorkgroups(simWorkgroups);
 
     [this.currentReadBuffer, this.currentWriteBuffer] = [
       this.currentWriteBuffer,
@@ -514,9 +791,10 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
       layout: this.transformBindGroupLayout,
       entries: [
         { binding: 0, resource: { buffer: this.currentReadBuffer } },
-        { binding: 1, resource: { buffer: this.inputGeometry.vertexBuffer } },
+        { binding: 1, resource: { buffer: this.sourceGeometry.vertexBuffer } },
         { binding: 2, resource: { buffer: this.outputVertexBuffer } },
         { binding: 3, resource: { buffer: this.originalCenterBuffer } },
+        { binding: 4, resource: { buffer: this.transformParamsBuffer } },
       ],
     });
 

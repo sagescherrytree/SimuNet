@@ -25,6 +25,8 @@ export interface GeometryData {
   materialBuffer?: GPUBuffer;
   boundingBoxBuffer?: GPUBuffer; // For passing bounding box logic out of copyToPoints -> Rigidbodies or something similar.
   geomIDBuffer?: GPUBuffer; // Also for copyToPoints -> Rigidbodies.
+  pointCount?: number; // Number of instances from copy-to-points
+  instancePositions?: number[][]; // [[x,y,z], ...] for each instance
 }
 
 import { Node } from "../types";
@@ -97,7 +99,6 @@ export function onGeometryRemoved(geomCallBack: GeometryRemoveCallback) {
   removeSubscribers.push(geomCallBack);
 }
 
-
 export function generateWireframeIndices(
   triangleIndices: Uint32Array
 ): Uint32Array {
@@ -147,7 +148,6 @@ export function calculateBounds(vertices: number[]): {
   let maxX = -Infinity,
     maxY = -Infinity,
     maxZ = -Infinity;
-
 
   // TODO GPU-side?
   // Find bounding box
