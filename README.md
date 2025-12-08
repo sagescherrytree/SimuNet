@@ -155,7 +155,7 @@ While rendering is not our core focus, we added basic support for varying materi
 
 ## Final Presentation
 
-[Final Presentation Link]()
+[Final Presentation Link](https://docs.google.com/presentation/d/11mMs91vgJxRzn4KIxR29M20tMZPxcsJSSEpEjW6lAMw/edit?usp=sharing)
 
 #### Final Presentation Goals
 
