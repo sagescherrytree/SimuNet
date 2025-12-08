@@ -97,13 +97,21 @@ export class MergeNode
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_SRC,
         });
 
+        const triangleCount = outIndexCount / 3;
+        const wireframeSize = triangleCount * 6 * 4;
+        const outputWireframeBuffer = gpu.device.createBuffer({
+            size: wireframeSize,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_SRC,
+        });
+
         this.updateUniformBuffer();
         // Takes in vert buffers, index buffers, output buffers (wireframe later) from both inputs.
         this.setupComputePipeline(vertexBuffer1, indexBuffer1, vertexBuffer2, indexBuffer2, outputVertexBuffer, outputIndexBuffer);
+        this.SetupWireframe(outputIndexBuffer, outputWireframeBuffer, outIndexCount);
 
         // Invoke compute pass.
         const encoder = gpu.device.createCommandEncoder();
-        const pass = encoder.beginComputePass();
+        let pass = encoder.beginComputePass();
         pass.setPipeline(this.mergeComputePipeline);
         pass.setBindGroup(0, this.mergeComputeBindGroup);
 
@@ -113,15 +121,15 @@ export class MergeNode
         pass.dispatchWorkgroups(workgroups);
 
         pass.end();
-        gpu.device.queue.submit([encoder.finish()]);
 
-        // As a second pass, call wireframe setup.
-        const triangleCount = outIndexCount / 3;
-        const outputWireframeBuffer = gpu.device.createBuffer({
-            size: triangleCount * 6 * 4,
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_SRC,
-        });
-        this.SetupWireframe(outputIndexBuffer, outputWireframeBuffer, outIndexCount);
+        const wfWorkgroups = Math.ceil(triangleCount / this.workgroupSize);
+        pass = encoder.beginComputePass();
+        pass.setPipeline(this.mergeWireframePipeline);
+        pass.setBindGroup(0, this.mergeWireframeBindGroup);
+        pass.dispatchWorkgroups(wfWorkgroups);
+        pass.end();
+
+        gpu.device.queue.submit([encoder.finish()]);
 
         this.geometry = {
             vertexBuffer: outputVertexBuffer,
@@ -205,10 +213,10 @@ export class MergeNode
     }
 
     // Wireframe merge CPU setup.
-    SetupWireframe(outputIndexBuffer: GPUBuffer, outputWireframeBuffer: GPUBuffer, combinedIdxCount: number) {
+    SetupWireframe(outputIndexBuffer: GPUBuffer, outputWireframeBuffer: GPUBuffer, triangleCount: number) {
         const gpu = GPUContext.getInstance();
-        const wireframeTriangleCount = combinedIdxCount / 3;
-        const wireframeUniformData = new Uint32Array([wireframeTriangleCount]);
+        const wireframeUniformData = new Uint32Array([triangleCount]);
+
         if (!this.mergeWireframeUniformBuffer) {
             this.mergeWireframeUniformBuffer = gpu.device.createBuffer({
                 size: wireframeUniformData.byteLength,
@@ -217,14 +225,14 @@ export class MergeNode
         }
         gpu.device.queue.writeBuffer(this.mergeWireframeUniformBuffer, 0, wireframeUniformData);
 
-        // Create wireframe pipeline if not already.
+        // Only create pipeline & bind group
         if (!this.mergeWireframePipeline) {
             this.mergeWireframeBindGroupLayout = gpu.device.createBindGroupLayout({
                 label: "merge wireframe compute BGL",
                 entries: [
-                    { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // outIndices
-                    { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },           // wireframe buffer
-                    { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },           // uniform
+                    { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
+                    { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+                    { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
                 ]
             });
 
@@ -242,27 +250,17 @@ export class MergeNode
                 layout: pipelineLayout,
                 compute: { module: wireframeShaderModule, entryPoint: "main" },
             });
-
-            this.mergeWireframeBindGroup = gpu.device.createBindGroup({
-                layout: this.mergeWireframeBindGroupLayout,
-                entries: [
-                    { binding: 0, resource: { buffer: outputIndexBuffer } },
-                    { binding: 1, resource: { buffer: outputWireframeBuffer } },
-                    { binding: 2, resource: { buffer: this.mergeWireframeUniformBuffer } },
-                ]
-            });
         }
-        // Dispatch wireframe shader.
-        const wfEncoder = gpu.device.createCommandEncoder();
-        const wfPass = wfEncoder.beginComputePass();
-        wfPass.setPipeline(this.mergeWireframePipeline);
-        wfPass.setBindGroup(0, this.mergeWireframeBindGroup);
 
-        const wfWorkgroups = Math.ceil(wireframeTriangleCount / this.workgroupSize);
-        wfPass.dispatchWorkgroups(wfWorkgroups);
-
-        wfPass.end();
-        gpu.device.queue.submit([wfEncoder.finish()]);
+        // Always recreate bind group for new buffers
+        this.mergeWireframeBindGroup = gpu.device.createBindGroup({
+            layout: this.mergeWireframeBindGroupLayout,
+            entries: [
+                { binding: 0, resource: { buffer: outputIndexBuffer } },
+                { binding: 1, resource: { buffer: outputWireframeBuffer } },
+                { binding: 2, resource: { buffer: this.mergeWireframeUniformBuffer } },
+            ]
+        });
     }
 
     // TODO I think maybe we ought to get rid of executes?
