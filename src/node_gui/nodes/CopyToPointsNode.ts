@@ -30,6 +30,13 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
     mergeWireframeBindGroupLayout: GPUBindGroupLayout;
     mergeWireframeBindGroup: GPUBindGroup;
 
+    // Bounding box buffer.
+    // Referebce calculateBounds from geometry node to determine how each bounding box is made.
+    boundingBoxBuffer?: GPUBuffer;
+
+    // Corresponding geometry IDs.
+    geomIDBuffer?: GPUBuffer; // For keeping track of each instantiated geometry.
+
     workgroupSize = 64;
 
     constructor() {
@@ -64,8 +71,6 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
                 return;
             }
         }
-        // applyModificationMultiple(input: GeometryData, input2: GeometryData): GeometryData | undefined {
-        // if (!input || !input2) return;
 
         const src = inputs[0]; // Source (geom to be copied)
         const tgt = inputs[1]; // Target (points to be copied to)
@@ -120,12 +125,28 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_SRC,
         });
 
+        // Read in the boundingBox from src geometry and for targetPoints total count, add bounding box inst to bounding box buffer.
+
         // TODO: Reinstantiate compute pipelines for copy to points.
         // Need vertexBuffers for both objects.
         // TODO: Update wireframe buffers for CpyToPts logic.
         this.updateUniformBuffer();
         this.setupComputePipeline(src.vertexBuffer!, src.indexBuffer!, tgt.vertexBuffer!, pointAttributeBuffer, outputVertexBuffer, outputIndexBuffer, this.cpyToPtsUniformBuffer);
         this.SetupWireframe(outputIndexBuffer, outputWireframeBuffer, triangleCount);
+
+        const instanceCount = this.vertexCountTgt;
+
+        this.generateBoundingBuffersAsync(src, tgt, instanceCount, this.stride, tgt.pointAttributeBuffer)
+            .then(() => {
+                // attach bounding buffers to geometry once created
+                if (this.geometry) {
+                    this.geometry.boundingBoxBuffer = this.boundingBoxBuffer;
+                    this.geometry.geomIDBuffer = this.geomIDBuffer;
+                    // trigger update if needed (so renderer picks it up)
+                    this.updateBehavior.triggerUpdate();
+                }
+            })
+            .catch((e) => console.error("Failed generating bounding buffers:", e));
 
         // Invoke compute pass.
         const encoder = gpu.device.createCommandEncoder();
@@ -280,6 +301,155 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
                 { binding: 2, resource: { buffer: this.mergeWireframeUniformBuffer } },
             ]
         });
+    }
+
+    // Readback buffer for boundingBoxGPU.
+    async generateBoundingBuffersAsync(
+        src: GeometryData,
+        tgt: GeometryData,
+        instanceCount: number,
+        vertexStrideBytes: number,
+        pointAttributeBuffer?: GPUBuffer
+    ) {
+        const gpu = GPUContext.getInstance();
+
+        // Read back target vertex pos from GPU.
+        const readbackSize = instanceCount * vertexStrideBytes;
+        // Buffer containing information we read back.
+        const readBuffer = gpu.device.createBuffer({
+            size: readbackSize,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+
+        const copyEncoder = gpu.device.createCommandEncoder();
+        copyEncoder.copyBufferToBuffer(
+            tgt.vertexBuffer!,
+            0,
+            readBuffer,
+            0,
+            readbackSize
+        );
+        gpu.device.queue.submit([copyEncoder.finish()]);
+
+        // Async operation to wait for calculated points to be read back from GPU.
+        await readBuffer.mapAsync(GPUMapMode.READ);
+        const mapped = readBuffer.getMappedRange();
+        const vertexBytes = new Uint8Array(mapped);
+
+        const posOffsetInVertex = 0;
+        const floatView = new Float32Array(vertexBytes.buffer, vertexBytes.byteOffset, vertexBytes.byteLength / 4);
+
+        let pointScales: Float32Array | null = null;
+        if (pointAttributeBuffer) {
+            pointScales = null;
+        }
+
+        const bboxArray = new Float32Array(instanceCount * 6);
+
+        // Source bounding box / sphere.
+        const srcBox = src.boundingBox;
+        const srcSphere = src.boundingSphere;
+
+        // TODO: Might move all of this to the GPU, computing bounding boxes for a larger quantity of shapes may be rather difficult.
+        // Precompute src box center and half-extents (local space).
+        const srcCenter = [
+            (srcBox.min[0] + srcBox.max[0]) * 0.5,
+            (srcBox.min[1] + srcBox.max[1]) * 0.5,
+            (srcBox.min[2] + srcBox.max[2]) * 0.5,
+        ];
+        const srcHalf = [
+            (srcBox.max[0] - srcBox.min[0]) * 0.5,
+            (srcBox.max[1] - srcBox.min[1]) * 0.5,
+            (srcBox.max[2] - srcBox.min[2]) * 0.5,
+        ];
+
+        // conservative rotation handling: if orientation exists per-point and you want to support rotation exactly,
+        // prefer computing on GPU or expanding extents to max axis length: use sphere radius as fallback to produce safe AABB.
+        const useSphereFallback = true;
+
+        for (let i = 0; i < instanceCount; ++i) {
+            const vertBaseFloatIndex = (vertexStrideBytes / 4) * i + (posOffsetInVertex / 4);
+            const px = floatView[vertBaseFloatIndex + 0];
+            const py = floatView[vertBaseFloatIndex + 1];
+            const pz = floatView[vertBaseFloatIndex + 2];
+
+            // scale per instance: default 1.0 unless you read pscale.
+            let instanceScale = 1.0;
+            if (pointScales) {
+                instanceScale = pointScales[i];
+            }
+
+            // compute world-space center and half extents (simple: scale around origin then translate).
+            const worldCenter = [
+                srcCenter[0] * instanceScale + px,
+                srcCenter[1] * instanceScale + py,
+                srcCenter[2] * instanceScale + pz,
+            ];
+
+            if (useSphereFallback) {
+                // Use bounding sphere radius scaled as conservative half-extent in all axes.
+                const r = srcSphere.radius * instanceScale;
+                const minx = worldCenter[0] - r;
+                const miny = worldCenter[1] - r;
+                const minz = worldCenter[2] - r;
+                const maxx = worldCenter[0] + r;
+                const maxy = worldCenter[1] + r;
+                const maxz = worldCenter[2] + r;
+                const base = i * 6;
+                bboxArray[base + 0] = minx;
+                bboxArray[base + 1] = miny;
+                bboxArray[base + 2] = minz;
+                bboxArray[base + 3] = maxx;
+                bboxArray[base + 4] = maxy;
+                bboxArray[base + 5] = maxz;
+            } else {
+                // Exact axis-aligned box by scaling srcHalf and translating.
+                const hx = srcHalf[0] * instanceScale;
+                const hy = srcHalf[1] * instanceScale;
+                const hz = srcHalf[2] * instanceScale;
+                const minx = worldCenter[0] - hx;
+                const miny = worldCenter[1] - hy;
+                const minz = worldCenter[2] - hz;
+                const maxx = worldCenter[0] + hx;
+                const maxy = worldCenter[1] + hy;
+                const maxz = worldCenter[2] + hz;
+                const base = i * 6;
+                bboxArray[base + 0] = minx;
+                bboxArray[base + 1] = miny;
+                bboxArray[base + 2] = minz;
+                bboxArray[base + 3] = maxx;
+                bboxArray[base + 4] = maxy;
+                bboxArray[base + 5] = maxz;
+            }
+        }
+
+        readBuffer.unmap();
+
+        const bboxByteLength = bboxArray.byteLength; // instanceCount * 6 * 4
+        this.boundingBoxBuffer = gpu.device.createBuffer({
+            size: bboxByteLength,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+            label: "copyToPoints bounding boxes buffer",
+        });
+
+        gpu.device.queue.writeBuffer(this.boundingBoxBuffer, 0, bboxArray.buffer, bboxArray.byteOffset, bboxByteLength);
+
+        // geomID buffer: for now we can set all to src.id (or an integer index you maintain).
+        const geomIDs = new Uint32Array(instanceCount);
+        // If your src has an integer id, use it; otherwise assign 0 for now.
+        const srcIdNum = (typeof src.id === "number") ? src.id : 0;
+        for (let i = 0; i < instanceCount; ++i) geomIDs[i] = srcIdNum;
+
+        const geomIdBytes = geomIDs.byteLength;
+        this.geomIDBuffer = gpu.device.createBuffer({
+            size: geomIdBytes,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+            label: "copyToPoints geometry IDs buffer",
+        });
+        gpu.device.queue.writeBuffer(this.geomIDBuffer, 0, geomIDs.buffer, geomIDs.byteOffset, geomIdBytes);
+
+        // done
+        console.log("CopyToPoints: bounding buffers created. instances=", instanceCount);
     }
 
     // TODO I think maybe we ought to get rid of executes? I'm not sure we actually really use them for anything outside of node calling own execute in order to call their own applyModification when we could just call applyModification directly

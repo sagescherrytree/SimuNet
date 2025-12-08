@@ -25,6 +25,12 @@ struct PointAttrib {
     orient : vec4<f32>,  // quaternion (x y z w)
 }
 
+// For bounding box.
+struct BoundingBox {
+  min: vec3<f32>,
+  max: vec3<f32>,
+};
+
 @group(0) @binding(0)
 var<storage, read> srcVertices : array<VertexIn>;
 

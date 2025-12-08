@@ -22,7 +22,9 @@ export interface GeometryData {
     min: [number, number, number];
     max: [number, number, number];
   };
-  materialBuffer?: GPUBuffer
+  materialBuffer?: GPUBuffer;
+  boundingBoxBuffer?: GPUBuffer; // For passing bounding box logic out of copyToPoints -> Rigidbodies or something similar.
+  geomIDBuffer?: GPUBuffer; // Also for copyToPoints -> Rigidbodies.
 }
 
 import { Node } from "../types";
