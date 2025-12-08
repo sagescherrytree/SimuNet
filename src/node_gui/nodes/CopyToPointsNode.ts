@@ -229,7 +229,7 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
 
     gpu.device.queue.submit([encoder.finish()]);
 
-    this.analyzeCubeGeometry(src);
+    // this.analyzeCubeGeometry(src);
 
     this.geometry = {
       vertexBuffer: outputVertexBuffer,
@@ -250,6 +250,29 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
     });
 
     return this.geometry;
+  }
+
+  // Create uniform buffer with counts and stride (4 x u32 => 16 bytes).
+  // Layout: [this.vertexCountSrc, this.indexCountSrc, this.vertexCountTgt, stride].
+  updateUniformBuffer() {
+    const gpu = GPUContext.getInstance();
+
+    // strength, scale, seed, padding
+    const data = new Uint32Array([
+      this.vertexCountSrc,
+      this.indexCountSrc,
+      this.vertexCountTgt,
+      this.stride,
+    ]);
+
+    if (!this.cpyToPtsUniformBuffer) {
+      this.cpyToPtsUniformBuffer = gpu.device.createBuffer({
+        size: data.byteLength,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+    }
+
+    gpu.device.queue.writeBuffer(this.cpyToPtsUniformBuffer, 0, data);
   }
 
   // Pass in buffers for input vertices.
