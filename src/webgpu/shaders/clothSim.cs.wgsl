@@ -200,7 +200,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     //   in this, have a loop that goes over all the triangles in that and checks for sphere-triangle intersection
     //    then I guess if it does intersect apply force (along the normal vector of the triangle? in sphere-triangle intersect finding nearest point to sphere center, so push along vector from that point to sphere center)
     
-    let offsetPos = (*p).position.xyz;
+    var offsetPos = (*p).position.xyz;
     let vel = ((*p).position.xyz - (*p).prevPosition.xyz) / deltaTime;
     // TODO technically this should be the last frame's deltaTime if the deltaTime isn't
     // let dampingFactor = 1.0 - clothParams.damping;
@@ -321,6 +321,44 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     // force += contactForce;
 
 
+    // ground friction
+    if (offsetPos.y <= 0.0) {
+        force *= 0.8; //cheaty damping to improve look
+        if (length(vel) < 0.1) {
+            let staticFrictionMax = clothParams.staticFriction * abs(force.y);// max(-force.y, 0.0);
+            let forceAlongSurface = vec3f(force.x, 0.0, force.z);
+            var frictionForce = -forceAlongSurface;
+            if (length(frictionForce) > staticFrictionMax) {
+                frictionForce = normalize(frictionForce) * staticFrictionMax;
+            }
+            force += frictionForce;
+            if (length(frictionForce) / (*p).mass * deltaTime > length(vel)) {
+                force = vec3f(0.0);
+                offsetPos = (*p).prevPosition.xyz;
+            }
+        } else {
+            let kineticFrictionMagnitude = clothParams.kineticFriction * abs(force.y);// max(-force.y, 0.0);
+            // I THINK: 
+            // take velocity
+            // get component that goes along surface = subtract out component along normal
+            // take negation
+            // set length of that negation to kineticFrictionMagnitude
+            let reversedVelocityAlongSurface = -vec3f(vel.x, 0.0, vel.z);
+            let frictionForce = kineticFrictionMagnitude * normalize(reversedVelocityAlongSurface);
+            if (kineticFrictionMagnitude / (*p).mass * deltaTime > length(vel)) {
+            // if (length(force) < length(frictionForce)) {
+                force = vec3f(0.0);
+                offsetPos = (*p).prevPosition.xyz;
+            } else {
+                force += frictionForce;
+
+            }
+            // contactForce += frictionForce;
+            
+        }
+        
+    }
+
     // Verlet calcuation LOL
     
     let acceleration = force / clothParams.mass;
@@ -341,9 +379,9 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         finalPos.y = 0.0;
         let prevVel = (offsetPos - (*p).prevPosition.xyz);
         // let prevVel = ((*p).position.xyz - (*p).prevPosition.xyz);
-        let dampedVel = prevVel * 0.3; // Friction coefficient!
+        // let dampedVel = prevVel * 0.3; // Friction coefficient!
         // TODO integrate ground friction in as a force I think
-        prevPos = vec4<f32>(finalPos - dampedVel, 1.0);
+        prevPos = vec4<f32>(finalPos - prevVel, 1.0);
     }
 
     var outParticle = (*p);

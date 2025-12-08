@@ -145,15 +145,15 @@ export class ClothNode extends Node implements IGeometryModifier {
       this.updateBehavior.triggerUpdate();
     };
 
-    this.stiffnessControl = new NumberControl("Stiffness", 5.0, onChange, 0.1);
-    this.massControl = new NumberControl("Mass", 1.0, onChange, 0.1);
+    this.stiffnessControl = new NumberControl("Stiffness", 3.0, onChange, 0.1);
+    this.massControl = new NumberControl("Mass", 0.1, onChange, 0.1);
     this.dampingControl = new NumberControl(
       "Dampening",
-      0.5,
+      3,
       onChange,
       0.01,
       0.0,
-      0.99
+      10
     );
     this.gravityControl = new NumberControl(
       "Gravity",
@@ -173,7 +173,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     );
     this.staticFrictionControl = new NumberControl(
       "Static Friction Coeff.",
-      0.25,
+      0.6,
       onChange,
       0.01,
       0,
@@ -181,7 +181,7 @@ export class ClothNode extends Node implements IGeometryModifier {
     );
     this.kineticFrictionControl = new NumberControl(
       "Kinetic Friction Coeff.",
-      0.2,
+      0.4,
       onChange,
       0.01,
       0,
