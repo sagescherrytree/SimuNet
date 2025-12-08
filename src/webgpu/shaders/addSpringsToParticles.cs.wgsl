@@ -28,6 +28,8 @@ var<storage, read> inputSpringRestLength: array<f32>;
 var<storage, read_write> outputParticles: array<Particle>;
 @group(0) @binding(4)
 var<storage, read_write> outputSprings: array<Spring>;
+@group(0) @binding(5)
+var<storage, read> totalSpringCount: u32;
 
 
 @compute @workgroup_size(64)
@@ -35,11 +37,14 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let index = id.x;
 
     // Prevent out-of-bounds reads
-    if (index >= arrayLength(&inputSpringParticle0)) {
+    // if (index >= arrayLength(&inputSpringParticle0)) { // only working with half of array on first pass
+    if (index >= totalSpringCount) {
         return;
     }
 
     // let spring = inputSpringParticle0[index];
+    // I think don't want to set up springs here now on first pass since need to sort again? but maybe can just leave as-is since will be written over later (running this same pass twice; I guess could pass in a uniform to skip or something)
+    //  eh will leave as-is for now since not really a bottleneck i think anyway but do note this is redundant to do in the first pass
     outputSprings[index].particleIdx0 = inputSpringParticle0[index];
     outputSprings[index].particleIdx1 = inputSpringParticle1[index];
     outputSprings[index].restLength = inputSpringRestLength[index];

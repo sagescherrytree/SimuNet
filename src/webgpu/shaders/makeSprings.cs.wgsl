@@ -73,6 +73,23 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     outputSpringSecondParticleIndices[index + 2] = i0; 
     outputSpringRestLength[index + 2] = length(v0.position.xyz - v2.position.xyz);
 
+    // not doing but just here for test purposes: duplicate in opposite directions
+    // let half = arrayLength(&inputIndices);
+    // outputSpringFirstParticleIndices[half + index] = i1; 
+    // copySpringFirstParticleIndices[half + index] = i1; 
+    // outputSpringSecondParticleIndices[half + index] = i0; 
+    // outputSpringRestLength[half + index] = length(v1.position.xyz - v0.position.xyz);
+
+    // outputSpringFirstParticleIndices[half + index + 1] = i2; 
+    // copySpringFirstParticleIndices[half + index + 1] = i2; 
+    // outputSpringSecondParticleIndices[half + index + 1] = i1; 
+    // outputSpringRestLength[half + index + 1] = length(v2.position.xyz - v1.position.xyz);
+
+    // outputSpringFirstParticleIndices[half + index + 2] = i0; 
+    // copySpringFirstParticleIndices[half + index + 2] = i0; 
+    // outputSpringSecondParticleIndices[half + index + 2] = i2; 
+    // outputSpringRestLength[half + index + 2] = length(v0.position.xyz - v2.position.xyz);
+
 
 
 

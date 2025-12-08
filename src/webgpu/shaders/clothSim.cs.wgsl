@@ -198,7 +198,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     //   in this, have a loop that goes over all the triangles in that and checks for sphere-triangle intersection
     //    then I guess if it does intersect apply force (along the normal vector of the triangle? in sphere-triangle intersect finding nearest point to sphere center, so push along vector from that point to sphere center)
     
-    // var offsetPos = (*p).position.xyz;
+    let offsetPos = (*p).position.xyz;
     let vel = ((*p).position.xyz - (*p).prevPosition.xyz) / deltaTime;
     // TODO technically this should be the last frame's deltaTime if the deltaTime isn't
     // let dampingFactor = 1.0 - clothParams.damping;
@@ -215,8 +215,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
             let v2 = &(inputCollisionVertices[i2]);
             // let collisionVector = sphereTriangleCollision((*p).position, clothParams.particleRadius, Triangle((*v0).position, (*v1).position, (*v2).position));
             let collisionVector = sphereTriangleCollision(
-                (*p).position.xyz, 
-                // offsetPos,
+                // (*p).position.xyz, 
+                offsetPos,
                 clothParams.particleRadius, 
                 Triangle(
                     (*v0).position.xyz, 
@@ -236,6 +236,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                 // maybe ought to both apply normal force but also correct position to outside?
                 let normalForce = dot(force, -collisionVector) * collisionVector; //collisionVector already normalized
                 force += normalForce;
+                // TODO should have additional impulse to cancel existing velocity. currently sort-of accounted for only by the damping force, so if damping is too low it falls through
 
                 if (length(vel) < 0.1) {
                     // TODO not sure epsilon to use there^
@@ -269,7 +270,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                     
                 }
                 // TODO this doubles up at seams? should it just "break;" here?
-                break; // TODO not sure
+                // break; // TODO not sure
             }
 
             // TODO friction? want if colliding to have a force in opposite direction of current velocity?
@@ -297,7 +298,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     
     let acceleration = force / clothParams.mass;
     // let position = (*p).position.xyz + prevVel + acceleration * deltaTime * deltaTime;
-    let offsetPos = (*p).position.xyz; // TODO change back?
+    // let offsetPos = (*p).position.xyz; // TODO change back?
     let position = 2 * offsetPos - (*p).prevPosition.xyz + acceleration * deltaTime * deltaTime;
     // let position = 2 * (*p).position.xyz - (*p).prevPosition.xyz + acceleration * deltaTime * deltaTime;
     

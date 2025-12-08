@@ -148,3 +148,4 @@ While rendering is not our core focus, we added basic support for varying materi
 
 - [Rete.js](https://retejs.org/)
 - [Stats.js](https://cdnjs.com/libraries/stats.js/7)
+- [WebGPU-Radix-Sort](https://github.com/kishimisu/WebGPU-Radix-Sort)

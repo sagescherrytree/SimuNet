@@ -40,6 +40,7 @@ function getContextMenuItems() {
     AttribRand,
     Material,
     Rigidbody,
+    Merge,
   } = NodeTypes;
 
   const primitiveItems: ContextMenuItem[] = [
@@ -55,6 +56,7 @@ function getContextMenuItems() {
     ["Cloth", Cloth],
     ["Copy to Points", CopyToPoints],
     ["Attribute Random", AttribRand],
+    ["Merge", Merge],
     ["Recompute Normals", RecomputeNormals],
     ["Material", Material],
     ["Rigidbody", Rigidbody],

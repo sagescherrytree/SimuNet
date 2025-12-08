@@ -10,6 +10,7 @@ import { ClothNode } from "./nodes/ClothNode";
 import { CopyToPointsNode } from "./nodes/CopyToPointsNode";
 import { RigidbodyNode } from "./nodes/RigidbodyNode";
 import { AttribRandNode } from "./nodes/AttribRandNode";
+import { MergeNode } from "./nodes/MergeNode";
 import {
   IExecutable,
   IGeometryModifier,
@@ -50,6 +51,7 @@ export const NodeTypes = {
   Cloth: createThematicNode(ClothNode),
   CopyToPoints: createThematicNode(CopyToPointsNode),
   AttribRand: createThematicNode(AttribRandNode),
+  Merge: createThematicNode(MergeNode),
   Plane: createThematicNode(PlaneNode),
   Torus: createThematicNode(TorusNode),
   RecomputeNormals: createThematicNode(RecomputeNormalsNode),
@@ -86,4 +88,5 @@ export {
   AttribRandNode,
   MaterialNode,
   RigidbodyNode,
+  MergeNode,
 };
