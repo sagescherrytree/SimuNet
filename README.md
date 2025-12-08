@@ -176,8 +176,13 @@ We implemented very basic rigidbodies to show that we can simulate objects that 
 
 The simulation of rigid body dynamics is fundamental in computer graphics and game physics, as most everyday objects can be modeled as rigid. This involves tracking the body's position and orientation in world space, and calculating its motion based on external forces (like gravity) and torques, typically using an integrator to solve Newton's laws of motion. Our implementation successfully models the basic translational and rotational motion, allowing the simulated objects to interact realistically with other physics elements, such as the cloth simulation via collisions.
 
+![ScreenRecording2025-12-07232544-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/295b843a-24e2-4e50-9122-64544f359268)
+
 #### Merge Node
 For the merge node, we follow how Houdini's merge node works. This node simply allows us to combine multiple independent geometries (e.g., the cloth, rigidbodies, and static environment) into a single data stream without actually merging the vertices together.
+
+![ScreenRecording2025-12-07232929-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/64f644b0-dfc5-4561-ad86-7587acf87453)
+
 
 #### AttribRandom Node
 We implemented this node to generate and assign random values to attributes across different components of the geometry, such as points, primitives (faces), or vertices. These random attributes can then be used to drive other parts of the visual pipeline.
