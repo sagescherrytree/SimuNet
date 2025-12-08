@@ -2,6 +2,8 @@
 
 A WebGPU Node Based Procedural Generator focusing on simulations.
 
+A project by Griffin Evans, Jackie Guan, and Jackie Li.
+
 <img width="1914" height="1086" alt="team-11" src="https://github.com/user-attachments/assets/3e793ac0-32bb-4e27-b5e8-b5e42f7f1375" />
 
 [Demo link](https://sagescherrytree.github.io/SimuNet/)
@@ -22,6 +24,8 @@ To create a new node, move your mouse into the bottom left section and right cli
 
 ## Concept and Goal
 
+[Project Pitch Link](https://docs.google.com/presentation/d/1keM2YpwsfQ6hw2uvUS3z75OWQsbfMOn5GDaBZFAaXzY/edit?usp=sharing)
+
 Our concept is very simple; to make a node based procedural tool on WebGPU, because it is simple to access, and runs fast on a GPU. Similar to Houdini, this system would use nodes to spawn geometry, and one can modify them also through node based logic. We propose to use nodes corresponding to compute shaders to act on all the data which is passed through. Parameters, if present, will be exposed via nodes, which is the visual component that the user is able to interact with. WebGPU is also used to render the results of each of the compute shaders, so the user can easily follow what happens in each step of the process, in addition to it being fast as it runs on the GPU. 
 
 ## Simulations
@@ -38,7 +42,7 @@ We aim to construct the system such that we can easily add in new simulations as
 
 ## Milestone 1
 
-[Presentation Link](https://docs.google.com/presentation/d/1P4i5c0qahVdIlbv1cDaszm3CENs7U_gj6FwvsZWp5yE/edit?usp=sharing)
+[Milestone 1 Presentation Link](https://docs.google.com/presentation/d/1P4i5c0qahVdIlbv1cDaszm3CENs7U_gj6FwvsZWp5yE/edit?usp=sharing)
 
 #### Milestone 1 Goals
 
@@ -52,6 +56,8 @@ For Milestone 1, we completed the skeleton for our node network. We used the Ret
 ![](images/spinning_coob.gif)
 
 ## Milestone 2
+
+[Milestone 2 Presentation Link](https://docs.google.com/presentation/d/1La-1ETKYsTD4k9-5JhbFsFxD5HklcY5vgSZTrQLVAY8/edit?usp=sharing)
 
 #### Milestone 2 Goals
 
@@ -104,6 +110,8 @@ https://github.com/user-attachments/assets/838f89b6-0260-4624-a93a-32b23c7baa30
 
 ## Milestone 3
 
+[Milestone 3 Presentation Link](https://docs.google.com/presentation/d/1-K6lYm8NLtgsfZdh_Gr-H6RGp2KwE0pBxZfJm47wdZY/edit?usp=sharing)
+
 #### Milestone 3 Goals
 
 - [X] Cloth Simulation
@@ -143,6 +151,52 @@ While rendering is not our core focus, we added basic support for varying materi
 
 ![](images/cubeDiffMats.png)
 
+## Final Presentation
+
+[Final Presentation Link]()
+
+#### Final Presentation Goals
+
+- [X] Expand Cloth Simulation with Collisions
+- [X] Rigidbodies
+- [X] Merge Node
+- [X] AttribRandom Node
+- [X] Copy to Points Node
+
+### Expand Cloth Simulation
+For this milestone, we re-implemented cloth simulation to happen all on the GPU (Graphics Processing Unit). This massive transfer to the GPU allows for parallel computation across thousands of particles and springs, resulting in significantly faster and higher-resolution simulations than a CPU-based approach.
+
+For this effect, we have a much more complicated pipeline. First, we create springs using the mesh vertices and triangle indices. We output an array of springs (one per triangle edge and bidirectional). Using that data, we sort the springs to group all springs belonging to each particle. This allows a faster neighbor lookup during simulation. Next, we initialize the particles by converting each mesh vertex to a particle with physics properties and apply pinning constraints. And lastly, we link the springs to the particles.
+
+In addition to transferring all the cloth simulation to the GPU, we also added collisions for colliding with different objects!
+![Cloth Sim Collisions](https://github.com/user-attachments/assets/f63e21aa-c89c-4931-8aa1-511d0df84235)
+
+### Rigidbodies
+We implemented very basic rigidbodies to show that we can simulate objects that are inflexible and do not deform under applied forces.
+
+The simulation of rigid body dynamics is fundamental in computer graphics and game physics, as most everyday objects can be modeled as rigid. This involves tracking the body's position and orientation in world space, and calculating its motion based on external forces (like gravity) and torques, typically using an integrator to solve Newton's laws of motion. Our implementation successfully models the basic translational and rotational motion, allowing the simulated objects to interact realistically with other physics elements, such as the cloth simulation via collisions.
+
+![ScreenRecording2025-12-07232544-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/295b843a-24e2-4e50-9122-64544f359268)
+
+#### Merge Node
+For the merge node, we follow how Houdini's merge node works. This node simply allows us to combine multiple independent geometries (e.g., the cloth, rigidbodies, and static environment) into a single data stream without actually merging the vertices together.
+
+![ScreenRecording2025-12-07232929-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/64f644b0-dfc5-4561-ad86-7587acf87453)
+
+
+#### AttribRandom Node
+We implemented this node to generate and assign random values to attributes across different components of the geometry, such as points, primitives (faces), or vertices. These random attributes can then be used to drive other parts of the visual pipeline.
+
+![](images/attribRand.gif)
+![](images/attribRandRotation.png)
+![](images/attribRandWorking.png)
+
+#### Copy to Points Node
+The Copy to Points Node is a staple in procedural modeling, allowing us to duplicate a piece of source geometry onto every point of a separate target geometry.
+
+In our implementation, the core functionality allows the source object (the geometry to be copied) to be placed precisely at the location of each point on the target point cloud. This node is especially powerful when used in conjunction with the AttribRandom Node. When the target points have attributes like a uniform scale or orientation, the Copy to Points node reads these attributes and applies their values to the corresponding copy. This lets us efficiently create complex fields of objects, where each instance has a random size and rotation, as demonstrated in the included images.
+
+![](images/cpyToPointsBaseDone.png)
 
 # Libraries used
 

@@ -4,11 +4,11 @@ import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { GPUContext } from "../../webgpu/GPUContext";
 // Import recompute normals compute shader.
 import copyToPointsComputeShader from '../../webgpu/shaders/copyToPoints.cs.wgsl';
+// Wireframe update compute shader.
+import mergeWireframeComputeShader from '../../webgpu/shaders/wireframe.cs.wgsl';
 
 
 export class CopyToPointsNode extends Node implements IGeometryModifier {
-    // public inputGeometry?: GeometryData;
-    // public inputGeometry2?: GeometryData;
     public inputGeometries?: GeometryData[];
     private numInputs = 2;
 
@@ -22,6 +22,13 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
     cpyToPtsComputeBindGroupLayout: GPUBindGroupLayout;
     cpyToPtsComputeBindGroup: GPUBindGroup;
     cpyToPtsComputePipeline: GPUComputePipeline;
+
+    // For wireframe buffer.
+    mergeWireframeUniformBuffer?: GPUBuffer;
+
+    mergeWireframePipeline: GPUComputePipeline;
+    mergeWireframeBindGroupLayout: GPUBindGroupLayout;
+    mergeWireframeBindGroup: GPUBindGroup;
 
     workgroupSize = 64;
 
@@ -105,15 +112,24 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_SRC,
         });
 
+        // As a second pass, call wireframe setup.
+        const triangleCount = outIndexCount / 3;
+        const wireframeSize = triangleCount * 6 * 4;
+        const outputWireframeBuffer = gpu.device.createBuffer({
+            size: wireframeSize,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_SRC,
+        });
+
         // TODO: Reinstantiate compute pipelines for copy to points.
         // Need vertexBuffers for both objects.
         // TODO: Update wireframe buffers for CpyToPts logic.
         this.updateUniformBuffer();
         this.setupComputePipeline(src.vertexBuffer!, src.indexBuffer!, tgt.vertexBuffer!, pointAttributeBuffer, outputVertexBuffer, outputIndexBuffer, this.cpyToPtsUniformBuffer);
+        this.SetupWireframe(outputIndexBuffer, outputWireframeBuffer, triangleCount);
 
         // Invoke compute pass.
         const encoder = gpu.device.createCommandEncoder();
-        const pass = encoder.beginComputePass();
+        let pass = encoder.beginComputePass();
         pass.setPipeline(this.cpyToPtsComputePipeline);
         pass.setBindGroup(0, this.cpyToPtsComputeBindGroup);
 
@@ -122,12 +138,20 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
         pass.dispatchWorkgroups(workgroups);
 
         pass.end();
+
+        const wfWorkgroups = Math.ceil(triangleCount / this.workgroupSize);
+        pass = encoder.beginComputePass();
+        pass.setPipeline(this.mergeWireframePipeline);
+        pass.setBindGroup(0, this.mergeWireframeBindGroup);
+        pass.dispatchWorkgroups(wfWorkgroups);
+        pass.end();
+
         gpu.device.queue.submit([encoder.finish()]);
 
         this.geometry = {
             vertexBuffer: outputVertexBuffer,
             indexBuffer: outputIndexBuffer,
-            wireframeIndexBuffer: src.wireframeIndexBuffer, // TODO: Update wireframe buffer for copy to points.
+            wireframeIndexBuffer: outputWireframeBuffer, // TODO: Update wireframe buffer for copy to points.
             id: this.id,
             sourceId: src.sourceId ?? src.id,
             materialBuffer: src.materialBuffer
@@ -205,6 +229,57 @@ export class CopyToPointsNode extends Node implements IGeometryModifier {
         console.log("CopyToPointsNode: compute shader loaded");
         console.log("CopyToPointsNode: pipeline created:", this.cpyToPtsComputePipeline);
         console.log("CopyToPointsNode: bind group:", this.cpyToPtsComputeBindGroup);
+    }
+
+    // Wireframe merge CPU setup.
+    SetupWireframe(outputIndexBuffer: GPUBuffer, outputWireframeBuffer: GPUBuffer, triangleCount: number) {
+        const gpu = GPUContext.getInstance();
+        const wireframeUniformData = new Uint32Array([triangleCount]);
+
+        if (!this.mergeWireframeUniformBuffer) {
+            this.mergeWireframeUniformBuffer = gpu.device.createBuffer({
+                size: wireframeUniformData.byteLength,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            });
+        }
+        gpu.device.queue.writeBuffer(this.mergeWireframeUniformBuffer, 0, wireframeUniformData);
+
+        // Only create pipeline & bind group
+        if (!this.mergeWireframePipeline) {
+            this.mergeWireframeBindGroupLayout = gpu.device.createBindGroupLayout({
+                label: "merge wireframe compute BGL",
+                entries: [
+                    { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
+                    { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+                    { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+                ]
+            });
+
+            const wireframeShaderModule = gpu.device.createShaderModule({
+                label: "merge wireframe compute shader",
+                code: mergeWireframeComputeShader,
+            });
+
+            const pipelineLayout = gpu.device.createPipelineLayout({
+                label: "merge wireframe compute layout",
+                bindGroupLayouts: [this.mergeWireframeBindGroupLayout],
+            });
+
+            this.mergeWireframePipeline = gpu.device.createComputePipeline({
+                layout: pipelineLayout,
+                compute: { module: wireframeShaderModule, entryPoint: "main" },
+            });
+        }
+
+        // Always recreate bind group for new buffers
+        this.mergeWireframeBindGroup = gpu.device.createBindGroup({
+            layout: this.mergeWireframeBindGroupLayout,
+            entries: [
+                { binding: 0, resource: { buffer: outputIndexBuffer } },
+                { binding: 1, resource: { buffer: outputWireframeBuffer } },
+                { binding: 2, resource: { buffer: this.mergeWireframeUniformBuffer } },
+            ]
+        });
     }
 
     // TODO I think maybe we ought to get rid of executes? I'm not sure we actually really use them for anything outside of node calling own execute in order to call their own applyModification when we could just call applyModification directly
