@@ -141,8 +141,10 @@ fn sphereTriangleCollision(pos: vec3<f32>, radius: f32, tri: Triangle) -> vec3<f
     let dist = length(dir);
 
     if (dist < radius && dist > 0.00001) {
-        // return normalize(dir) ; 
         return normalize(dir); 
+        // let unclampedClosest = tri.v0 + edge0 * u + edge1 * v;
+        // let dir2 = pos - unclampedClosest;
+        // return normalize(dir2); 
         // return normalize(dir) * (radius - dist); 
     }
 
@@ -202,8 +204,12 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let vel = ((*p).position.xyz - (*p).prevPosition.xyz) / deltaTime;
     // TODO technically this should be the last frame's deltaTime if the deltaTime isn't
     // let dampingFactor = 1.0 - clothParams.damping;
-    
+    // TODO do I need to do this: var firstCollision = true; // only first impact applies stopping impulse? or do I just break completely?
 
+
+    // var contactForce = vec3(0.0);
+    // var hasImpulse = false;
+ 
     if (clothParams.hasCollisionGeometry == 1) {
         for (var i = 0u; i < arrayLength(&inputCollisionIndices); i += 3u) {
             // test collision per triangle
@@ -235,8 +241,17 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                 // Am I right in thinking just: projection of forces onto negation of the normal vector, negated?
                 // maybe ought to both apply normal force but also correct position to outside?
                 let normalForce = dot(force, -collisionVector) * collisionVector; //collisionVector already normalized
+                // let normalForce = max(dot(force, -collisionVector), 0.0) * collisionVector; //collisionVector already normalized
                 force += normalForce;
+                // contactForce += normalForce;
+                // let inverseVelocityIntoSurface = max(dot(vel, -collisionVector), 0.0) * collisionVector;
+                // force += inverseVelocityIntoSurface * (*p).mass / deltaTime;
+                // hasImpulse = true;
+
                 // TODO should have additional impulse to cancel existing velocity. currently sort-of accounted for only by the damping force, so if damping is too low it falls through
+                // stopping impulse =  F * deltaTime = mass * delta_velocity
+                // --> force += mass * deltaVelocity / deltaTime ?
+                // so take velocity in direction of surface, want to reduce that to 0 -> that is -deltaVelocity?
 
                 if (length(vel) < 0.1) {
                     // TODO not sure epsilon to use there^
@@ -249,13 +264,16 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                     // take negation
                     // set max length of that negation to staticFrictionMax
                     // not 100% sure this is right in terms of the projection part though
-                    let forceOutOfSurface = dot(force, -collisionVector) * collisionVector;
-                    let forceAlongSurface = force - forceOutOfSurface;
+                    // This seems like it should not have a minus in there intuitively but doesn't seem to work anyway. For now (scope of this project) stopping trying to make more accurate; ditto for getting impulse right
+                    // The simulation works pretty decent atm as long as dampening is high enough; was trying to improve it in cases with less dampening
+                    let forceNormalToSurface = dot(force, -collisionVector) * collisionVector;
+                    let forceAlongSurface = force - forceNormalToSurface;
                     var frictionForce = -forceAlongSurface;
                     if (length(frictionForce) > staticFrictionMax) {
                         frictionForce = normalize(frictionForce) * staticFrictionMax;
                     }
                     force += frictionForce;
+                    // contactForce += frictionForce;
                 } else {
                     let kineticFrictionMagnitude = clothParams.kineticFriction * length(normalForce);
                     // I THINK: 
@@ -263,12 +281,14 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                     // get component that goes along surface = subtract out component along normal
                     // take negation
                     // set length of that negation to kineticFrictionMagnitude
-                    let velocityOutOfSurface = dot(vel, -collisionVector) * collisionVector;
-                    let reversedVelocityAlongSurface = velocityOutOfSurface - vel;
+                    let velocityNormalToSurface = dot(vel, -collisionVector) * collisionVector;
+                    let reversedVelocityAlongSurface = velocityNormalToSurface - vel;
                     let frictionForce = kineticFrictionMagnitude * normalize(reversedVelocityAlongSurface);
                     force += frictionForce;
+                    // contactForce += frictionForce;
                     
                 }
+                
                 // TODO this doubles up at seams? should it just "break;" here?
                 // break; // TODO not sure
             }
@@ -286,14 +306,21 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
             // position.y += 10.0;
         }
     }
-    // TODO not sure how damping should interact with e.g. friction
+
+   // TODO not sure how damping should interact with e.g. friction
     let dampingFactor = clothParams.damping;
     // let vel = (offsetPos - (*p).prevPosition.xyz) / deltaTime;
     // let vel = ((*p).position.xyz - (*p).prevPosition.xyz) / deltaTime;
+    // if (!hasImpulse) {
     let linearDampingForce = -vel * dampingFactor;
     force += linearDampingForce;
 
+    // }
+    // should damping be last BUT clamp it to have it not reverse direction ever?
     
+    // force += contactForce;
+
+
     // Verlet calcuation LOL
     
     let acceleration = force / clothParams.mass;
@@ -303,7 +330,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     // let position = 2 * (*p).position.xyz - (*p).prevPosition.xyz + acceleration * deltaTime * deltaTime;
     
     var finalPos = position;
-    if (length(position - offsetPos) < 0.00001) {
+    if (length(position - offsetPos) < 0.0001) {
         // TODO issue with this is should still build up velocity I guess? so maybe need to artificially change prevPos?
         finalPos = (*p).position.xyz;
     }
