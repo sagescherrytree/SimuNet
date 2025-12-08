@@ -4,6 +4,8 @@ import { IGeometryModifier } from "../interfaces/NodeCapabilities";
 import { GPUContext } from "../../webgpu/GPUContext";
 // Import merge compute shader.
 import mergeComputeShader from '../../webgpu/shaders/merge.cs.wgsl';
+// For wireframe recompute.
+import mergeWireframeComputeShader from '../../webgpu/shaders/wireframe.cs.wgsl'
 
 export class MergeNode
     extends Node
@@ -22,6 +24,13 @@ export class MergeNode
     mergeComputeBindGroupLayout: GPUBindGroupLayout;
     mergeComputeBindGroup: GPUBindGroup;
     mergeComputePipeline: GPUComputePipeline;
+
+    // For wireframe buffer.
+    mergeWireframeUniformBuffer?: GPUBuffer;
+
+    mergeWireframePipeline: GPUComputePipeline;
+    mergeWireframeBindGroupLayout: GPUBindGroupLayout;
+    mergeWireframeBindGroup: GPUBindGroup;
 
     // Workgroup size.
     workgroupSize = 64;
@@ -88,7 +97,6 @@ export class MergeNode
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_SRC,
         });
 
-        // Recalculate wireframe + index buffers in compute shader?
         this.updateUniformBuffer();
         // Takes in vert buffers, index buffers, output buffers (wireframe later) from both inputs.
         this.setupComputePipeline(vertexBuffer1, indexBuffer1, vertexBuffer2, indexBuffer2, outputVertexBuffer, outputIndexBuffer);
@@ -107,10 +115,18 @@ export class MergeNode
         pass.end();
         gpu.device.queue.submit([encoder.finish()]);
 
+        // As a second pass, call wireframe setup.
+        const triangleCount = outIndexCount / 3;
+        const outputWireframeBuffer = gpu.device.createBuffer({
+            size: triangleCount * 6 * 4,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_SRC,
+        });
+        this.SetupWireframe(outputIndexBuffer, outputWireframeBuffer, outIndexCount);
+
         this.geometry = {
             vertexBuffer: outputVertexBuffer,
             indexBuffer: outputIndexBuffer,
-            wireframeIndexBuffer: input1.wireframeIndexBuffer,
+            wireframeIndexBuffer: outputWireframeBuffer,
             id: this.id,
             sourceId: input1.sourceId ?? input1.id,
             materialBuffer: input1.materialBuffer
@@ -170,14 +186,6 @@ export class MergeNode
             compute: { module: shaderModule, entryPoint: "main" },
         });
 
-        console.log("DBG: vertexBuffer1", vertexBuffer1);
-        console.log("DBG: indexBuffer1", indexBuffer1);
-        console.log("DBG: vertexBuffer2", vertexBuffer2);
-        console.log("DBG: indexBuffer2", indexBuffer2);
-        console.log("DBG: outputVertexBuffer", outputVertexBuffer);
-        console.log("DBG: outputIndexBuffer", outputIndexBuffer);
-        console.log("DBG: mergeUniformBuffer", this.mergeUniformBuffer);
-
         this.mergeComputeBindGroup = gpu.device.createBindGroup({
             layout: this.mergeComputeBindGroupLayout,
             entries: [
@@ -196,7 +204,68 @@ export class MergeNode
         console.log("MergeNode: bind group:", this.mergeComputeBindGroup);
     }
 
-    // TODO I think maybe we ought to get rid of executes? I'm not sure we actually really use them for anything outside of node calling own execute in order to call their own applyModification when we could just call applyModification directly
+    // Wireframe merge CPU setup.
+    SetupWireframe(outputIndexBuffer: GPUBuffer, outputWireframeBuffer: GPUBuffer, combinedIdxCount: number) {
+        const gpu = GPUContext.getInstance();
+        const wireframeTriangleCount = combinedIdxCount / 3;
+        const wireframeUniformData = new Uint32Array([wireframeTriangleCount]);
+        if (!this.mergeWireframeUniformBuffer) {
+            this.mergeWireframeUniformBuffer = gpu.device.createBuffer({
+                size: wireframeUniformData.byteLength,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            });
+        }
+        gpu.device.queue.writeBuffer(this.mergeWireframeUniformBuffer, 0, wireframeUniformData);
+
+        // Create wireframe pipeline if not already.
+        if (!this.mergeWireframePipeline) {
+            this.mergeWireframeBindGroupLayout = gpu.device.createBindGroupLayout({
+                label: "merge wireframe compute BGL",
+                entries: [
+                    { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // outIndices
+                    { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },           // wireframe buffer
+                    { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },           // uniform
+                ]
+            });
+
+            const wireframeShaderModule = gpu.device.createShaderModule({
+                label: "merge wireframe compute shader",
+                code: mergeWireframeComputeShader,
+            });
+
+            const pipelineLayout = gpu.device.createPipelineLayout({
+                label: "merge wireframe compute layout",
+                bindGroupLayouts: [this.mergeWireframeBindGroupLayout],
+            });
+
+            this.mergeWireframePipeline = gpu.device.createComputePipeline({
+                layout: pipelineLayout,
+                compute: { module: wireframeShaderModule, entryPoint: "main" },
+            });
+
+            this.mergeWireframeBindGroup = gpu.device.createBindGroup({
+                layout: this.mergeWireframeBindGroupLayout,
+                entries: [
+                    { binding: 0, resource: { buffer: outputIndexBuffer } },
+                    { binding: 1, resource: { buffer: outputWireframeBuffer } },
+                    { binding: 2, resource: { buffer: this.mergeWireframeUniformBuffer } },
+                ]
+            });
+        }
+        // Dispatch wireframe shader.
+        const wfEncoder = gpu.device.createCommandEncoder();
+        const wfPass = wfEncoder.beginComputePass();
+        wfPass.setPipeline(this.mergeWireframePipeline);
+        wfPass.setBindGroup(0, this.mergeWireframeBindGroup);
+
+        const wfWorkgroups = Math.ceil(wireframeTriangleCount / this.workgroupSize);
+        wfPass.dispatchWorkgroups(wfWorkgroups);
+
+        wfPass.end();
+        gpu.device.queue.submit([wfEncoder.finish()]);
+    }
+
+    // TODO I think maybe we ought to get rid of executes?
     async execute(inputs?: Record<string, any>) {
         const geom = inputs?.geometry0?.[0] as GeometryData;
         const geom2 = inputs?.geometry1?.[0] as GeometryData;
