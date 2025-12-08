@@ -159,7 +159,6 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
     const gpu = GPUContext.getInstance();
 
     if (this.instanceCount === 1) {
-      // No CopyToPoints, just use input directly
       this.sourceGeometry = input;
       return;
     }
@@ -322,7 +321,6 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
     const center = boundingSphere.center;
     const radius = boundingSphere.radius;
 
-    // IMPORTANT: Calculate the actual lowest point of the sphere
     const minY = center[1] - radius;
 
     console.log("Bounding sphere info:", {
@@ -331,8 +329,8 @@ export class RigidbodyNode extends Node implements IGeometryModifier {
       minY,
       message:
         minY !== 0
-          ? "⚠️ Center is not at origin! Floor will be offset."
-          : "✓ Center is at origin",
+          ? "Center is not at origin! Floor will be offset."
+          : "Center is at origin",
     });
 
     const positions = this.inputGeometry.instancePositions || [[0, 0, 0]];
