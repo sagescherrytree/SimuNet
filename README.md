@@ -8,6 +8,8 @@ A project by Griffin Evans, Jackie Guan, and Jackie Li.
 
 [Demo link](https://sagescherrytree.github.io/SimuNet/)
 
+[Project Presentation](https://docs.google.com/presentation/d/11mMs91vgJxRzn4KIxR29M20tMZPxcsJSSEpEjW6lAMw/edit?usp=sharing)
+
 ### Instructions
 GUI:
 * The top left section is the Details Panel for each node
