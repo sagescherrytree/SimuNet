@@ -164,17 +164,23 @@ While rendering is not our core focus, we added basic support for varying materi
 - [X] Copy to Points Node
 
 ### Expand Cloth Simulation
-For this milestone, we re-implemented cloth simulation to happen all on the GPU (Graphics Processing Unit). This massive transfer to the GPU allows for parallel computation across thousands of particles and springs, resulting in significantly faster and higher-resolution simulations than a CPU-based approach.
 
-For this effect, we have a much more complicated pipeline. First, we create springs using the mesh vertices and triangle indices. We output an array of springs (one per triangle edge and bidirectional). Using that data, we sort the springs to group all springs belonging to each particle. This allows a faster neighbor lookup during simulation. Next, we initialize the particles by converting each mesh vertex to a particle with physics properties and apply pinning constraints. And lastly, we link the springs to the particles.
+The primary feature added to cloth simulation in this milestone was the addition of collision between the cloth and solid objects. In addition to the geometry of the cloth mesh, the user can send in a second input of what geometry the cloth should collide against. Each particle in the cloth simulation tests for collisions with the faces of the collision geometry, and applies normal and friction forces when such collisions occur, with relevant coefficients controllable by the user.
 
-In addition to transferring all the cloth simulation to the GPU, we also added collisions for colliding with different objects!
 ![Cloth Sim Collisions](https://github.com/user-attachments/assets/f63e21aa-c89c-4931-8aa1-511d0df84235)
+
+We also added a variety of options that the user can control for the pinning of particles, such as having the outer edges of the geometry all pinned, having two sides pinned, or having no points pinned.
+
+| <img width="743" height="619" alt="Screen Shot 2025-12-07 at 11 52 18 PM" src="https://github.com/user-attachments/assets/dc5d61ef-9232-4bb9-8eb2-3870a0af7763" /> | <img width="755" height="689" alt="Screen Shot 2025-12-07 at 11 54 23 PM" src="https://github.com/user-attachments/assets/9809ad9a-dfef-498c-9649-9cd0d5b7c5d6" /> | <img width="762" height="663" alt="Screen Shot 2025-12-07 at 11 55 48 PM" src="https://github.com/user-attachments/assets/1baabb08-4b17-42fe-ab24-d9d2039d70cf" /> |
+|:--:|:--:|:--:|
+| Cloth with no pinning | Cloth with two sides pinned | Cloth with each side pinned |
+
+For this milestone, we also reimplemented the setup steps of our computation, which originally relied on CPU-side data to create the particles and springs. This process was moved to a GPU-side pipeline that behaves as follows:
+First, we create springs using the mesh vertices and triangle indices. We output an array of springs (one per triangle edge in a single direction, such that two adjacent triangles create a pair in each direction for their shared edge). Using that data, we sort the springs to group all springs belonging to each particle. This allows a faster neighbor lookup during simulation. Next, we initialize the particles by converting each mesh vertex to a particle with physics properties and apply pinning constraints. And lastly, we link the springs to the particles, with an additional pass performed to create springs for any that did not previously have a pair (that is, any spring on the outer edge of an open mesh like a plane).
+
 
 ### Rigidbodies
 We implemented very basic rigidbodies to show that we can simulate objects that are inflexible and do not deform under applied forces.
-
-The simulation of rigid body dynamics is fundamental in computer graphics and game physics, as most everyday objects can be modeled as rigid. This involves tracking the body's position and orientation in world space, and calculating its motion based on external forces (like gravity) and torques, typically using an integrator to solve Newton's laws of motion. Our implementation successfully models the basic translational and rotational motion, allowing the simulated objects to interact realistically with other physics elements, such as the cloth simulation via collisions.
 
 ![ScreenRecording2025-12-07232544-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/295b843a-24e2-4e50-9122-64544f359268)
 
